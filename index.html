@@ -132,6 +132,12 @@
     font-size:13px; margin-bottom:12px; display:none;}
   #auth-msg{background:rgba(39,192,138,.14); color:var(--accent); border-radius:10px; padding:10px 12px;
     font-size:13px; margin-top:14px; display:none; text-align:center;}
+  /* Cloud sync status */
+  #cloud-status{position:fixed; top:calc(var(--safe-top) + 8px); left:50%; transform:translateX(-50%) translateY(-12px);
+    background:var(--surface2); border:1px solid var(--line); color:var(--muted); font-size:11px; font-weight:700;
+    padding:5px 12px; border-radius:999px; z-index:200; opacity:0; transition:opacity .25s, transform .25s; pointer-events:none;}
+  #cloud-status.show{opacity:1; transform:translateX(-50%) translateY(0);}
+  #cloud-status.warn{color:var(--warn); border-color:var(--warn);}
   /* Calendar */
   .cal-nav{display:flex; align-items:center; justify-content:space-between; margin-bottom:10px;}
   .cal-arrow{background:var(--surface2); border:1px solid var(--line); color:var(--text);
@@ -246,6 +252,7 @@
 <div id="scrim"></div>
 <div id="sheet"><div class="grab"></div><div id="sheet-body"></div></div>
 <input type="file" id="csv-input" accept=".csv,text/csv" style="display:none" onchange="handleCSVFile(event)">
+<div id="cloud-status"></div>
 
 <script>
 /* ============================ STATE ============================ */
@@ -379,7 +386,9 @@ function syncRecurring(s){
     }
   });
 }
-function save(s){ try{ localStorage.setItem(LS_KEY, JSON.stringify(s||state)); }catch(e){} }
+function save(s){ try{ localStorage.setItem(LS_KEY, JSON.stringify(s||state)); }catch(e){} if(window.__cloudSave) window.__cloudSave(); }
+function emptyState(){ return { profile:{ state:"CA", filingStatus:"single", businessType:"sole_prop", annualIncome:0, noShowBurns:false },
+  packageTypes:[], clients:[], sales:[], sessions:[], expenses:[], taxPayments:[], recurringExpenses:[], recurringSessions:[] }; }
 
 /* ============================ TAX ENGINE (CA sole proprietor, est.) ============================ */
 const FED_2026_SINGLE=[[0,.10],[12400,.12],[50400,.22],[105700,.24],[201775,.32],[256225,.35],[640600,.37]];
@@ -1569,11 +1578,64 @@ async function authSubmit(){
 }
 async function doLogout(){ try{ await sb.auth.signOut(); }catch(e){} location.reload(); }
 
-function enterApp(user){
+async function enterApp(user){
   window.currentUser = user;
   aEl("auth-screen").style.display = "none";
   aEl("frame").style.display = "flex";
-  startApp(user.id);
+  LS_KEY = "fitrm_poc_" + user.id;            // per-account local cache
+  state = await loadStateForUser(user.id);
+  render();
+}
+
+// Load this trainer's data: cloud first, then local cache, else empty. Migrate local->cloud on first run.
+async function loadStateForUser(uid){
+  let cloud = null;
+  try{
+    const { data } = await sb.from("app_state").select("data").eq("trainer_id", uid).maybeSingle();
+    if(data && data.data) cloud = data.data;
+  }catch(e){ /* offline — fall back to local cache */ }
+
+  if(cloud){
+    const s = migrate(cloud);
+    try{ localStorage.setItem(LS_KEY, JSON.stringify(s)); }catch(e){}
+    syncRecurring(s); syncRecurringSessions(s);
+    return s;
+  }
+
+  // No cloud record yet: use local cache if present (e.g. data from before sync), else start empty.
+  let local = null;
+  try{ const r = localStorage.getItem(LS_KEY); if(r) local = migrate(JSON.parse(r)); }catch(e){}
+  const s = local || emptyState();
+  syncRecurring(s); syncRecurringSessions(s);
+  try{ await sb.from("app_state").upsert({ trainer_id: uid, data: s, updated_at: new Date().toISOString() }); }catch(e){}
+  return s;
+}
+
+// Debounced cloud save (hooked into the app's save())
+let cloudTimer = null;
+function cloudSaveDebounced(){
+  if(!window.currentUser) return;
+  clearTimeout(cloudTimer);
+  setSyncStatus("saving");
+  cloudTimer = setTimeout(cloudPush, 700);
+}
+async function cloudPush(){
+  if(!window.currentUser) return;
+  try{
+    const { error } = await sb.from("app_state").upsert({
+      trainer_id: window.currentUser.id, data: state, updated_at: new Date().toISOString()
+    });
+    setSyncStatus(error ? "offline" : "saved");
+  }catch(e){ setSyncStatus("offline"); }
+}
+window.__cloudSave = cloudSaveDebounced;
+
+function setSyncStatus(s){
+  const e = aEl("cloud-status"); if(!e) return;
+  clearTimeout(e._t);
+  if(s==="saving"){ e.textContent="Syncing…"; e.className="show"; }
+  else if(s==="saved"){ e.textContent="Saved ✓"; e.className="show"; e._t=setTimeout(()=>e.className="",1100); }
+  else { e.textContent="Offline · saved on this device"; e.className="show warn"; e._t=setTimeout(()=>e.className="",2600); }
 }
 
 (async function(){
