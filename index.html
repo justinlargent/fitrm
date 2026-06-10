@@ -9,11 +9,14 @@
 <meta name="theme-color" content="#0f1a16" />
 <title>FITRM.IO</title>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,500;9..144,600&display=swap" rel="stylesheet">
 <style>
   :root{
-    --bg:#0f1a16; --surface:#17241f; --surface2:#1f322b; --line:#2a3d36;
-    --accent:#27c08a; --accent-deep:#1f6f54; --text:#f2f7f5; --muted:#8fa49c;
-    --danger:#ff6b6b; --warn:#f4b740; --radius:18px;
+    --bg:#0c0c0d; --surface:#151517; --surface2:#1e1f21; --line:#2b2c2e;
+    --accent:#8f9d68; --accent-deep:#6b7850; --text:#f3f2ec; --muted:#9a988e;
+    --danger:#cf8b7a; --warn:#c9a86a; --radius:18px;
     --safe-top:env(safe-area-inset-top,0px); --safe-bottom:env(safe-area-inset-bottom,0px);
   }
   *{box-sizing:border-box;-webkit-tap-highlight-color:transparent;}
@@ -54,7 +57,7 @@
   .pill.out{background:rgba(255,107,107,.16); color:var(--danger);}
   .pill.grey{background:var(--surface2); color:var(--muted);}
   .avatar{width:42px;height:42px;border-radius:50%;background:linear-gradient(135deg,var(--accent),var(--accent-deep));
-    display:flex;align-items:center;justify-content:center;font-weight:800;color:#04130d;flex-shrink:0;font-size:16px;}
+    display:flex;align-items:center;justify-content:center;font-weight:800;color:#14160d;flex-shrink:0;font-size:16px;}
   .name{font-weight:700; font-size:16px;}
   .meta{color:var(--muted); font-size:13px;}
   .big-num{font-size:15px; font-weight:800;}
@@ -63,7 +66,7 @@
   .warn{color:var(--warn);} .danger{color:var(--danger);}
   /* Buttons */
   .btn{display:inline-flex;align-items:center;justify-content:center;gap:8px;
-    background:var(--accent); color:#04130d; font-weight:800; font-size:16px;
+    background:var(--accent); color:#14160d; font-weight:800; font-size:16px;
     border:none; border-radius:14px; padding:15px 18px; width:100%; cursor:pointer;}
   .btn:active{transform:scale(.98);}
   .btn.sec{background:var(--surface2); color:var(--text); border:1px solid var(--line);}
@@ -83,7 +86,7 @@
   .seg{display:flex; gap:6px; background:var(--surface2); padding:4px; border-radius:12px;}
   .seg button{flex:1; background:transparent; border:none; color:var(--muted); font-weight:700;
     padding:9px; border-radius:9px; font-size:13px; cursor:pointer; font-family:inherit;}
-  .seg button.on{background:var(--accent); color:#04130d;}
+  .seg button.on{background:var(--accent); color:#14160d;}
   /* Tab bar */
   #tabbar{position:sticky; bottom:0; left:0; right:0; max-width:430px; margin:0 auto;
     background:rgba(15,26,22,.86); backdrop-filter:blur(18px); -webkit-backdrop-filter:blur(18px);
@@ -117,7 +120,7 @@
   .timeline-time{font-size:13px;font-weight:800;width:62px;flex-shrink:0;}
   .fab-note{font-size:12px;color:var(--muted);text-align:center;margin-top:4px;}
   /* Auth screen */
-  #auth-screen{position:fixed; inset:0; background:radial-gradient(circle at 50% 0%, #17241f, #0f1a16 70%);
+  #auth-screen{position:fixed; inset:0; background:radial-gradient(circle at 50% 0%, #18191b, #0c0c0d 70%);
     display:flex; align-items:center; justify-content:center; padding:24px; z-index:100;}
   #auth-card{width:100%; max-width:380px;}
   #auth-logo{font-size:34px; font-weight:800; letter-spacing:-1px; text-align:center; color:var(--text);}
@@ -153,7 +156,7 @@
   .cal-cell.today{border-color:var(--accent); background:var(--surface2);}
   .cal-cell.muted-cell{opacity:.35;}
   .cal-day{font-size:14px; font-weight:700;}
-  .cal-count{min-width:18px; height:18px; border-radius:9px; background:var(--accent); color:#04130d;
+  .cal-count{min-width:18px; height:18px; border-radius:9px; background:var(--accent); color:#14160d;
     font-size:11px; font-weight:800; display:flex; align-items:center; justify-content:center; padding:0 5px;}
   .cal-count.empty-dot{background:transparent;}
   /* Time-grid (Google-style) for 3-day & week */
@@ -162,7 +165,7 @@
   .tg-dayh{flex:1; text-align:center; min-width:0;}
   .tg-dayh .tg-dow{font-size:10px; color:var(--muted); font-weight:700; text-transform:uppercase;}
   .tg-dayh .tg-dnum{font-size:16px; font-weight:800; line-height:1.4;}
-  .tg-dayh.today .tg-dnum{background:var(--accent); color:#04130d; border-radius:50%;
+  .tg-dayh.today .tg-dnum{background:var(--accent); color:#14160d; border-radius:50%;
     width:26px; height:26px; line-height:26px; display:inline-block;}
   .tg-grid{display:flex;}
   .tg-gutter{width:40px; flex-shrink:0; position:relative;}
@@ -177,9 +180,9 @@
   .tg-event.done{background:var(--accent-deep); border-color:var(--accent);}
   .tg-event.cancel{border-style:dashed; opacity:.6;}
   .tg-ev-t{font-size:9px; font-weight:800; color:var(--muted); line-height:1.1;}
-  .tg-event.done .tg-ev-t{color:#bfe8d8;}
-  .tg-ev-n{font-size:9px; font-weight:700; color:#cdded7; line-height:1.2; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;}
-  .tg-event.done .tg-ev-n{color:#eafff5;}
+  .tg-event.done .tg-ev-t{color:#dfe3d0;}
+  .tg-ev-n{font-size:9px; font-weight:700; color:#cdccc2; line-height:1.2; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;}
+  .tg-event.done .tg-ev-n{color:#f3f2ec;}
   .tg-event.cancel .tg-ev-n{text-decoration:line-through;}
   /* Month cells with event chips */
   .mcell{min-height:64px; background:var(--surface); border:1px solid var(--line); border-radius:10px;
@@ -188,11 +191,11 @@
   .mcell:active{transform:scale(.97);}
   .mcell.today{border-color:var(--accent);}
   .mnum{font-size:11px; font-weight:700; align-self:flex-end;}
-  .mnum.t{background:var(--accent); color:#04130d; border-radius:50%; width:17px; height:17px;
+  .mnum.t{background:var(--accent); color:#14160d; border-radius:50%; width:17px; height:17px;
     display:flex; align-items:center; justify-content:center; font-size:10px;}
-  .mchip{font-size:8.5px; font-weight:700; background:var(--surface2); color:#cdded7; border-radius:3px;
+  .mchip{font-size:8.5px; font-weight:700; background:var(--surface2); color:#cdccc2; border-radius:3px;
     padding:1px 3px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; line-height:1.35;}
-  .mchip.done{background:var(--accent-deep); color:#eafff5;}
+  .mchip.done{background:var(--accent-deep); color:#f3f2ec;}
   .mchip.cancel{opacity:.55; text-decoration:line-through;}
   .mmore{font-size:8px; color:var(--muted); font-weight:700; padding-left:2px;}
   .cal-legend{display:flex; gap:18px; justify-content:center; margin:-2px 0 14px; font-size:11px; color:var(--muted); font-weight:600;}
@@ -211,11 +214,159 @@
   .acc.open .acc-chev{transform:rotate(180deg);}
   .acc-body{padding:2px 0 16px;}
   .acc-body .sec-title:first-child{margin-top:6px;}
+
+  /* ===================== MARKETING HOMEPAGE ===================== */
+  #home-screen{position:fixed; inset:0; overflow-y:auto; -webkit-overflow-scrolling:touch;
+    background:var(--bg); color:var(--text); z-index:90;}
+  .hm-wrap{max-width:1080px; margin:0 auto; padding:0 28px;}
+  .hm-nav{position:sticky; top:0; z-index:5; background:rgba(12,12,13,.78); backdrop-filter:blur(14px);
+    -webkit-backdrop-filter:blur(14px); border-bottom:1px solid var(--line);}
+  .hm-nav .hm-wrap{display:flex; align-items:center; justify-content:space-between; height:66px;}
+  .hm-logo{font-size:20px; font-weight:800; letter-spacing:.5px;}
+  .hm-logo span{color:var(--accent);}
+  .hm-nav-links{display:flex; align-items:center; gap:26px;}
+  .hm-nav-links a{color:var(--muted); font-size:14px; font-weight:600; text-decoration:none; cursor:pointer;}
+  .hm-nav-links a:hover{color:var(--text);}
+  .hm-nav-links a.navcta{color:var(--text);}
+  .hm-btn{display:inline-flex; align-items:center; justify-content:center; gap:8px; cursor:pointer; border:none;
+    font-family:inherit; font-weight:700; font-size:15px; border-radius:10px; padding:12px 22px; transition:.15s;}
+  .hm-btn.primary{background:var(--accent); color:#14160d;}
+  .hm-btn.primary:hover{background:#a0ae77;}
+  .hm-btn.ghost{background:transparent; color:var(--text); border:1px solid var(--line);}
+  .hm-btn.ghost:hover{border-color:var(--accent); color:var(--accent);}
+  .hm-btn.lg{padding:16px 30px; font-size:16px;}
+  .hm-hero{text-align:center; padding:96px 0 70px;}
+  .hm-eyebrow{display:inline-block; font-size:12px; font-weight:700; letter-spacing:2.5px; text-transform:uppercase;
+    color:var(--accent); border:1px solid var(--line); border-radius:999px; padding:7px 16px; margin-bottom:30px;}
+  .hm-hero h1{font-family:"Fraunces",serif; font-weight:500; font-size:clamp(38px,6vw,68px); line-height:1.05;
+    letter-spacing:-1px; margin:0 0 22px;}
+  .hm-hero h1 em{font-style:italic; color:var(--accent);}
+  .hm-hero p{max-width:620px; margin:0 auto 34px; color:var(--muted); font-size:clamp(16px,2.2vw,20px); line-height:1.6;}
+  .hm-cta-row{display:flex; gap:14px; justify-content:center; flex-wrap:wrap;}
+  .hm-trust{margin-top:26px; color:var(--muted); font-size:13px; letter-spacing:.3px;}
+  .hm-section{padding:72px 0; border-top:1px solid var(--line);}
+  .hm-sec-label{text-align:center; font-size:12px; font-weight:700; letter-spacing:2.5px; text-transform:uppercase; color:var(--accent); margin-bottom:14px;}
+  .hm-sec-title{text-align:center; font-family:"Fraunces",serif; font-weight:500; font-size:clamp(28px,4vw,42px);
+    letter-spacing:-.5px; margin:0 auto 14px; max-width:760px; line-height:1.15;}
+  .hm-sec-sub{text-align:center; color:var(--muted); max-width:600px; margin:0 auto 50px; font-size:16px; line-height:1.6;}
+  .hm-pillars{display:grid; grid-template-columns:repeat(3,1fr); gap:20px;}
+  .hm-pillar{background:var(--surface); border:1px solid var(--line); border-radius:18px; padding:30px 26px;}
+  .hm-pillar .pnum{font-family:"Fraunces",serif; font-size:30px; color:var(--accent); font-weight:500;}
+  .hm-pillar h3{font-size:21px; font-weight:700; margin:14px 0 10px; letter-spacing:-.3px;}
+  .hm-pillar p{color:var(--muted); font-size:15px; line-height:1.65; margin:0;}
+  .hm-steps{display:grid; grid-template-columns:repeat(3,1fr); gap:24px;}
+  .hm-step .sline{height:2px; background:var(--line); margin-bottom:20px; position:relative;}
+  .hm-step .sline::before{content:""; position:absolute; left:0; top:-3px; width:8px; height:8px; border-radius:50%; background:var(--accent);}
+  .hm-step h4{font-size:18px; font-weight:700; margin:0 0 8px;}
+  .hm-step p{color:var(--muted); font-size:14.5px; line-height:1.6; margin:0;}
+  .hm-feats{display:grid; grid-template-columns:repeat(4,1fr); gap:16px;}
+  .hm-feat{background:var(--surface); border:1px solid var(--line); border-radius:14px; padding:20px 18px;}
+  .hm-feat .fdot{width:8px; height:8px; border-radius:50%; background:var(--accent); margin-bottom:12px;}
+  .hm-feat h5{font-size:15px; font-weight:700; margin:0 0 5px;}
+  .hm-feat p{color:var(--muted); font-size:13px; line-height:1.5; margin:0;}
+  .hm-cta{text-align:center; padding:88px 0;}
+  .hm-cta h2{font-family:"Fraunces",serif; font-weight:500; font-size:clamp(30px,5vw,52px); letter-spacing:-.5px; margin:0 0 26px;}
+  .hm-footer{border-top:1px solid var(--line); padding:34px 0;}
+  .hm-footer .hm-wrap{display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:14px;}
+  .hm-footer .fl{color:var(--muted); font-size:13px;}
+  .hm-footer a{color:var(--muted); font-size:13px; text-decoration:none; margin-left:20px; cursor:pointer;}
+  .hm-footer a:hover{color:var(--text);}
+  #auth-back{display:inline-block; color:var(--muted); font-size:13px; font-weight:600; cursor:pointer; margin-bottom:18px;}
+  #auth-back:hover{color:var(--text);}
+  @media(max-width:760px){
+    .hm-pillars,.hm-steps{grid-template-columns:1fr;}
+    .hm-feats{grid-template-columns:1fr 1fr;}
+    .hm-nav-links .hidesm{display:none;}
+    .hm-hero{padding:64px 0 50px;}
+    .hm-section{padding:56px 0;}
+  }
 </style>
 </head>
 <body>
-<div id="auth-screen">
+<div id="home-screen">
+  <nav class="hm-nav"><div class="hm-wrap">
+    <div class="hm-logo">FITRM<span>.IO</span></div>
+    <div class="hm-nav-links">
+      <a class="hidesm" onclick="hmScroll('hm-how')">How it works</a>
+      <a class="hidesm" onclick="hmScroll('hm-features')">Features</a>
+      <a class="navcta" onclick="showAuth('login')">Log in</a>
+      <button class="hm-btn primary" style="padding:10px 18px" onclick="showAuth('signup')">Get started</button>
+    </div>
+  </div></nav>
+
+  <header class="hm-hero"><div class="hm-wrap">
+    <span class="hm-eyebrow">For independent trainers</span>
+    <h1>Run your training business <em>like the pro you are.</em></h1>
+    <p>FITRM.IO brings your clients, schedule, session tracking, and taxes into one calm, powerful place — so you spend less time on admin and more time training.</p>
+    <div class="hm-cta-row">
+      <button class="hm-btn primary lg" onclick="showAuth('signup')">Get started free</button>
+      <button class="hm-btn ghost lg" onclick="hmScroll('hm-how')">See how it works</button>
+    </div>
+    <div class="hm-trust">Built by a trainer, for trainers · No credit card required</div>
+  </div></header>
+
+  <section class="hm-section"><div class="hm-wrap">
+    <div class="hm-sec-label">Why FITRM</div>
+    <h2 class="hm-sec-title">The complete back office for the independent trainer.</h2>
+    <p class="hm-sec-sub">Everything you've been juggling across a calendar, a notes app, and a spreadsheet — finally in one place, working together.</p>
+    <div class="hm-pillars">
+      <div class="hm-pillar">
+        <div class="pnum">01</div>
+        <h3>Never lose track of a session</h3>
+        <p>Sell a package and every session counts itself down. Standing schedules book themselves out weeks ahead, and clients get flagged for renewal before they ever run out.</p>
+      </div>
+      <div class="hm-pillar">
+        <div class="pnum">02</div>
+        <h3>Finally understand your taxes</h3>
+        <p>The only trainer platform that tells you exactly what to set aside from every package — based on your state, income, and write-offs. No more April surprises.</p>
+      </div>
+      <div class="hm-pillar">
+        <div class="pnum">03</div>
+        <h3>Hours of admin, gone</h3>
+        <p>Automatic session tracking, recurring schedules, and one-click import of your entire client list. The back office runs itself, so you can focus on coaching.</p>
+      </div>
+    </div>
+  </div></section>
+
+  <section class="hm-section" id="hm-how"><div class="hm-wrap">
+    <div class="hm-sec-label">How it works</div>
+    <h2 class="hm-sec-title">Set it up once. Let it run.</h2>
+    <div class="hm-steps">
+      <div class="hm-step"><div class="sline"></div><h4>1. Add your clients & packages</h4><p>Type them in or import your whole roster from a spreadsheet in seconds — rates, schedules and all.</p></div>
+      <div class="hm-step"><div class="sline"></div><h4>2. Set their schedules</h4><p>Book standing appointments — MWF at 7am, Tue/Thu at noon — and sessions track and count down on their own.</p></div>
+      <div class="hm-step"><div class="sline"></div><h4>3. Watch it all add up</h4><p>Your income, upcoming renewals, and exact tax set-aside update in real time, on every device.</p></div>
+    </div>
+  </div></section>
+
+  <section class="hm-section" id="hm-features"><div class="hm-wrap">
+    <div class="hm-sec-label">Everything inside</div>
+    <h2 class="hm-sec-title">Built for the way you actually work.</h2>
+    <div class="hm-feats">
+      <div class="hm-feat"><div class="fdot"></div><h5>Smart calendar</h5><p>Day, 3-day, week and month views with at-a-glance session counts.</p></div>
+      <div class="hm-feat"><div class="fdot"></div><h5>Session countdown</h5><p>Every package tracks remaining sessions automatically.</p></div>
+      <div class="hm-feat"><div class="fdot"></div><h5>Tax calculator</h5><p>Know your real set-aside rate by state, income, and deductions.</p></div>
+      <div class="hm-feat"><div class="fdot"></div><h5>Revenue projections</h5><p>Forecast today, this week, month, and year from your pace.</p></div>
+      <div class="hm-feat"><div class="fdot"></div><h5>Re-up forecast</h5><p>See who's due to renew and what it's worth, before they lapse.</p></div>
+      <div class="hm-feat"><div class="fdot"></div><h5>Expense tracking</h5><p>Log write-offs, including recurring ones like rent and phone.</p></div>
+      <div class="hm-feat"><div class="fdot"></div><h5>CSV import</h5><p>Bring your entire client list and schedule over in one upload.</p></div>
+      <div class="hm-feat"><div class="fdot"></div><h5>Works everywhere</h5><p>Your data syncs across phone, tablet and laptop, instantly.</p></div>
+    </div>
+  </div></section>
+
+  <section class="hm-cta"><div class="hm-wrap">
+    <h2 class="serif">Your business, dialed in.</h2>
+    <button class="hm-btn primary lg" onclick="showAuth('signup')">Get started free</button>
+  </div></section>
+
+  <footer class="hm-footer"><div class="hm-wrap">
+    <div class="fl">FITRM.IO · © 2026</div>
+    <div><a onclick="showAuth('login')">Log in</a><a onclick="showAuth('signup')">Get started</a></div>
+  </div></footer>
+</div>
+
+<div id="auth-screen" style="display:none">
   <div id="auth-card">
+    <div id="auth-back" onclick="showHome()">← Back</div>
     <div id="auth-logo">FITRM<span>.IO</span></div>
     <div id="auth-tagline">Run your training business — clients, schedule & taxes in one place.</div>
     <div id="auth-error"></div>
@@ -829,9 +980,9 @@ function openAddPackageType(id){
 function previewPT(){
   const price=+el("pt-price").value||0, sess=parseInt(el("pt-sess").value)||0;
   const rate=effectiveRate(state.profile.annualIncome).rate;
-  el("pt-preview").innerHTML=`<div class="meta" style="color:#bfe8d8">Package price</div>
+  el("pt-preview").innerHTML=`<div class="meta" style="color:#dfe3d0">Package price</div>
     <div class="amt">${money(price)}</div>
-    <div class="meta" style="color:#bfe8d8;margin-top:2px">${sess} session${sess===1?'':'s'} · ${sess?money(price/sess):'$0'}/session · set aside ${money(price*rate)} for taxes</div>`;
+    <div class="meta" style="color:#dfe3d0;margin-top:2px">${sess} session${sess===1?'':'s'} · ${sess?money(price/sess):'$0'}/session · set aside ${money(price*rate)} for taxes</div>`;
 }
 function savePackageType(id){
   const name=el("pt-name").value.trim();
@@ -883,9 +1034,9 @@ function renderTax(){
       <div class="meta" style="margin-top:6px">${activeClients().length} active clients · ${money(runRate)}/week run-rate</div>
     </div>
     <div class="banner">
-      <div class="meta" style="color:#bfe8d8">Motivation check</div>
+      <div class="meta" style="color:#dfe3d0">Motivation check</div>
       <div class="amt">${money(extra)}</div>
-      <div class="meta" style="color:#bfe8d8;margin-top:2px">One extra session per week is worth ~${money(extra)} a year.</div>
+      <div class="meta" style="color:#dfe3d0;margin-top:2px">One extra session per week is worth ~${money(extra)} a year.</div>
     </div>`;
 
   const reupBody=`
@@ -910,9 +1061,9 @@ function renderTax(){
   const taxBody=`
     <div class="sub" style="margin:2px 0 10px">${stateLabel} · ${biz} · ${p.filingStatus}</div>
     <div class="banner">
-      <div class="meta" style="color:#bfe8d8">Still to set aside (this year)</div>
+      <div class="meta" style="color:#dfe3d0">Still to set aside (this year)</div>
       <div class="amt">${money(remaining)}</div>
-      <div class="meta" style="color:#bfe8d8;margin-top:4px">${money(setAside)} reserved · ${money(paid)} paid · ${(er.rate*100).toFixed(1)}% of every package</div>
+      <div class="meta" style="color:#dfe3d0;margin-top:4px">${money(setAside)} reserved · ${money(paid)} paid · ${(er.rate*100).toFixed(1)}% of every package</div>
     </div>
     <div class="sec-title">Your blended rate breakdown</div>
     <div class="card">
@@ -1408,9 +1559,9 @@ function previewTax(){
   const pt=state.packageTypes.find(p=>p.id===el("f-pt").value);
   const rate=effectiveRate(state.profile.annualIncome).rate;
   const setAside=pt.price*rate;
-  el("tax-preview").innerHTML=`<div class="meta" style="color:#bfe8d8">Set aside for taxes</div>
+  el("tax-preview").innerHTML=`<div class="meta" style="color:#dfe3d0">Set aside for taxes</div>
     <div class="amt">${money2(setAside)}</div>
-    <div class="meta" style="color:#bfe8d8;margin-top:2px">${(rate*100).toFixed(1)}% of ${money(pt.price)} · adds ${pt.sessions} session${pt.sessions===1?'':'s'}</div>`;
+    <div class="meta" style="color:#dfe3d0;margin-top:2px">${(rate*100).toFixed(1)}% of ${money(pt.price)} · adds ${pt.sessions} session${pt.sessions===1?'':'s'}</div>`;
 }
 function saveSale(cid){
   const pt=state.packageTypes.find(p=>p.id===el("f-pt").value);
@@ -1546,15 +1697,19 @@ const sb = window.supabase.createClient(SB_URL, SB_ANON);
 let authMode = "login";
 const aEl = id => document.getElementById(id);
 
-function authToggle(){
-  authMode = authMode==="login" ? "signup" : "login";
-  aEl("name-fld").style.display = authMode==="signup" ? "block" : "none";
-  aEl("au-submit").textContent  = authMode==="signup" ? "Create account" : "Log in";
-  aEl("auth-switch").innerHTML  = authMode==="signup"
+function setAuthMode(m){
+  authMode = m;
+  aEl("name-fld").style.display = m==="signup" ? "block" : "none";
+  aEl("au-submit").textContent  = m==="signup" ? "Create account" : "Log in";
+  aEl("auth-switch").innerHTML  = m==="signup"
     ? 'Already have an account? <a onclick="authToggle()">Log in</a>'
     : 'New here? <a onclick="authToggle()">Create an account</a>';
   authErr(""); authMsg("");
 }
+function authToggle(){ setAuthMode(authMode==="login" ? "signup" : "login"); }
+function showAuth(m){ aEl("home-screen").style.display="none"; aEl("auth-screen").style.display="flex"; setAuthMode(m||"signup"); aEl("au-email").focus(); }
+function showHome(){ aEl("auth-screen").style.display="none"; aEl("home-screen").style.display="block"; }
+function hmScroll(id){ const e=aEl(id); if(e) e.scrollIntoView({ behavior:"smooth" }); }
 function authErr(m){ const e=aEl("auth-error"); e.textContent=m; e.style.display=m?"block":"none"; }
 function authMsg(m){ const e=aEl("auth-msg"); e.innerHTML=m; e.style.display=m?"block":"none"; }
 
@@ -1580,6 +1735,7 @@ async function doLogout(){ try{ await sb.auth.signOut(); }catch(e){} location.re
 
 async function enterApp(user){
   window.currentUser = user;
+  aEl("home-screen").style.display = "none";
   aEl("auth-screen").style.display = "none";
   aEl("frame").style.display = "flex";
   LS_KEY = "fitrm_poc_" + user.id;            // per-account local cache
