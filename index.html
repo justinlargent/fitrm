@@ -1,0 +1,1591 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" />
+<meta name="apple-mobile-web-app-capable" content="yes" />
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+<meta name="apple-mobile-web-app-title" content="FITRM" />
+<meta name="theme-color" content="#0f1a16" />
+<title>FITRM.IO</title>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<style>
+  :root{
+    --bg:#0f1a16; --surface:#17241f; --surface2:#1f322b; --line:#2a3d36;
+    --accent:#27c08a; --accent-deep:#1f6f54; --text:#f2f7f5; --muted:#8fa49c;
+    --danger:#ff6b6b; --warn:#f4b740; --radius:18px;
+    --safe-top:env(safe-area-inset-top,0px); --safe-bottom:env(safe-area-inset-bottom,0px);
+  }
+  *{box-sizing:border-box;-webkit-tap-highlight-color:transparent;}
+  html,body{margin:0;padding:0;height:100%;}
+  body{
+    font-family:-apple-system,BlinkMacSystemFont,"SF Pro Text","Segoe UI",Roboto,sans-serif;
+    background:var(--bg); color:var(--text);
+    overscroll-behavior:none; -webkit-font-smoothing:antialiased;
+  }
+  /* Phone frame for desktop preview; full-bleed on actual phone */
+  #frame{
+    max-width:430px; margin:0 auto; min-height:100%;
+    background:var(--bg); position:relative; display:flex; flex-direction:column;
+    box-shadow:0 0 60px rgba(0,0,0,.4);
+  }
+  .screen{flex:1; overflow-y:auto; -webkit-overflow-scrolling:touch;
+    padding:calc(var(--safe-top) + 8px) 18px 110px; }
+  .hidden{display:none;}
+  /* Headers */
+  .lg-title{font-size:34px; font-weight:800; letter-spacing:-.5px; margin:6px 0 2px;}
+  .sub{color:var(--muted); font-size:14px; margin:0 0 18px;}
+  .sec-title{font-size:13px; text-transform:uppercase; letter-spacing:.8px;
+    color:var(--muted); font-weight:700; margin:22px 4px 10px;}
+  /* Cards */
+  .card{background:var(--surface); border:1px solid var(--line); border-radius:var(--radius);
+    padding:16px; margin-bottom:12px;}
+  .row{display:flex; align-items:center; gap:12px;}
+  .between{justify-content:space-between;}
+  .grow{flex:1; min-width:0;}
+  .stat-grid{display:grid; grid-template-columns:1fr 1fr; gap:12px;}
+  .stat{background:var(--surface); border:1px solid var(--line); border-radius:var(--radius); padding:16px;}
+  .stat .k{font-size:12px; color:var(--muted); font-weight:600;}
+  .stat .v{font-size:26px; font-weight:800; margin-top:4px; letter-spacing:-.5px;}
+  .stat .v.green{color:var(--accent);}
+  .pill{font-size:11px; font-weight:700; padding:4px 9px; border-radius:999px; white-space:nowrap;}
+  .pill.ok{background:rgba(39,192,138,.15); color:var(--accent);}
+  .pill.low{background:rgba(244,183,64,.16); color:var(--warn);}
+  .pill.out{background:rgba(255,107,107,.16); color:var(--danger);}
+  .pill.grey{background:var(--surface2); color:var(--muted);}
+  .avatar{width:42px;height:42px;border-radius:50%;background:linear-gradient(135deg,var(--accent),var(--accent-deep));
+    display:flex;align-items:center;justify-content:center;font-weight:800;color:#04130d;flex-shrink:0;font-size:16px;}
+  .name{font-weight:700; font-size:16px;}
+  .meta{color:var(--muted); font-size:13px;}
+  .big-num{font-size:15px; font-weight:800;}
+  .muted{color:var(--muted);}
+  .green{color:var(--accent);}
+  .warn{color:var(--warn);} .danger{color:var(--danger);}
+  /* Buttons */
+  .btn{display:inline-flex;align-items:center;justify-content:center;gap:8px;
+    background:var(--accent); color:#04130d; font-weight:800; font-size:16px;
+    border:none; border-radius:14px; padding:15px 18px; width:100%; cursor:pointer;}
+  .btn:active{transform:scale(.98);}
+  .btn.sec{background:var(--surface2); color:var(--text); border:1px solid var(--line);}
+  .btn.ghost{background:transparent; color:var(--accent); width:auto; padding:8px 4px;}
+  .btn-sm{padding:10px 14px; font-size:14px; width:auto;}
+  /* Inputs */
+  label.fld{display:block; margin:12px 0 0;}
+  label.fld span{font-size:13px; color:var(--muted); font-weight:600; margin-bottom:6px; display:block;}
+  input,select,textarea{width:100%; background:var(--surface2); border:1px solid var(--line); color:var(--text);
+    border-radius:12px; padding:14px; font-size:16px; font-family:inherit; outline:none; resize:vertical;}
+  input:focus,select:focus,textarea:focus{border-color:var(--accent);}
+  .toggle{width:48px; height:28px; border-radius:14px; background:var(--surface); border:1px solid var(--line);
+    position:relative; cursor:pointer; flex-shrink:0; padding:0;}
+  .toggle span{position:absolute; top:2px; left:2px; width:22px; height:22px; border-radius:50%; background:var(--muted); transition:.18s;}
+  .toggle.on{background:var(--accent-deep); border-color:var(--accent);}
+  .toggle.on span{left:23px; background:var(--accent);}
+  .seg{display:flex; gap:6px; background:var(--surface2); padding:4px; border-radius:12px;}
+  .seg button{flex:1; background:transparent; border:none; color:var(--muted); font-weight:700;
+    padding:9px; border-radius:9px; font-size:13px; cursor:pointer; font-family:inherit;}
+  .seg button.on{background:var(--accent); color:#04130d;}
+  /* Tab bar */
+  #tabbar{position:sticky; bottom:0; left:0; right:0; max-width:430px; margin:0 auto;
+    background:rgba(15,26,22,.86); backdrop-filter:blur(18px); -webkit-backdrop-filter:blur(18px);
+    border-top:1px solid var(--line); display:flex; padding:8px 6px calc(8px + var(--safe-bottom));}
+  .tab{flex:1; background:none; border:none; color:var(--muted); display:flex; flex-direction:column;
+    align-items:center; gap:3px; font-size:10px; font-weight:600; padding:4px; cursor:pointer; font-family:inherit;}
+  .tab svg{width:24px;height:24px;}
+  .tab.on{color:var(--accent);}
+  /* Sheet / modal */
+  #scrim{position:fixed; inset:0; background:rgba(0,0,0,.5); opacity:0; pointer-events:none;
+    transition:opacity .25s; z-index:40;}
+  #scrim.show{opacity:1; pointer-events:auto;}
+  #sheet{position:fixed; left:0; right:0; bottom:0; max-width:430px; margin:0 auto;
+    background:var(--surface); border-radius:24px 24px 0 0; border:1px solid var(--line);
+    padding:10px 18px calc(24px + var(--safe-bottom)); transform:translateY(100%);
+    transition:transform .3s cubic-bezier(.32,.72,0,1); z-index:50; max-height:90vh; overflow-y:auto;}
+  #sheet.show{transform:translateY(0);}
+  .grab{width:38px;height:5px;background:var(--line);border-radius:3px;margin:6px auto 14px;}
+  .sheet-title{font-size:22px;font-weight:800;margin:0 0 4px;}
+  .list-item{padding:14px 0; border-bottom:1px solid var(--line);}
+  .list-item:last-child{border-bottom:none;}
+  .tax-line{display:flex; justify-content:space-between; padding:10px 0; border-bottom:1px solid var(--line); font-size:14px;}
+  .tax-line:last-child{border-bottom:none;}
+  .tax-line b{font-weight:800;}
+  .banner{background:linear-gradient(135deg,var(--accent-deep),#143f30); border:1px solid var(--accent-deep);
+    border-radius:var(--radius); padding:18px; margin-bottom:14px;}
+  .banner .amt{font-size:32px; font-weight:800; letter-spacing:-1px;}
+  .disclaim{font-size:11px; color:var(--muted); line-height:1.5; margin-top:10px;}
+  .empty{text-align:center; color:var(--muted); padding:40px 20px; font-size:14px;}
+  .dot{width:7px;height:7px;border-radius:50%;background:var(--accent);flex-shrink:0;}
+  .timeline-time{font-size:13px;font-weight:800;width:62px;flex-shrink:0;}
+  .fab-note{font-size:12px;color:var(--muted);text-align:center;margin-top:4px;}
+  /* Auth screen */
+  #auth-screen{position:fixed; inset:0; background:radial-gradient(circle at 50% 0%, #17241f, #0f1a16 70%);
+    display:flex; align-items:center; justify-content:center; padding:24px; z-index:100;}
+  #auth-card{width:100%; max-width:380px;}
+  #auth-logo{font-size:34px; font-weight:800; letter-spacing:-1px; text-align:center; color:var(--text);}
+  #auth-logo span{color:var(--accent);}
+  #auth-tagline{text-align:center; color:var(--muted); font-size:14px; margin:8px 0 26px; line-height:1.5;}
+  .auth-fld{display:block; margin-bottom:12px;}
+  .auth-fld span{font-size:13px; color:var(--muted); font-weight:600; margin-bottom:6px; display:block;}
+  #auth-card .btn{margin-top:6px;}
+  #auth-switch{text-align:center; color:var(--muted); font-size:14px; margin-top:18px;}
+  #auth-switch a{color:var(--accent); font-weight:700; cursor:pointer;}
+  #auth-error{background:rgba(255,107,107,.14); color:var(--danger); border-radius:10px; padding:10px 12px;
+    font-size:13px; margin-bottom:12px; display:none;}
+  #auth-msg{background:rgba(39,192,138,.14); color:var(--accent); border-radius:10px; padding:10px 12px;
+    font-size:13px; margin-top:14px; display:none; text-align:center;}
+  /* Calendar */
+  .cal-nav{display:flex; align-items:center; justify-content:space-between; margin-bottom:10px;}
+  .cal-arrow{background:var(--surface2); border:1px solid var(--line); color:var(--text);
+    width:40px; height:40px; border-radius:11px; font-size:22px; line-height:1; cursor:pointer;}
+  .cal-arrow:active{transform:scale(.95);}
+  .cal-label{font-weight:800; font-size:17px; text-align:center; flex:1;}
+  .cal-grid{display:grid; grid-template-columns:repeat(7,1fr); gap:6px;}
+  .cal-dow{text-align:center; color:var(--muted); font-size:11px; font-weight:700; padding-bottom:2px;}
+  .cal-cell{aspect-ratio:1; background:var(--surface); border:1px solid var(--line); border-radius:12px;
+    display:flex; flex-direction:column; align-items:center; justify-content:center; gap:4px;
+    cursor:pointer; color:var(--text); font-family:inherit;}
+  .cal-cell:active{transform:scale(.96);}
+  .cal-cell.today{border-color:var(--accent); background:var(--surface2);}
+  .cal-cell.muted-cell{opacity:.35;}
+  .cal-day{font-size:14px; font-weight:700;}
+  .cal-count{min-width:18px; height:18px; border-radius:9px; background:var(--accent); color:#04130d;
+    font-size:11px; font-weight:800; display:flex; align-items:center; justify-content:center; padding:0 5px;}
+  .cal-count.empty-dot{background:transparent;}
+  /* Time-grid (Google-style) for 3-day & week */
+  .tg-head{display:flex; position:sticky; top:0; background:var(--bg); z-index:3; padding-bottom:6px; margin-bottom:2px;}
+  .tg-gutter-h{width:40px; flex-shrink:0;}
+  .tg-dayh{flex:1; text-align:center; min-width:0;}
+  .tg-dayh .tg-dow{font-size:10px; color:var(--muted); font-weight:700; text-transform:uppercase;}
+  .tg-dayh .tg-dnum{font-size:16px; font-weight:800; line-height:1.4;}
+  .tg-dayh.today .tg-dnum{background:var(--accent); color:#04130d; border-radius:50%;
+    width:26px; height:26px; line-height:26px; display:inline-block;}
+  .tg-grid{display:flex;}
+  .tg-gutter{width:40px; flex-shrink:0; position:relative;}
+  .tg-hour{position:relative;}
+  .tg-hour span{position:absolute; top:-7px; right:5px; font-size:9px; color:var(--muted); font-weight:600;}
+  .tg-cols{flex:1; display:flex; position:relative;
+    background-image:repeating-linear-gradient(to bottom, var(--line) 0, var(--line) 1px, transparent 1px, transparent 48px);}
+  .tg-col{flex:1; position:relative; border-left:1px solid var(--line); min-width:0;}
+  .tg-event{position:absolute; left:2px; right:2px; background:var(--surface2); border:1px solid var(--line);
+    border-radius:5px; padding:2px 4px; overflow:hidden; cursor:pointer; box-sizing:border-box;}
+  .tg-event:active{transform:scale(.98);}
+  .tg-event.done{background:var(--accent-deep); border-color:var(--accent);}
+  .tg-event.cancel{border-style:dashed; opacity:.6;}
+  .tg-ev-t{font-size:9px; font-weight:800; color:var(--muted); line-height:1.1;}
+  .tg-event.done .tg-ev-t{color:#bfe8d8;}
+  .tg-ev-n{font-size:9px; font-weight:700; color:#cdded7; line-height:1.2; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;}
+  .tg-event.done .tg-ev-n{color:#eafff5;}
+  .tg-event.cancel .tg-ev-n{text-decoration:line-through;}
+  /* Month cells with event chips */
+  .mcell{min-height:64px; background:var(--surface); border:1px solid var(--line); border-radius:10px;
+    padding:4px; display:flex; flex-direction:column; gap:2px; align-items:stretch; cursor:pointer;
+    font-family:inherit; color:var(--text); overflow:hidden;}
+  .mcell:active{transform:scale(.97);}
+  .mcell.today{border-color:var(--accent);}
+  .mnum{font-size:11px; font-weight:700; align-self:flex-end;}
+  .mnum.t{background:var(--accent); color:#04130d; border-radius:50%; width:17px; height:17px;
+    display:flex; align-items:center; justify-content:center; font-size:10px;}
+  .mchip{font-size:8.5px; font-weight:700; background:var(--surface2); color:#cdded7; border-radius:3px;
+    padding:1px 3px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; line-height:1.35;}
+  .mchip.done{background:var(--accent-deep); color:#eafff5;}
+  .mchip.cancel{opacity:.55; text-decoration:line-through;}
+  .mmore{font-size:8px; color:var(--muted); font-weight:700; padding-left:2px;}
+  .cal-legend{display:flex; gap:18px; justify-content:center; margin:-2px 0 14px; font-size:11px; color:var(--muted); font-weight:600;}
+  .cal-legend i{display:inline-block; width:10px; height:10px; border-radius:3px; margin-right:5px; vertical-align:-1px;}
+  .lg-dot.grey{background:var(--surface2); border:1px solid var(--line);}
+  .lg-dot.green{background:var(--accent-deep); border:1px solid var(--accent);}
+  /* Accordion (Finance sections) */
+  .acc{border-bottom:1px solid var(--line);}
+  .acc-head{width:100%; background:none; border:none; color:var(--text); display:flex; align-items:center;
+    justify-content:space-between; gap:12px; padding:16px 2px; cursor:pointer; font-family:inherit; text-align:left;}
+  .acc-head:active{opacity:.6;}
+  .acc-title{font-size:12px; text-transform:uppercase; letter-spacing:.6px; color:var(--muted); font-weight:700;}
+  .acc-headline{font-size:21px; font-weight:800; margin-top:3px; letter-spacing:-.3px;}
+  .acc-sub{font-size:13px; font-weight:600; color:var(--muted); letter-spacing:0;}
+  .acc-chev{width:20px; height:20px; color:var(--muted); transition:transform .2s; flex-shrink:0;}
+  .acc.open .acc-chev{transform:rotate(180deg);}
+  .acc-body{padding:2px 0 16px;}
+  .acc-body .sec-title:first-child{margin-top:6px;}
+</style>
+</head>
+<body>
+<div id="auth-screen">
+  <div id="auth-card">
+    <div id="auth-logo">FITRM<span>.IO</span></div>
+    <div id="auth-tagline">Run your training business — clients, schedule & taxes in one place.</div>
+    <div id="auth-error"></div>
+    <label class="auth-fld" id="name-fld" style="display:none"><span>Your name</span><input id="au-name" autocomplete="name" placeholder="Jordan Lee"/></label>
+    <label class="auth-fld"><span>Email</span><input id="au-email" type="email" autocomplete="email" inputmode="email" placeholder="you@example.com"/></label>
+    <label class="auth-fld"><span>Password</span><input id="au-pass" type="password" autocomplete="current-password" placeholder="••••••••"/></label>
+    <button class="btn" id="au-submit" onclick="authSubmit()">Log in</button>
+    <div id="auth-switch">New here? <a onclick="authToggle()">Create an account</a></div>
+    <div id="auth-msg"></div>
+  </div>
+</div>
+
+<div id="frame" style="display:none">
+  <div id="screen-home" class="screen"></div>
+  <div id="screen-calendar" class="screen hidden"></div>
+  <div id="screen-clients" class="screen hidden"></div>
+  <div id="screen-packages" class="screen hidden"></div>
+  <div id="screen-tax" class="screen hidden"></div>
+
+  <div id="tabbar">
+    <button class="tab on" data-tab="home">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 10.5 12 3l9 7.5"/><path d="M5 9.5V20h14V9.5"/></svg>Home</button>
+    <button class="tab" data-tab="calendar">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4.5" width="18" height="16" rx="3"/><path d="M3 9h18M8 3v3M16 3v3"/></svg>Calendar</button>
+    <button class="tab" data-tab="clients">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="9" cy="8" r="3.2"/><path d="M3.5 19c0-3 2.5-5 5.5-5s5.5 2 5.5 5"/><path d="M16 7.5a3 3 0 0 1 0 5.5M17.5 19c0-2.2-1-3.8-2.4-4.6"/></svg>Clients</button>
+    <button class="tab" data-tab="packages">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 3 4 7v10l8 4 8-4V7z"/><path d="M4 7l8 4 8-4M12 11v10"/></svg>Packages</button>
+    <button class="tab" data-tab="tax">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 20V10M10 20V4M16 20v-7M22 20H2"/></svg>Finance</button>
+  </div>
+</div>
+
+<div id="scrim"></div>
+<div id="sheet"><div class="grab"></div><div id="sheet-body"></div></div>
+<input type="file" id="csv-input" accept=".csv,text/csv" style="display:none" onchange="handleCSVFile(event)">
+
+<script>
+/* ============================ STATE ============================ */
+let LS_KEY = "fitrm_poc_v1";
+const todayISO = () => new Date().toISOString().slice(0,10);
+
+const defaultState = () => ({
+  profile:{ state:"CA", filingStatus:"single", businessType:"sole_prop", annualIncome:78000, noShowBurns:false },
+  packageTypes:[
+    {id:"pt1", name:"10-Session Strength", sessions:10, price:750},
+    {id:"pt2", name:"20-Session Block", sessions:20, price:1400},
+    {id:"pt3", name:"Single Session", sessions:1, price:85},
+  ],
+  clients:[
+    {id:"c1", name:"Maya Chen", phone:"(415) 555-0142", email:"maya@example.com", status:"active"},
+    {id:"c2", name:"Devon Brooks", phone:"(510) 555-0199", email:"devon@example.com", status:"active"},
+    {id:"c3", name:"Priya Anand", phone:"(408) 555-0177", email:"priya@example.com", status:"active"},
+  ],
+  sales:[], sessions:[], expenses:[], taxPayments:[], recurringExpenses:[], recurringSessions:[]
+});
+
+function seedDynamic(s){
+  // create sales + sessions referencing default clients
+  const rate = effectiveRate(s.profile.annualIncome).rate;
+  function sell(clientId, ptId, daysAgo){
+    const pt = s.packageTypes.find(p=>p.id===ptId);
+    const id = "s"+(s.sales.length+1);
+    s.sales.push({id, clientId, packageTypeId:ptId, sessionsPurchased:pt.sessions,
+      pricePaid:pt.price, paymentMethod:"Venmo", paid:true,
+      soldAt:dateOffset(-daysAgo), taxSetAside:+(pt.price*rate).toFixed(2)});
+    return id;
+  }
+  const saleA = sell("c1","pt1",26);
+  const saleB = sell("c2","pt2",12);
+  const saleC = sell("c3","pt1",5);
+  // sessions: some completed, some upcoming
+  let n=0;
+  const mk=(clientId,saleId,dayOffset,hour,status,num)=>{
+    s.sessions.push({id:"se"+(++n), clientId, saleId, datetime:dateOffset(dayOffset)+"T"+String(hour).padStart(2,"0")+":00",
+      duration:60, type:"In-person", status, sessionNumber:num});
+  };
+  // Maya: 4 done, some upcoming
+  mk("c1",saleA,-20,7,"completed",1); mk("c1",saleA,-16,7,"completed",2);
+  mk("c1",saleA,-9,7,"completed",3); mk("c1",saleA,-2,7,"completed",4);
+  mk("c1",saleA,0,7,"scheduled",5); mk("c1",saleA,3,7,"scheduled",6);
+  // Devon: 17 done -> low balance, upcoming today
+  for(let i=0;i<17;i++) mk("c2",saleB,-(40-2*i),9,"completed",i+1);
+  mk("c2",saleB,0,9,"scheduled",18); mk("c2",saleB,2,9,"scheduled",19);
+  // Priya: 8 done -> 2 left, near out
+  for(let i=0;i<8;i++) mk("c3",saleC,-(5)+0,18,"completed",i+1);
+  mk("c3",saleC,0,18,"scheduled",9); mk("c3",saleC,1,18,"scheduled",10);
+  s.expenses.push({id:"e1", date:dateOffset(-40), category:"Equipment", amount:240, note:"Resistance bands & mat"});
+  s.expenses.push({id:"e2", date:dateOffset(-20), category:"Certifications", amount:399, note:"CPR recertification"});
+  s.expenses.push({id:"e3", date:dateOffset(-8), category:"Mileage", amount:85, note:"Client travel"});
+  s.recurringExpenses.push({id:"r1", dayOfMonth:1, category:"Rent / Space", amount:400, note:"Studio rent", startMonth:dateOffset(-70).slice(0,7), active:true});
+  s.recurringExpenses.push({id:"r2", dayOfMonth:15, category:"Phone / Internet", amount:75, note:"Cell phone", startMonth:dateOffset(-70).slice(0,7), active:true});
+}
+
+function dateOffset(days){ const d=new Date(); d.setDate(d.getDate()+days); return d.toISOString().slice(0,10); }
+
+let state;
+function load(){
+  let s=null;
+  try{ const r=localStorage.getItem(LS_KEY); if(r) s=migrate(JSON.parse(r)); }catch(e){}
+  if(!s){ s=defaultState(); seedDynamic(s); }
+  syncRecurring(s);
+  syncRecurringSessions(s);
+  save(s);
+  return s;
+}
+function migrate(s){
+  s.expenses=s.expenses||[];
+  s.taxPayments=s.taxPayments||[];
+  s.recurringExpenses=s.recurringExpenses||[];
+  s.recurringSessions=s.recurringSessions||[];
+  if(s.profile && s.profile.noShowBurns===undefined) s.profile.noShowBurns=false;
+  s.sales=(s.sales||[]).map(x=> x.paid===undefined ? {...x, paid:true} : x);
+  return s;
+}
+const HORIZON_WEEKS=6;
+function syncRecurringSessions(s){
+  s.recurringSessions=s.recurringSessions||[];
+  // prune orphan templates whose client was deleted, and orphan sessions
+  const liveIds=new Set((s.clients||[]).map(c=>c.id));
+  s.recurringSessions=s.recurringSessions.filter(t=>liveIds.has(t.clientId));
+  s.sessions=(s.sessions||[]).filter(x=>liveIds.has(x.clientId));
+  const now=new Date(), todayMid=new Date(now.toDateString()), horizonEnd=new Date(+now+HORIZON_WEEKS*7*DAY_MS);
+  s.recurringSessions.forEach(t=>{
+    if(t.active===false || !t.autoRenew || !t.days || !t.days.length) return;
+    const existing=new Set(s.sessions.filter(x=>x.clientId===t.clientId).map(x=>x.datetime));
+    let n=s.sessions.filter(x=>x.clientId===t.clientId).length;
+    const ws=weekStart(todayMid);
+    for(let w=0; w<=HORIZON_WEEKS; w++){
+      t.days.slice().sort((a,b)=>a-b).forEach(dow=>{
+        const d=new Date(+ws); d.setDate(d.getDate()+w*7+dow);
+        if(d<todayMid || d>horizonEnd) return;
+        const dt=ymd(d)+"T"+t.time;
+        if(existing.has(dt)) return;
+        existing.add(dt); n++;
+        s.sessions.push({id:"rs"+t.id+"_"+ymd(d), clientId:t.clientId, saleId:null, datetime:dt,
+          duration:60, type:t.type||"In-person", status:"scheduled", sessionNumber:n, notes:""});
+      });
+    }
+  });
+}
+function clientRecurring(cid){ return (state.recurringSessions||[]).find(t=>t.clientId===cid && t.active!==false); }
+function toggleAutoRenew(tid){
+  const t=state.recurringSessions.find(x=>x.id===tid); if(!t) return;
+  t.autoRenew=!t.autoRenew; if(t.autoRenew) syncRecurringSessions(state);
+  save(); render(); openClient(t.clientId);
+}
+function stopRecurringSeries(tid){
+  const t=state.recurringSessions.find(x=>x.id===tid); if(!t) return;
+  const cid=t.clientId; t.active=false; save(); render(); openClient(cid);
+}
+function daysInMonth(y,m){ return new Date(y,m,0).getDate(); }
+function syncRecurring(s){
+  s.expenses=s.expenses||[]; s.recurringExpenses=s.recurringExpenses||[];
+  const cur=todayISO().slice(0,7);
+  s.recurringExpenses.forEach(t=>{
+    if(t.active===false) return;
+    let [y,m]=t.startMonth.split("-").map(Number), guard=0;
+    while(guard++<360){
+      const mk=y+"-"+String(m).padStart(2,"0");
+      if(mk>cur) break;
+      const dom=Math.min(t.dayOfMonth||1, daysInMonth(y,m));
+      const date=mk+"-"+String(dom).padStart(2,"0");
+      if(!s.expenses.some(e=>e.recurId===t.id && e.date.slice(0,7)===mk))
+        s.expenses.push({id:"e"+t.id+"_"+mk, date, category:t.category, amount:t.amount, note:t.note, recurId:t.id});
+      m++; if(m>12){m=1;y++;}
+    }
+  });
+}
+function save(s){ try{ localStorage.setItem(LS_KEY, JSON.stringify(s||state)); }catch(e){} }
+
+/* ============================ TAX ENGINE (CA sole proprietor, est.) ============================ */
+const FED_2026_SINGLE=[[0,.10],[12400,.12],[50400,.22],[105700,.24],[201775,.32],[256225,.35],[640600,.37]];
+const CA_2025_SINGLE=[[0,.01],[10756,.02],[25499,.04],[40245,.06],[55866,.08],[70606,.093],[360659,.103],[432787,.113],[721314,.123]];
+const FED_STD_SINGLE=16100, CA_STD_SINGLE=5706, SS_WAGE_BASE=184500;
+
+function progressive(income, brackets){
+  let tax=0;
+  for(let i=0;i<brackets.length;i++){
+    const lo=brackets[i][0], rate=brackets[i][1];
+    const hi=i+1<brackets.length?brackets[i+1][0]:Infinity;
+    if(income>lo) tax += (Math.min(income,hi)-lo)*rate; else break;
+  }
+  return tax;
+}
+function effectiveRate(netProfit){
+  const P=Math.max(netProfit,0);
+  if(P===0) return {rate:0, seTax:0, fedTax:0, caTax:0, total:0};
+  const seBase=P*0.9235;
+  const ss=Math.min(seBase,SS_WAGE_BASE)*0.124;
+  const medicare=seBase*0.029;
+  const seTax=ss+medicare;
+  const halfSE=seTax/2;
+  const qbi=P*0.20;
+  const fedTI=Math.max(P-halfSE-FED_STD_SINGLE-qbi,0);
+  const fedTax=progressive(fedTI,FED_2026_SINGLE);
+  const caTI=Math.max(P-halfSE-CA_STD_SINGLE,0);
+  const caTax=progressive(caTI,CA_2025_SINGLE);
+  const total=seTax+fedTax+caTax;
+  return {rate:total/P, seTax, fedTax, caTax, total};
+}
+
+/* ============================ DERIVED ============================ */
+const money=n=>"$"+Math.round(n).toLocaleString();
+const money2=n=>"$"+n.toFixed(2);
+function clientSessionsRemaining(cid){
+  const purchased=state.sales.filter(s=>s.clientId===cid).reduce((a,s)=>a+s.sessionsPurchased,0);
+  const burns=state.profile.noShowBurns;
+  const used=state.sessions.filter(s=>s.clientId===cid &&
+    (s.status==="completed" || (burns && s.status==="no-show"))).length;
+  return purchased-used;
+}
+function clientLifetime(cid){ return state.sales.filter(s=>s.clientId===cid).reduce((a,s)=>a+s.pricePaid,0); }
+function clientTotalPurchased(cid){ return state.sales.filter(s=>s.clientId===cid).reduce((a,s)=>a+s.sessionsPurchased,0); }
+function remTag(cid){ const total=clientTotalPurchased(cid), rem=clientSessionsRemaining(cid);
+  return total>0 ? rem+"/"+total : "no pack"; }
+function initials(name){ return name.split(" ").map(w=>w[0]).join("").slice(0,2).toUpperCase(); }
+function incomeThisMonth(){
+  const m=todayISO().slice(0,7);
+  return state.sales.filter(s=>s.soldAt.slice(0,7)===m).reduce((a,s)=>a+s.pricePaid,0);
+}
+function reserveYTD(){
+  const y=todayISO().slice(0,4);
+  return state.sales.filter(s=>s.soldAt.slice(0,4)===y).reduce((a,s)=>a+s.taxSetAside,0);
+}
+function taxPaidYTD(){
+  const y=todayISO().slice(0,4);
+  return (state.taxPayments||[]).filter(p=>p.date.slice(0,4)===y).reduce((a,p)=>a+p.amount,0);
+}
+function reserveRemaining(){ return reserveYTD()-taxPaidYTD(); }
+function expensesYTD(){
+  const y=todayISO().slice(0,4);
+  return (state.expenses||[]).filter(e=>e.date.slice(0,4)===y).reduce((a,e)=>a+e.amount,0);
+}
+function incomeReport(){
+  const sales=state.sales, m=todayISO().slice(0,7), y=todayISO().slice(0,4);
+  const sum=arr=>arr.reduce((a,s)=>a+s.pricePaid,0);
+  const q=Math.floor(new Date().getMonth()/3);
+  const month=sum(sales.filter(s=>s.soldAt.slice(0,7)===m));
+  const year=sum(sales.filter(s=>s.soldAt.slice(0,4)===y));
+  const quarter=sum(sales.filter(s=>s.soldAt.slice(0,4)===y && Math.floor(new Date(s.soldAt).getMonth()/3)===q));
+  const unpaid=sum(sales.filter(s=>!s.paid));
+  const byClient={};
+  sales.forEach(s=>{ byClient[s.clientId]=(byClient[s.clientId]||0)+s.pricePaid; });
+  const top=Object.entries(byClient).map(([cid,v])=>({cid,v})).sort((a,b)=>b.v-a.v);
+  return {month,quarter,year,unpaid,top};
+}
+
+/* ---- Revenue projection engine ---- */
+function activeClients(){ return state.clients.filter(c=>c.status!=="inactive"); }
+function globalAvgSessionPrice(){
+  const sess=state.sales.reduce((a,s)=>a+s.sessionsPurchased,0);
+  const rev=state.sales.reduce((a,s)=>a+s.pricePaid,0);
+  return sess>0 ? rev/sess : 75;
+}
+function avgSessionPrice(cid){
+  const sales=state.sales.filter(s=>s.clientId===cid);
+  const sess=sales.reduce((a,s)=>a+s.sessionsPurchased,0);
+  const rev=sales.reduce((a,s)=>a+s.pricePaid,0);
+  return sess>0 ? rev/sess : globalAvgSessionPrice();
+}
+function weeklyFrequency(cid){
+  // sessions per week over the trailing 28 days (actual pace / burn rate)
+  const now=Date.now(), start=now-28*DAY_MS;
+  const n=state.sessions.filter(s=>{ const d=+new Date(s.datetime); return s.clientId===cid && d>=start && d<=now; }).length;
+  let f=n/4;
+  if(f===0){ // fall back to upcoming scheduled density (next 28 days)
+    const end=now+28*DAY_MS;
+    const up=state.sessions.filter(s=>{ const d=+new Date(s.datetime); return s.clientId===cid && d>now && d<=end && s.status==="scheduled"; }).length;
+    f=up/4;
+  }
+  return f;
+}
+function weeklyRunRate(){ return activeClients().reduce((a,c)=>a+weeklyFrequency(c.id)*avgSessionPrice(c.id),0); }
+function valueOfSessions(filterFn){ return state.sessions.filter(filterFn).reduce((a,s)=>a+avgSessionPrice(s.clientId),0); }
+function projectFor(period, includeFill){
+  const now=new Date(); let start,end;
+  if(period==="today"){ start=new Date(now.toDateString()); end=new Date(+start+DAY_MS-1); }
+  else if(period==="week"){ start=weekStart(now); end=new Date(+start+7*DAY_MS-1); }
+  else if(period==="month"){ start=new Date(now.getFullYear(),now.getMonth(),1); end=new Date(now.getFullYear(),now.getMonth()+1,0,23,59,59); }
+  else { start=new Date(now.getFullYear(),0,1); end=new Date(now.getFullYear(),11,31,23,59,59); }
+  const earned=valueOfSessions(s=>{ const d=+new Date(s.datetime); return s.status==="completed" && d>=+start && d<=+now; });
+  const booked=valueOfSessions(s=>{ const d=+new Date(s.datetime); return s.status==="scheduled" && d>+now && d<=+end; });
+  let fill=0;
+  if(includeFill){
+    const sched=state.sessions.filter(s=>{ const d=+new Date(s.datetime); return s.status==="scheduled" && d>+now && d<=+end; });
+    const lastBooked=sched.length ? Math.max(...sched.map(s=>+new Date(s.datetime))) : +now;
+    const from=Math.max(+now,lastBooked);
+    const remDays=Math.max(0,(+end-from)/DAY_MS);
+    fill=weeklyRunRate()/7*remDays;
+  }
+  return {earned, booked, fill, total:earned+booked+fill};
+}
+function typicalPackagePrice(cid){
+  const sales=state.sales.filter(s=>s.clientId===cid);
+  if(sales.length) return sales[sales.length-1].pricePaid;
+  return state.packageTypes.length ? state.packageTypes[0].price : globalAvgSessionPrice()*10;
+}
+function reupForecast(){
+  return activeClients().map(c=>{
+    const left=clientSessionsRemaining(c.id);
+    const f=weeklyFrequency(c.id);
+    const weeks=f>0 ? left/f : null;
+    const due=weeks!=null ? new Date(Date.now()+weeks*7*DAY_MS) : null;
+    return {c, left, f, weeks, due, pkgPrice:typicalPackagePrice(c.id)};
+  }).filter(x=>x.f>0 || x.left<=3)
+    .sort((a,b)=>(a.weeks==null?1e9:a.weeks)-(b.weeks==null?1e9:b.weeks));
+}
+function fmtDate(iso){ const d=new Date(iso+ (iso.length===10?"T00:00":"")); return d.toLocaleDateString(undefined,{weekday:"short",month:"short",day:"numeric"}); }
+function fmtTime(dt){ const d=new Date(dt); return d.toLocaleTimeString(undefined,{hour:"numeric",minute:"2-digit"}); }
+function nextQuarterly(){
+  const y=new Date().getFullYear();
+  const dates=[[y,3,15],[y,5,15],[y,8,15],[y+1,0,15]];
+  const now=new Date();
+  for(const [yy,mm,dd] of dates){ const d=new Date(yy,mm,dd); if(d>=now) return d; }
+  return new Date(y+1,3,15);
+}
+
+/* ============================ RENDER ============================ */
+let activeTab="home";
+let calView="3day";
+let calAnchor=todayISO();
+let sellPaid=true;
+let expRecurring=false;
+let recurDays=[];
+let recurAutoRenew=false;
+let finOpen={};
+const DAY_MS=86400000;
+function el(id){ return document.getElementById(id); }
+
+function render(){
+  renderHome(); renderCalendar(); renderClients(); renderPackages(); renderTax();
+}
+
+function renderHome(){
+  const todays=state.sessions.filter(s=>s.datetime.slice(0,10)===todayISO())
+    .sort((a,b)=>a.datetime<b.datetime?-1:1);
+  const low=state.clients.filter(c=>c.status==="active")
+    .map(c=>({c,r:clientSessionsRemaining(c.id)})).filter(x=>x.r<=2).sort((a,b)=>a.r-b.r);
+  const reserve=reserveRemaining(), income=incomeThisMonth();
+  const nq=nextQuarterly();
+  let h=`
+    <div class="row between">
+      <div class="grow"><div class="lg-title">Today</div></div>
+      <button class="btn ghost" style="font-size:22px;padding:6px 4px" onclick="openSettings()">⚙</button>
+    </div>
+    <div class="sub">${new Date().toLocaleDateString(undefined,{weekday:"long",month:"long",day:"numeric"})}</div>
+    <div class="stat-grid">
+      <div class="stat"><div class="k">Income this month</div><div class="v green">${money(income)}</div></div>
+      <div class="stat"><div class="k">Set aside (remaining)</div><div class="v">${money(reserve)}</div></div>
+    </div>
+    <div class="sec-title">Today's sessions</div>`;
+  if(todays.length){
+    h+=`<div class="card">`+todays.map((s,i)=>{
+      const c=state.clients.find(x=>x.id===s.clientId);
+      const done=s.status==="completed";
+      return `<div class="row list-item">
+        <div class="timeline-time">${fmtTime(s.datetime)}</div>
+        <div class="grow"><div class="name">${c?c.name:"(deleted client)"}</div>
+          <div class="meta">${remTag(s.clientId)} left · ${s.type}</div></div>
+        ${done?`<span class="pill ok">Done</span>`
+          :`<button class="btn sec btn-sm" onclick="completeSession('${s.id}')">Complete</button>`}
+      </div>`;
+    }).join("")+`</div>`;
+  } else { h+=`<div class="card empty">No sessions scheduled today 🎉</div>`; }
+
+  if(low.length){
+    h+=`<div class="sec-title">Running low — time to renew</div><div class="card">`+
+      low.map(x=>`<div class="row between list-item">
+        <div class="row"><div class="avatar">${initials(x.c.name)}</div>
+          <div><div class="name">${x.c.name}</div><div class="meta">${x.r} session${x.r===1?"":"s"} left</div></div></div>
+        <span class="pill ${x.r<=0?"out":"low"}">${x.r<=0?"Out":x.r+" left"}</span>
+      </div>`).join("")+`</div>`;
+  }
+  h+=`<div class="sec-title">Taxes</div>
+    <div class="card row between" onclick="switchTab('tax')" style="cursor:pointer">
+      <div><div class="name">Next quarterly payment</div>
+        <div class="meta">${nq.toLocaleDateString(undefined,{month:"long",day:"numeric",year:"numeric"})}</div></div>
+      <div class="big-num green">${money(reserve)}</div>
+    </div>`;
+  el("screen-home").innerHTML=h;
+}
+
+function ymd(d){ const x=new Date(d); return x.getFullYear()+"-"+String(x.getMonth()+1).padStart(2,"0")+"-"+String(x.getDate()).padStart(2,"0"); }
+function parseYMD(s){ return new Date(s+"T00:00"); }
+function weekStart(d){ const x=new Date(d); x.setDate(x.getDate()-x.getDay()); x.setHours(0,0,0,0); return x; }
+function sessionsOn(dateStr){
+  return state.sessions.filter(s=>s.datetime.slice(0,10)===dateStr).sort((a,b)=>a.datetime<b.datetime?-1:1);
+}
+function sessionRow(s){
+  const c=state.clients.find(x=>x.id===s.clientId);
+  const name=c?c.name:"(deleted client)";
+  const right = s.status==="scheduled"
+    ? `<button class="btn sec btn-sm" onclick="completeSession('${s.id}')">Done</button>`
+    : `<span class="pill ${s.status==='completed'?'ok':'grey'}">${s.status==='completed'?'Done':s.status}</span>`;
+  return `<div class="row list-item">
+    <div class="timeline-time">${fmtTime(s.datetime)}</div>
+    <div class="grow"><div class="name">${name}</div>
+      <div class="meta">${remTag(s.clientId)} left · ${s.type}</div></div>
+    ${right}</div>`;
+}
+function calLabel(){
+  const a=parseYMD(calAnchor);
+  if(calView==="day") return a.toLocaleDateString(undefined,{weekday:"long",month:"long",day:"numeric"});
+  if(calView==="3day"){ const e=new Date(a.getTime()+2*DAY_MS);
+    return a.toLocaleDateString(undefined,{month:"short",day:"numeric"})+" – "+e.toLocaleDateString(undefined,{month:"short",day:"numeric"}); }
+  if(calView==="week"){ const s=weekStart(a), e=new Date(s.getTime()+6*DAY_MS);
+    return s.toLocaleDateString(undefined,{month:"short",day:"numeric"})+" – "+e.toLocaleDateString(undefined,{month:"short",day:"numeric"}); }
+  return a.toLocaleDateString(undefined,{month:"long",year:"numeric"});
+}
+function setCalView(v){ calView=v; renderCalendar(); }
+function calToday(){ calAnchor=todayISO(); renderCalendar(); }
+function calShift(dir){
+  const a=parseYMD(calAnchor);
+  if(calView==="day") a.setDate(a.getDate()+dir);
+  else if(calView==="3day") a.setDate(a.getDate()+3*dir);
+  else if(calView==="week") a.setDate(a.getDate()+7*dir);
+  else a.setMonth(a.getMonth()+dir);
+  calAnchor=ymd(a); renderCalendar();
+}
+function goDay(ds){ calAnchor=ds; calView="day"; renderCalendar(); }
+
+function renderCalendar(){
+  const labels={day:"Day","3day":"3 Days",week:"Week",month:"Month"};
+  let h=`<div class="row between"><div class="lg-title">Schedule</div>
+    <button class="btn ghost" onclick="openAddSession()">＋ Add</button></div>
+    <div class="seg" style="margin-bottom:14px">
+      ${["day","3day","week","month"].map(v=>`<button class="${calView===v?'on':''}" onclick="setCalView('${v}')">${labels[v]}</button>`).join("")}
+    </div>
+    <div class="cal-nav">
+      <button class="cal-arrow" onclick="calShift(-1)">‹</button>
+      <div class="cal-label">${calLabel()}</div>
+      <button class="cal-arrow" onclick="calShift(1)">›</button>
+    </div>
+    <button class="btn sec btn-sm" style="margin:0 auto 12px;display:block" onclick="calToday()">Today</button>
+    ${calView!=="day" ? `<div class="cal-legend"><span><i class="lg-dot grey"></i>Upcoming</span><span><i class="lg-dot green"></i>Checked in</span></div>` : ""}`;
+
+  if(calView==="day"){
+    const ss=sessionsOn(calAnchor);
+    h+= ss.length ? `<div class="card">`+ss.map(sessionRow).join("")+`</div>`
+                  : `<div class="card empty" style="padding:22px">No sessions this day</div>`;
+  } else if(calView==="month"){
+    h+=renderMonth();
+  } else {
+    const a=parseYMD(calAnchor);
+    let days;
+    if(calView==="3day") days=[0,1,2].map(i=>ymd(new Date(a.getTime()+i*DAY_MS)));
+    else { const s=weekStart(a); days=[0,1,2,3,4,5,6].map(i=>ymd(new Date(s.getTime()+i*DAY_MS))); }
+    h+=renderTimeGrid(days);
+  }
+  el("screen-calendar").innerHTML=h;
+}
+
+function fmtTimeShort(d){ let h=d.getHours(), m=d.getMinutes(); const ap=h<12?"a":"p"; h=h%12||12; return h+(m?":"+String(m).padStart(2,"0"):"")+ap; }
+function gridRange(days){
+  let startH=7, endH=20;
+  days.forEach(d=>sessionsOn(d).forEach(s=>{
+    const dt=new Date(s.datetime); const h=dt.getHours();
+    const eh=h+Math.ceil((dt.getMinutes()+s.duration)/60);
+    startH=Math.min(startH,h); endH=Math.max(endH,eh);
+  }));
+  return {startH:Math.max(0,startH), endH:Math.min(24,Math.max(endH,startH+1))};
+}
+function renderTimeGrid(days){
+  const {startH,endH}=gridRange(days), H=(endH-startH)*48;
+  let head=`<div class="tg-head"><div class="tg-gutter-h"></div>`+days.map(d=>{
+    const dt=parseYMD(d), today=d===todayISO();
+    return `<div class="tg-dayh ${today?'today':''}">
+      <div class="tg-dow">${dt.toLocaleDateString(undefined,{weekday:"short"})}</div>
+      <div class="tg-dnum">${dt.getDate()}</div></div>`;
+  }).join("")+`</div>`;
+  let gutter=`<div class="tg-gutter">`;
+  for(let hh=startH; hh<endH; hh++){
+    const lbl = hh===0?"12a": hh<12?hh+"a": hh===12?"12p":(hh-12)+"p";
+    gutter+=`<div class="tg-hour" style="height:48px"><span>${lbl}</span></div>`;
+  }
+  gutter+=`</div>`;
+  let cols=`<div class="tg-cols" style="height:${H}px">`;
+  days.forEach(d=>{
+    cols+=`<div class="tg-col" style="height:${H}px">`;
+    sessionsOn(d).forEach(s=>{
+      const dt=new Date(s.datetime);
+      const top=((dt.getHours()-startH)*60+dt.getMinutes())/60*48;
+      const ht=Math.max(s.duration/60*48-2, 16);
+      const c=state.clients.find(x=>x.id===s.clientId);
+      const cls=s.status==="completed"?"done":s.status==="scheduled"?"":"cancel";
+      cols+=`<div class="tg-event ${cls}" style="top:${top}px;height:${ht}px" onclick="openSessionSheet('${s.id}')">
+        <div class="tg-ev-t">${fmtTimeShort(dt)}</div>
+        <div class="tg-ev-n">${c?c.name.split(" ")[0]:"—"} · ${remTag(s.clientId)}</div></div>`;
+    });
+    cols+=`</div>`;
+  });
+  cols+=`</div>`;
+  return head+`<div class="tg-grid">`+gutter+cols+`</div>`;
+}
+
+function renderMonth(){
+  const a=parseYMD(calAnchor), year=a.getFullYear(), month=a.getMonth();
+  const startPad=new Date(year,month,1).getDay();
+  const daysInMonth=new Date(year,month+1,0).getDate();
+  const byDay={};
+  state.sessions.forEach(s=>{ const d=parseYMD(s.datetime.slice(0,10));
+    if(d.getMonth()===month && d.getFullYear()===year){ const k=s.datetime.slice(0,10); (byDay[k]=byDay[k]||[]).push(s); } });
+  Object.values(byDay).forEach(arr=>arr.sort((x,y)=>x.datetime<y.datetime?-1:1));
+  let g=`<div class="cal-grid">`;
+  ["S","M","T","W","T","F","S"].forEach(d=>g+=`<div class="cal-dow">${d}</div>`);
+  for(let i=0;i<startPad;i++) g+=`<div></div>`;
+  for(let day=1;day<=daysInMonth;day++){
+    const ds=`${year}-${String(month+1).padStart(2,"0")}-${String(day).padStart(2,"0")}`;
+    const isToday=ds===todayISO();
+    const evs=byDay[ds]||[];
+    let chips="";
+    evs.slice(0,2).forEach(s=>{ const c=state.clients.find(x=>x.id===s.clientId);
+      const cls=s.status==="completed"?"done":s.status==="scheduled"?"":"cancel";
+      chips+=`<span class="mchip ${cls}">${c?c.name.split(" ")[0]:"—"}</span>`; });
+    if(evs.length>2) chips+=`<span class="mmore">+${evs.length-2}</span>`;
+    g+=`<button class="mcell ${isToday?'today':''}" onclick="goDay('${ds}')">
+      <span class="mnum ${isToday?'t':''}">${day}</span>${chips}</button>`;
+  }
+  return g+`</div>`;
+}
+
+function openSessionSheet(id){
+  const s=state.sessions.find(x=>x.id===id); if(!s) return;
+  const c=state.clients.find(x=>x.id===s.clientId);
+  const dt=new Date(s.datetime);
+  openSheet(`<div class="sheet-title">${c?c.name:"(deleted client)"}</div>
+    <p class="muted" style="margin-top:2px">${dt.toLocaleDateString(undefined,{weekday:"long",month:"long",day:"numeric"})} · ${fmtTime(s.datetime)}</p>
+    <div class="card" style="background:var(--surface2)">
+      <div class="tax-line"><span>Session number</span><b>#${s.sessionNumber}</b></div>
+      <div class="tax-line"><span>Type</span><b>${s.type}</b></div>
+      <div class="tax-line"><span>Status</span><b class="${s.status==='completed'?'green':''}">${s.status}</b></div>
+    </div>
+    <label class="fld"><span>Session notes</span>
+      <textarea id="ss-notes" rows="3" placeholder="What you worked on, PRs, injuries…">${s.notes||""}</textarea></label>
+    <button class="btn sec" style="margin-top:8px" onclick="saveSessionNotes('${s.id}',true)">Save notes</button>
+    ${s.status==="scheduled"
+      ? `<button class="btn" style="margin-top:8px" onclick="completeFromSheet('${s.id}')">Mark complete</button>
+         <button class="btn sec" style="margin-top:8px" onclick="noShowFromSheet('${s.id}')">Mark no-show</button>`
+      : ``}
+    <button class="btn sec" style="margin-top:8px" onclick="closeSheet()">Close</button>`);
+}
+function saveSessionNotes(id,toast){ const s=state.sessions.find(x=>x.id===id); const t=el("ss-notes");
+  if(s&&t){ s.notes=t.value; save(); render(); if(toast) closeSheet(); } }
+function completeFromSheet(id){ const t=el("ss-notes"); const s=state.sessions.find(x=>x.id===id); if(s&&t) s.notes=t.value; completeSession(id); }
+function noShowFromSheet(id){ const t=el("ss-notes"); const s=state.sessions.find(x=>x.id===id); if(s&&t) s.notes=t.value; markSession(id,"no-show"); }
+function markSession(id,status){ const s=state.sessions.find(x=>x.id===id); if(s){ s.status=status; save(); render(); } closeSheet(); }
+
+function renderClients(){
+  const list=state.clients.slice().sort((a,b)=>a.name<b.name?-1:1);
+  let h=`<div class="row between"><div class="lg-title">Clients</div>
+    <button class="btn ghost" onclick="openAddClient()">＋ Add</button></div>
+    <div class="sub">${list.length} active</div>
+    <div class="row" style="gap:8px;margin-bottom:14px">
+      <button class="btn sec btn-sm grow" onclick="openImportMenu()">⇪ Import CSV</button>
+      <button class="btn sec btn-sm grow" onclick="openDataMenu()">⊕ Demo data</button>
+    </div>
+    <div class="card">`;
+  h+=list.map(c=>{
+    const r=clientSessionsRemaining(c.id);
+    const cls=r<=0?"out":r<=2?"low":"ok";
+    return `<div class="row between list-item" onclick="openClient('${c.id}')" style="cursor:pointer">
+      <div class="row"><div class="avatar">${initials(c.name)}</div>
+        <div><div class="name">${c.name}</div><div class="meta">${money(clientLifetime(c.id))} lifetime</div></div></div>
+      <span class="pill ${cls}">${r} left</span>
+    </div>`;
+  }).join("")+`</div>`;
+  el("screen-clients").innerHTML=h;
+}
+
+function renderPackages(){
+  const rate=effectiveRate(state.profile.annualIncome).rate;
+  let h=`<div class="row between"><div class="lg-title">Packages</div>
+    <button class="btn ghost" onclick="openAddPackageType()">＋ Add</button></div>
+    <div class="sub">The package types you sell · used when you sell to a client</div>`;
+  if(!state.packageTypes.length){
+    h+=`<div class="card empty">No package types yet.<br>Tap “＋ Add” to create your first one.</div>`;
+  } else {
+    h+=state.packageTypes.map(p=>{
+      const per=p.sessions? p.price/p.sessions : p.price;
+      const sold=state.sales.filter(s=>s.packageTypeId===p.id).length;
+      return `<div class="card">
+        <div class="row between">
+          <div class="grow"><div class="name">${p.name}</div>
+            <div class="meta">${p.sessions} session${p.sessions===1?'':'s'} · ${money(p.price)} · ${money(per)}/session</div></div>
+          <button class="btn sec btn-sm" onclick="openAddPackageType('${p.id}')">Edit</button>
+        </div>
+        <div class="row between" style="margin-top:12px">
+          <span class="meta">Set aside per sale: <b class="green">${money(p.price*rate)}</b></span>
+          <span class="pill grey">${sold} sold</span>
+        </div></div>`;
+    }).join("");
+  }
+  el("screen-packages").innerHTML=h;
+}
+function openAddPackageType(id){
+  const p = id ? state.packageTypes.find(x=>x.id===id) : null;
+  openSheet(`<div class="sheet-title">${p?'Edit':'New'} package type</div>
+    <label class="fld"><span>Name</span><input id="pt-name" placeholder="10-Session Strength" value="${p?p.name:''}"/></label>
+    <label class="fld"><span>Number of sessions</span><input id="pt-sess" type="number" inputmode="numeric" placeholder="10" value="${p?p.sessions:''}"/></label>
+    <label class="fld"><span>Price ($)</span><input id="pt-price" type="number" inputmode="decimal" placeholder="750" value="${p?p.price:''}"/></label>
+    <div id="pt-preview" class="banner" style="margin-top:16px"></div>
+    <button class="btn" onclick="savePackageType(${p?`'${p.id}'`:'null'})">${p?'Save changes':'Add package'}</button>
+    ${p?`<button class="btn sec" style="background:transparent;color:var(--danger);border:1px solid var(--line);margin-top:8px" onclick="confirmDeletePackageType('${p.id}')">Delete package type</button>`:''}`);
+  ["pt-sess","pt-price"].forEach(i=>el(i).addEventListener("input",previewPT));
+  previewPT();
+}
+function previewPT(){
+  const price=+el("pt-price").value||0, sess=parseInt(el("pt-sess").value)||0;
+  const rate=effectiveRate(state.profile.annualIncome).rate;
+  el("pt-preview").innerHTML=`<div class="meta" style="color:#bfe8d8">Package price</div>
+    <div class="amt">${money(price)}</div>
+    <div class="meta" style="color:#bfe8d8;margin-top:2px">${sess} session${sess===1?'':'s'} · ${sess?money(price/sess):'$0'}/session · set aside ${money(price*rate)} for taxes</div>`;
+}
+function savePackageType(id){
+  const name=el("pt-name").value.trim();
+  const sessions=Math.max(1, parseInt(el("pt-sess").value)||0);
+  const price=+el("pt-price").value||0;
+  if(!name){ el("pt-name").focus(); return; }
+  if(id){ const p=state.packageTypes.find(x=>x.id===id); p.name=name; p.sessions=sessions; p.price=price; }
+  else { state.packageTypes.push({id:"pt"+Date.now(), name, sessions, price}); }
+  save(); render(); closeSheet(); switchTab("packages");
+}
+function confirmDeletePackageType(id){
+  const p=state.packageTypes.find(x=>x.id===id); if(!p) return;
+  const used=state.sales.filter(s=>s.packageTypeId===id).length;
+  openSheet(`<div class="sheet-title">Delete “${p.name}”?</div>
+    <p class="muted">${used?`This type was sold ${used} time${used===1?'':'s'}. Clients keep those purchased sessions — only the sellable type is removed.`:'This package type will be removed.'}</p>
+    <button class="btn" style="background:var(--danger);color:#fff" onclick="deletePackageType('${id}')">Delete</button>
+    <button class="btn sec" style="margin-top:8px" onclick="closeSheet()">Cancel</button>`);
+}
+function deletePackageType(id){
+  state.packageTypes=state.packageTypes.filter(p=>p.id!==id);
+  save(); render(); closeSheet(); switchTab("packages");
+}
+
+function renderTax(){
+  const p=state.profile, er=effectiveRate(p.annualIncome);
+  const setAside=reserveYTD(), paid=taxPaidYTD(), remaining=reserveRemaining(), exp=expensesYTD();
+  const nq=nextQuarterly();
+  const stateLabel={CA:"California",TX:"Texas",FL:"Florida",NY:"New York"}[p.state]||p.state;
+  const biz={sole_prop:"Sole proprietor",llc:"LLC",scorp:"S-corp"}[p.businessType]||p.businessType;
+  const runRate=weeklyRunRate();
+  const today=projectFor("today",false), week=projectFor("week",false);
+  const month=projectFor("month",true), year=projectFor("year",true);
+  const extra=globalAvgSessionPrice()*52;
+  const reups=reupForecast();
+  const due30=reups.filter(x=>x.due && (x.due-Date.now())<=30*DAY_MS && (x.due-Date.now())>=0);
+  const reupVal30=due30.reduce((a,x)=>a+x.pkgPrice,0);
+  const rep=incomeReport();
+  const projBody=`
+    <div class="stat-grid">
+      <div class="stat"><div class="k">Today</div><div class="v green">${money(today.total)}</div></div>
+      <div class="stat"><div class="k">This week</div><div class="v green">${money(week.total)}</div></div>
+      <div class="stat"><div class="k">This month</div><div class="v">${money(month.total)}</div></div>
+      <div class="stat"><div class="k">This year</div><div class="v">${money(year.total)}</div></div>
+    </div>
+    <div class="card">
+      <div class="tax-line"><span>Earned so far (this month)</span><b>${money(month.earned)}</b></div>
+      <div class="tax-line"><span>Booked on calendar (rest of month)</span><b>${money(month.booked)}</b></div>
+      <div class="tax-line"><span>Projected at current pace</span><b>${money(month.fill)}</b></div>
+      <div class="meta" style="margin-top:6px">${activeClients().length} active clients · ${money(runRate)}/week run-rate</div>
+    </div>
+    <div class="banner">
+      <div class="meta" style="color:#bfe8d8">Motivation check</div>
+      <div class="amt">${money(extra)}</div>
+      <div class="meta" style="color:#bfe8d8;margin-top:2px">One extra session per week is worth ~${money(extra)} a year.</div>
+    </div>`;
+
+  const reupBody=`
+    ${reupVal30>0?`<div class="card row between"><div><div class="name">Renewals projected in 30 days</div>
+        <div class="meta">${due30.length} client${due30.length===1?'':'s'} likely due</div></div>
+        <div class="big-num green">${money(reupVal30)}</div></div>`:``}
+    ${reups.length?`<div class="card">`+reups.slice(0,8).map(x=>`
+      <div class="row between list-item">
+        <div class="grow"><div class="name" style="font-size:15px">${x.c.name}</div>
+          <div class="meta">${x.left} left${x.f?` · ${x.f.toFixed(1)}/wk pace`:` · no recent pace`}${x.due?` · due ~${x.due.toLocaleDateString(undefined,{month:'short',day:'numeric'})}`:``}</div></div>
+        <div class="big-num">${money(x.pkgPrice)}</div>
+      </div>`).join("")+`</div>`:`<div class="card empty">No active clients to forecast yet.</div>`}`;
+
+  const incomeBody=`
+    <div class="card">
+      <div class="tax-line"><span>This month</span><b>${money(rep.month)}</b></div>
+      <div class="tax-line"><span>This year</span><b>${money(rep.year)}</b></div>
+      <div class="tax-line"><span>Outstanding (unpaid)</span><b class="${rep.unpaid?'warn':''}">${money(rep.unpaid)}</b></div>
+    </div>
+    <button class="btn sec" onclick="openIncomeReport()">Full income report</button>`;
+
+  const taxBody=`
+    <div class="sub" style="margin:2px 0 10px">${stateLabel} · ${biz} · ${p.filingStatus}</div>
+    <div class="banner">
+      <div class="meta" style="color:#bfe8d8">Still to set aside (this year)</div>
+      <div class="amt">${money(remaining)}</div>
+      <div class="meta" style="color:#bfe8d8;margin-top:4px">${money(setAside)} reserved · ${money(paid)} paid · ${(er.rate*100).toFixed(1)}% of every package</div>
+    </div>
+    <div class="sec-title">Your blended rate breakdown</div>
+    <div class="card">
+      <div class="tax-line"><span>Self-employment tax (15.3%)</span><b>${money(er.seTax)}</b></div>
+      <div class="tax-line"><span>Federal income tax (2026)</span><b>${money(er.fedTax)}</b></div>
+      <div class="tax-line"><span>${stateLabel} income tax</span><b>${money(er.caTax)}</b></div>
+      <div class="tax-line"><span><b>Effective set-aside rate</b></span><b class="green">${(er.rate*100).toFixed(1)}%</b></div>
+      <div class="meta" style="margin-top:8px">Based on ~${money(p.annualIncome)} estimated annual net profit</div>
+    </div>
+    <div class="sec-title">Deductions</div>
+    <div class="card row between" onclick="openExpenses()" style="cursor:pointer">
+      <div class="grow"><div class="name">Expenses logged (YTD)</div><div class="meta">Tap to add — lowers your taxable profit</div></div>
+      <div class="big-num">${money(exp)}</div>
+    </div>
+    <div class="sec-title">Quarterly estimates</div>
+    <div class="card">
+      <div class="row between"><div><div class="name">Next payment due</div>
+        <div class="meta">${nq.toLocaleDateString(undefined,{month:"long",day:"numeric",year:"numeric"})}</div></div>
+        <div class="big-num green">${money(Math.max(0,remaining))}</div></div>
+      <button class="btn sec btn-sm" style="margin-top:12px;width:100%" onclick="openLogPayment()">Log a tax payment</button>
+    </div>
+    <div class="sec-title">Reports</div>
+    <button class="btn sec" onclick="exportCSV()">Export CSV for accountant</button>
+    <button class="btn sec" style="margin-top:8px" onclick="openTaxProfile()">Edit tax profile</button>
+    <div class="disclaim">Educational estimates using 2026 federal parameters and 2025 California brackets — not tax advice. SE tax is 15.3% on 92.35% of net profit; the model applies the standard deduction, a 20% QBI deduction, and progressive federal + state brackets. Logged expenses are records to share with your CPA; update your net-profit estimate to reflect them. Confirm amounts with a tax professional and IRS Form 1040-ES.</div>`;
+
+  let h=`<div class="lg-title">Finance</div>
+    <div class="sub">Tap a section to expand</div>
+    ${finSection("proj","Projected revenue", `${money(month.total)} <span class="acc-sub">this month · ${money(year.total)} yr</span>`, projBody)}
+    ${finSection("reup","Package re-ups", reupVal30>0?`${money(reupVal30)} <span class="acc-sub">next 30 days</span>`:`${reups.length} <span class="acc-sub">client${reups.length===1?'':'s'} tracked</span>`, reupBody)}
+    ${finSection("income","Income (actual sales)", `${money(rep.month)} <span class="acc-sub">this month${rep.unpaid?` · ${money(rep.unpaid)} unpaid`:''}</span>`, incomeBody)}
+    ${finSection("tax","Taxes", `${money(remaining)} <span class="acc-sub">still to set aside</span>`, taxBody)}`;
+  el("screen-tax").innerHTML=h;
+}
+function finSection(id,title,headline,body){
+  const open=!!finOpen[id];
+  return `<div class="acc${open?' open':''}">
+    <button class="acc-head" onclick="toggleFin('${id}')">
+      <div><div class="acc-title">${title}</div><div class="acc-headline">${headline}</div></div>
+      <svg class="acc-chev" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 9l6 6 6-6"/></svg>
+    </button>
+    ${open?`<div class="acc-body">${body}</div>`:``}
+  </div>`;
+}
+function toggleFin(id){ finOpen[id]=!finOpen[id]; renderTax(); }
+
+/* ============================ ACTIONS ============================ */
+function completeSession(id){
+  const s=state.sessions.find(x=>x.id===id); if(!s) return;
+  s.status="completed"; save(); render();
+  const c=state.clients.find(x=>x.id===s.clientId);
+  const r=clientSessionsRemaining(s.clientId);
+  if(r<=2){ toastRenew(c,r); }
+}
+function toastRenew(c,r){
+  openSheet(`<div class="sheet-title">Session logged ✓</div>
+    <p class="muted">${c.name} now has <b class="${r<=0?'danger':'warn'}">${r} session${r===1?'':'s'}</b> left.</p>
+    ${r<=2?`<div class="card" style="background:var(--surface2)">Good moment to offer a renewal package.</div>`:""}
+    <button class="btn" onclick="closeSheet()">Got it</button>`);
+}
+
+function openAddClient(){
+  openSheet(`<div class="sheet-title">New client</div>
+    <label class="fld"><span>Name</span><input id="f-name" placeholder="Jordan Lee"/></label>
+    <label class="fld"><span>Phone</span><input id="f-phone" inputmode="tel" placeholder="(555) 555-1234"/></label>
+    <label class="fld"><span>Email</span><input id="f-email" inputmode="email" placeholder="jordan@example.com"/></label>
+    <div style="height:16px"></div>
+    <button class="btn" onclick="saveClient()">Add client</button>`);
+}
+function saveClient(){
+  const name=el("f-name").value.trim(); if(!name){ el("f-name").focus(); return; }
+  state.clients.push({id:"c"+Date.now(), name, phone:el("f-phone").value, email:el("f-email").value, status:"active"});
+  save(); render(); closeSheet(); switchTab("clients");
+}
+
+function openEditClient(cid){
+  const c=state.clients.find(x=>x.id===cid); if(!c) return;
+  const esc=v=>(v||"").replace(/"/g,"&quot;");
+  openSheet(`<div class="sheet-title">Edit client</div>
+    <label class="fld"><span>Name</span><input id="ec-name" value="${esc(c.name)}"/></label>
+    <label class="fld"><span>Phone</span><input id="ec-phone" inputmode="tel" value="${esc(c.phone)}"/></label>
+    <label class="fld"><span>Email</span><input id="ec-email" inputmode="email" value="${esc(c.email)}"/></label>
+    <div style="height:14px"></div>
+    <button class="btn" onclick="saveClientEdit('${cid}')">Save changes</button>
+    <button class="btn sec" style="margin-top:8px" onclick="openClient('${cid}')">Cancel</button>`);
+}
+function saveClientEdit(cid){
+  const c=state.clients.find(x=>x.id===cid); if(!c) return;
+  const name=el("ec-name").value.trim(); if(!name){ el("ec-name").focus(); return; }
+  c.name=name; c.phone=el("ec-phone").value.trim(); c.email=el("ec-email").value.trim();
+  save(); render(); openClient(cid);
+}
+function openClient(cid){
+  const c=state.clients.find(x=>x.id===cid);
+  const r=clientSessionsRemaining(cid);
+  const sales=state.sales.filter(s=>s.clientId===cid);
+  const hist=state.sessions.filter(s=>s.clientId===cid).sort((a,b)=>a.datetime<b.datetime?1:-1).slice(0,6);
+  openSheet(`
+    <div class="row"><div class="avatar" style="width:54px;height:54px;font-size:20px">${initials(c.name)}</div>
+      <div class="grow"><div class="sheet-title" style="margin:0">${c.name}</div>
+        <div class="meta">${c.phone||""}${c.email?" · "+c.email:""}</div></div>
+      <button class="btn sec btn-sm" onclick="openEditClient('${cid}')">Edit</button></div>
+    <div class="stat-grid" style="margin-top:14px">
+      <div class="stat"><div class="k">Sessions left</div><div class="v ${r<=2?'warn':'green'}">${r}</div></div>
+      <div class="stat"><div class="k">Lifetime spend</div><div class="v">${money(clientLifetime(cid))}</div></div>
+    </div>
+    <button class="btn" style="margin-top:14px" onclick="openSellPackage('${cid}')">Sell package</button>
+    ${(function(){ const t=clientRecurring(cid); if(!t) return ""; const L=["Su","M","Tu","W","Th","F","Sa"];
+      const dl=t.days.slice().sort((a,b)=>a-b).map(d=>L[d]).join(" ");
+      return `<div class="card" style="margin-top:12px"><div class="row between">
+        <div class="grow"><div class="name" style="font-size:15px">Recurring schedule</div>
+          <div class="meta">${dl} · ${t.time} · ${t.autoRenew?"auto-renew on":"until pack ends"}</div></div>
+        <button class="toggle ${t.autoRenew?'on':''}" onclick="toggleAutoRenew('${t.id}')"><span></span></button></div>
+        <button class="btn sec btn-sm" style="margin-top:10px;width:100%" onclick="stopRecurringSeries('${t.id}')">Stop recurring series</button>
+      </div>`; })()}
+    <div class="sec-title">Packages</div>
+    ${sales.length?sales.map(s=>{const pt=state.packageTypes.find(p=>p.id===s.packageTypeId); const nm=pt?pt.name:"Package";
+      return `<div class="card" style="margin-bottom:8px">
+        <div class="row between">
+          <div><div class="name">${nm}</div><div class="meta">${s.sessionsPurchased} sessions · ${fmtDate(s.soldAt)} · ${s.paymentMethod}</div></div>
+          <div style="text-align:right"><div class="big-num">${money(s.pricePaid)}</div>
+            <div class="meta">tax: ${money(s.taxSetAside)}</div></div>
+        </div>
+        ${s.paid?'':`<div class="row between" style="margin-top:10px"><span class="pill out">Unpaid</span>
+          <button class="btn sec btn-sm" onclick="markSalePaid('${s.id}')">Mark paid</button></div>`}
+      </div>`;}).join("")
+      :`<div class="card empty">No packages yet.</div>`}
+    <div class="sec-title">Recent sessions</div>
+    <div class="card">${hist.length?hist.map(s=>`<div class="row between list-item">
+        <div><div class="name" style="font-size:14px">Session ${s.sessionNumber}</div>
+          <div class="meta">${fmtDate(s.datetime.slice(0,10))} · ${fmtTime(s.datetime)}</div></div>
+        <span class="pill ${s.status==='completed'?'ok':'grey'}">${s.status}</span></div>`).join("")
+      :`<div class="empty">No sessions yet.</div>`}</div>
+    <button class="btn" style="background:transparent;color:var(--danger);border:1px solid var(--line);margin-top:20px"
+      onclick="confirmDeleteClient('${cid}')">Delete client</button>`);
+}
+
+function confirmDeleteClient(cid){
+  const c=state.clients.find(x=>x.id===cid); if(!c) return;
+  const nS=state.sessions.filter(s=>s.clientId===cid).length;
+  const nP=state.sales.filter(s=>s.clientId===cid).length;
+  openSheet(`<div class="sheet-title">Delete ${c.name}?</div>
+    <p class="muted">This permanently removes the client along with ${nS} session${nS===1?'':'s'} and ${nP} package record${nP===1?'':'s'}. This can't be undone.</p>
+    <button class="btn" style="background:var(--danger);color:#fff" onclick="deleteClient('${cid}')">Delete permanently</button>
+    <button class="btn sec" style="margin-top:8px" onclick="closeSheet()">Cancel</button>`);
+}
+function deleteClient(cid){
+  state.clients=state.clients.filter(c=>c.id!==cid);
+  state.sessions=state.sessions.filter(s=>s.clientId!==cid);
+  state.sales=state.sales.filter(s=>s.clientId!==cid);
+  state.recurringSessions=(state.recurringSessions||[]).filter(t=>t.clientId!==cid);
+  save(); render(); closeSheet(); switchTab("clients");
+}
+
+function openDataMenu(){
+  openSheet(`<div class="sheet-title">Demo data</div>
+    <p class="muted" style="margin-top:2px">Populate the app so you can see a realistic, busy schedule.</p>
+    <button class="btn" onclick="addDemoSchedule()">Add 7 clients + a busy 2 weeks</button>
+    <div class="fab-note" style="margin:8px 0 16px">Adds demo clients and ~5–7 sessions per day, on top of what's already here.</div>
+    <button class="btn sec" onclick="clearAll()">Start empty (clear all data)</button>
+    <button class="btn sec" style="margin-top:8px;background:transparent;color:var(--danger);border:1px solid var(--line)" onclick="resetAll()">Reset to demo sample</button>
+    <button class="btn sec" style="margin-top:8px" onclick="closeSheet()">Cancel</button>`);
+}
+function clearAll(){
+  const p=state.profile;
+  state={profile:p, packageTypes:[], clients:[], sales:[], sessions:[], expenses:[], taxPayments:[], recurringExpenses:[], recurringSessions:[]};
+  save(); render(); closeSheet(); switchTab("clients");
+}
+function addDemoSchedule(){
+  const names=["Alex Rivera","Sam Okafor","Jordan Kim","Taylor Nguyen","Casey Morgan","Riley Patel","Morgan Diaz"];
+  const rate=effectiveRate(state.profile.annualIncome).rate;
+  const pt=state.packageTypes.find(p=>p.id==="pt2")||state.packageTypes[0];
+  const base=Date.now(), ids=[];
+  names.forEach((n,i)=>{
+    const id="dc"+base+i;
+    state.clients.push({id, name:n, phone:"(415) 555-0"+(200+i), email:n.split(" ")[0].toLowerCase()+"@example.com", status:"active"});
+    state.sales.push({id:"ds"+base+i, clientId:id, packageTypeId:pt.id, sessionsPurchased:pt.sessions,
+      pricePaid:pt.price, paymentMethod:"Venmo", soldAt:dateOffset(-7), taxSetAside:+(pt.price*rate).toFixed(2)});
+    ids.push(id);
+  });
+  const counts={}; ids.forEach(id=>counts[id]=0);
+  const hourPool=[6,7,8,9,10,11,12,16,17,18,19];
+  const start=weekStart(new Date());
+  const todayMid=new Date(new Date().toDateString());
+  let seq=base;
+  for(let off=0; off<14; off++){
+    const day=new Date(start.getTime()+off*DAY_MS);
+    if(day.getDay()===0) continue; // skip Sundays
+    const ds=ymd(day);
+    const count=5+Math.floor(Math.random()*3); // 5–7
+    const hours=hourPool.slice().sort(()=>Math.random()-0.5).slice(0,count).sort((a,b)=>a-b);
+    hours.forEach((hr,k)=>{
+      const cid=ids[(off+k)%ids.length];
+      counts[cid]++;
+      const past=day<todayMid;
+      state.sessions.push({id:"de"+(seq++), clientId:cid, saleId:null,
+        datetime:ds+"T"+String(hr).padStart(2,"0")+":00", duration:60, type:"In-person",
+        status: past?"completed":"scheduled", sessionNumber:counts[cid]});
+    });
+  }
+  save(); render(); closeSheet(); switchTab("calendar");
+}
+function resetAll(){
+  try{ localStorage.removeItem(LS_KEY); }catch(e){}
+  state=defaultState(); seedDynamic(state); save(); render(); closeSheet(); switchTab("calendar");
+}
+
+/* ---- CSV import ---- */
+const CSV_TEMPLATE_HEADERS=["name","phone","email","package_name","package_sessions","package_price","paid","recur_days","session_time","start_date","sessions_remaining","auto_renew"];
+const CSV_TEMPLATE_ROWS=[
+  ["Alex Rivera","(415) 555-0201","alex@example.com","12-Session Strength","12","900","yes","MWF","07:00","2026-06-15","12","no"],
+  ["Sam Okafor","(510) 555-0202","sam@example.com","8-Session Block","8","640","no","Tue/Thu","18:00","2026-06-16","5","no"],
+  ["Jordan Kim","(408) 555-0203","jordan@example.com","10-Session Pack","10","800","yes","Sat","09:00","2026-06-13","10","yes"],
+];
+function csvTemplateString(){
+  const esc=x=>`"${String(x).replace(/"/g,'""')}"`;
+  return [CSV_TEMPLATE_HEADERS, ...CSV_TEMPLATE_ROWS].map(r=>r.map(esc).join(",")).join("\n");
+}
+function openImportMenu(){
+  openSheet(`<div class="sheet-title">Import clients from CSV</div>
+    <p class="muted" style="margin-top:2px">Bulk-add clients with their package, rate, and recurring schedule in one upload.</p>
+    <button class="btn" onclick="triggerCSVImport()">Choose CSV file</button>
+    <div class="fab-note" style="margin:10px 0 14px;text-align:left;line-height:1.5">Columns: name, phone, email, package_name, package_sessions (full pack size), package_price, paid (yes/no), recur_days (e.g. MWF or Tue/Thu), session_time (e.g. 7:00 or 6:30 PM), start_date (YYYY-MM-DD), sessions_remaining (books out until they run out), auto_renew (yes = keep the series going past the pack).</div>
+    <button class="btn sec" onclick="downloadTemplate()">Download CSV template</button>
+    <button class="btn sec" style="margin-top:8px" onclick="closeSheet()">Close</button>`);
+}
+function downloadTemplate(){
+  try{
+    const blob=new Blob([csvTemplateString()],{type:"text/csv"});
+    const url=URL.createObjectURL(blob); const a=document.createElement("a");
+    a.href=url; a.download="fitrm-client-import-template.csv"; document.body.appendChild(a); a.click(); a.remove(); URL.revokeObjectURL(url);
+  }catch(e){ alert("Download not supported in this preview."); }
+}
+function triggerCSVImport(){ el("csv-input").click(); }
+function handleCSVFile(e){
+  const file=e.target.files&&e.target.files[0]; if(!file) return;
+  const reader=new FileReader();
+  reader.onload=ev=>{
+    try{
+      const res=importCSV(ev.target.result);
+      openSheet(`<div class="sheet-title">Import complete ✓</div>
+        <p class="muted">Added <b>${res.clientsAdded}</b> client${res.clientsAdded===1?'':'s'}, <b>${res.salesAdded}</b> package${res.salesAdded===1?'':'s'}, and <b>${res.sessionsAdded}</b> session${res.sessionsAdded===1?'':'s'}.</p>
+        ${res.skipped?`<div class="card" style="background:var(--surface2)">${res.skipped} row(s) skipped (missing name).</div>`:''}
+        <button class="btn" onclick="closeSheet();switchTab('clients')">View clients</button>`);
+    }catch(err){ alert("Could not import CSV: "+err.message); }
+    e.target.value="";
+  };
+  reader.readAsText(file);
+}
+function parseCSV(text){
+  const lines=text.replace(/\r\n/g,"\n").replace(/\r/g,"\n").split("\n").filter(l=>l.trim().length);
+  if(!lines.length) return [];
+  const parseLine=line=>{ const out=[]; let cur="",q=false;
+    for(let i=0;i<line.length;i++){ const ch=line[i];
+      if(q){ if(ch==='"'){ if(line[i+1]==='"'){cur+='"';i++;} else q=false; } else cur+=ch; }
+      else { if(ch==='"') q=true; else if(ch===','){ out.push(cur); cur=""; } else cur+=ch; } }
+    out.push(cur); return out; };
+  const headers=parseLine(lines[0]).map(h=>h.trim().toLowerCase().replace(/\s+/g,"_"));
+  return lines.slice(1).map(l=>{ const cells=parseLine(l); const o={}; headers.forEach((h,i)=>o[h]=(cells[i]!==undefined?cells[i]:"").trim()); return o; });
+}
+function dowFromToken(tok){
+  tok=(tok||"").trim().toLowerCase();
+  const named={sun:0,su:0,sunday:0,mon:1,mo:1,monday:1,tue:2,tu:2,tues:2,tuesday:2,wed:3,we:3,weds:3,wednesday:3,
+    thu:4,th:4,thur:4,thurs:4,thursday:4,fri:5,fr:5,friday:5,sat:6,sa:6,saturday:6};
+  if(named[tok]!==undefined) return named[tok];
+  const single={m:1,t:2,w:3,r:4,f:5,s:6,u:0}; // single letters: T=Tue, R=Thu, S=Sat, U=Sun
+  if(tok.length===1 && single[tok]!==undefined) return single[tok];
+  return undefined;
+}
+function parseDays(str){
+  if(!str) return [];
+  str=str.trim();
+  if(/[,\/;| ]/.test(str)){ // separated tokens: "M,W"  "T,Th"  "m,w,f"  "M/thursday"
+    return [...new Set(str.split(/[,\/;| ]+/).map(dowFromToken).filter(v=>v!==undefined))].sort((a,b)=>a-b);
+  }
+  if(/^[mtwrfsu]+$/i.test(str)){ // compact letters: "MWF"
+    const compact={m:1,t:2,w:3,r:4,f:5,s:6,u:0};
+    return [...new Set(str.toLowerCase().split("").map(c=>compact[c]).filter(v=>v!==undefined))].sort((a,b)=>a-b);
+  }
+  const v=dowFromToken(str); return v!==undefined?[v]:[];
+}
+function parseTime(str){
+  if(!str) return null;
+  const m=str.trim().toLowerCase().match(/^(\d{1,2})(?::(\d{2}))?\s*(am|pm)?$/);
+  if(!m) return null;
+  let h=parseInt(m[1]); const min=m[2]?parseInt(m[2]):0, ap=m[3];
+  if(ap==="pm"&&h<12) h+=12; if(ap==="am"&&h===12) h=0; if(h>23) h%=24;
+  return String(h).padStart(2,"0")+":"+String(min).padStart(2,"0");
+}
+function importCSV(text){
+  const rows=parseCSV(text);
+  let clientsAdded=0, salesAdded=0, sessionsAdded=0, skipped=0;
+  const sessBefore=state.sessions.length;
+  const rate=effectiveRate(state.profile.annualIncome).rate;
+  rows.forEach((r,idx)=>{
+    const name=(r.name||"").trim();
+    if(!name){ skipped++; return; }
+    const cid="ic"+Date.now()+"_"+idx;
+    state.clients.push({id:cid, name, phone:(r.phone||"").trim(), email:(r.email||"").trim(), status:"active"});
+    clientsAdded++;
+    const startStr=(r.start_date||"").trim()||todayISO();
+    const remCol=(r.sessions_remaining!==undefined && String(r.sessions_remaining).trim()!=="") ? Math.max(0,parseInt(r.sessions_remaining)||0) : null;
+    let psess=parseInt(r.package_sessions)||0;
+    if(!psess) psess = remCol!=null ? remCol : 0;
+    const rem = remCol!=null ? remCol : psess;
+    const pprice=+String(r.package_price||"").replace(/[^0-9.]/g,"")||0;
+    if(psess>0){
+      const pname=(r.package_name||"Package").trim();
+      let pt=state.packageTypes.find(p=>p.name.toLowerCase()===pname.toLowerCase());
+      if(!pt){ pt={id:"ipt"+Date.now()+"_"+idx, name:pname, sessions:psess, price:pprice}; state.packageTypes.push(pt); }
+      const paid=/^(y|yes|true|paid|1|x)$/i.test((r.paid||"").trim());
+      state.sales.push({id:"is"+Date.now()+"_"+idx, clientId:cid, packageTypeId:pt.id, sessionsPurchased:psess,
+        pricePaid:pprice, paymentMethod:"Imported", paid, soldAt:startStr, taxSetAside:+(pprice*rate).toFixed(2)});
+      salesAdded++;
+    }
+    const days=parseDays(r.recur_days||"");
+    const time=parseTime(r.session_time||"")||"07:00";
+    const autoRenew=/^(y|yes|true|1|x)$/i.test((r.auto_renew||"").trim());
+    let counter=0;
+    if(days.length){
+      const sorted=days.slice().sort((a,b)=>a-b);
+      // (1) past completed sessions to reflect what's already been used from the pack (not for auto-renew clients)
+      const used=Math.max(0, psess - rem);
+      if(!autoRenew && used>0){
+        const back=[]; let d=parseYMD(startStr), g=0;
+        while(back.length<used && g++<used*20+90){ d=new Date(+d-DAY_MS); if(sorted.includes(d.getDay())) back.push(ymd(d)); }
+        back.reverse().forEach(ds=>{ counter++;
+          state.sessions.push({id:"ise"+Date.now()+"_"+idx+"_p"+counter, clientId:cid, saleId:null,
+            datetime:ds+"T"+time, duration:60, type:"In-person", status:"completed", sessionNumber:counter, notes:""});
+          sessionsAdded++; });
+      }
+      // (2) future: book out until sessions run out, or roll forward if auto-renew
+      if(autoRenew){
+        state.recurringSessions.push({id:"rt"+Date.now()+"_"+idx, clientId:cid, days:sorted, time, type:"In-person", autoRenew:true, active:true});
+      } else {
+        const start=parseYMD(startStr), ws=weekStart(start); let count=0, w=0;
+        while(count<rem && w<520){
+          for(const dow of sorted){ if(count>=rem) break;
+            const d=new Date(+ws); d.setDate(d.getDate()+w*7+dow);
+            if(d>=start){ counter++; count++;
+              state.sessions.push({id:"ise"+Date.now()+"_"+idx+"_f"+counter, clientId:cid, saleId:null,
+                datetime:ymd(d)+"T"+time, duration:60, type:"In-person", status:"scheduled", sessionNumber:counter, notes:""});
+              sessionsAdded++; } }
+          w++;
+        }
+        state.recurringSessions.push({id:"rt"+Date.now()+"_"+idx, clientId:cid, days:sorted, time, type:"In-person", autoRenew:false, active:true});
+      }
+    }
+  });
+  syncRecurringSessions(state);
+  sessionsAdded=state.sessions.length-sessBefore;
+  save(); render();
+  return {clientsAdded, salesAdded, sessionsAdded, skipped};
+}
+
+/* Settings */
+function openSettings(){
+  const burns=state.profile.noShowBurns;
+  openSheet(`<div class="sheet-title">Settings</div>
+    <div class="card" style="background:var(--surface2)">
+      <div class="row between"><div class="grow"><div class="name" style="font-size:15px">No-shows burn a session</div>
+        <div class="meta">When on, a no-show counts against the client's package.</div></div>
+        <button class="toggle ${burns?'on':''}" onclick="toggleNoShow()"><span></span></button></div>
+    </div>
+    <button class="btn sec" onclick="openTaxProfile()">Tax profile</button>
+    <button class="btn sec" style="margin-top:8px" onclick="openDataMenu()">Demo / reset data</button>
+    ${window.currentUser?`<div class="meta" style="margin:14px 2px 6px">Signed in as ${window.currentUser.email}</div>
+      <button class="btn sec" style="color:var(--danger)" onclick="doLogout()">Log out</button>`:''}
+    <button class="btn sec" style="margin-top:8px" onclick="closeSheet()">Close</button>`);
+}
+function toggleNoShow(){ state.profile.noShowBurns=!state.profile.noShowBurns; save(); render(); openSettings(); }
+
+/* Expenses */
+function openExpenses(){
+  const recs=(state.recurringExpenses||[]).filter(t=>t.active!==false);
+  const exps=(state.expenses||[]).slice().sort((a,b)=>a.date<b.date?1:-1);
+  openSheet(`<div class="sheet-title">Expenses & deductions</div>
+    <p class="muted" style="margin-top:2px">${money(expensesYTD())} logged this year · lowers your taxable profit</p>
+    <button class="btn" onclick="openAddExpense()">＋ Add expense</button>
+    ${recs.length?`<div class="sec-title">Recurring — auto-added monthly</div>`+recs.map(t=>`<div class="card row between" style="margin-bottom:8px">
+        <div class="grow"><div class="name" style="font-size:15px">${t.note||t.category} <span class="pill ok" style="margin-left:4px">monthly</span></div>
+          <div class="meta">${t.category} · day ${t.dayOfMonth} each month</div></div>
+        <div class="row" style="gap:12px"><div class="big-num">${money(t.amount)}</div>
+          <button class="btn ghost" style="color:var(--danger);padding:0 2px" onclick="stopRecurring('${t.id}')">Stop</button></div>
+      </div>`).join(""):``}
+    <div class="sec-title">Charges</div>
+    ${exps.length?exps.map(e=>`<div class="card row between" style="margin-bottom:8px">
+        <div class="grow"><div class="name" style="font-size:15px">${e.note||e.category}${e.recurId?` <span class="pill grey" style="margin-left:4px">auto</span>`:``}</div>
+          <div class="meta">${e.category} · ${fmtDate(e.date)}</div></div>
+        <div class="row" style="gap:12px"><div class="big-num">${money(e.amount)}</div>
+          <button class="btn ghost" style="color:var(--danger);padding:0 2px" onclick="deleteExpense('${e.id}')">✕</button></div>
+      </div>`).join(""):`<div class="card empty">No expenses yet.</div>`}
+    <button class="btn sec" style="margin-top:10px" onclick="closeSheet()">Close</button>`);
+}
+function openAddExpense(){
+  const cats=["Equipment","Certifications","Mileage","Rent / Space","Phone / Internet","Software","Marketing","Continuing ed","Other"];
+  expRecurring=false;
+  openSheet(`<div class="sheet-title">New expense</div>
+    <label class="fld"><span>What is it?</span><input id="ex-note" placeholder="Studio rent"/></label>
+    <label class="fld"><span>Category</span><select id="ex-cat">${cats.map(c=>`<option>${c}</option>`).join("")}</select></label>
+    <label class="fld"><span>Amount ($)</span><input id="ex-amt" type="number" inputmode="decimal" placeholder="120"/></label>
+    <label class="fld"><span>Date charged</span><input id="ex-date" type="date" value="${todayISO()}"/></label>
+    <div class="card" style="background:var(--surface2);margin-top:14px">
+      <div class="row between"><div class="grow"><div class="name" style="font-size:15px">Recurring monthly</div>
+        <div class="meta">Auto-adds on this day every month — set it and forget it.</div></div>
+        <button id="ex-recur" class="toggle" onclick="toggleExpRecur()"><span></span></button></div>
+    </div>
+    <div style="height:14px"></div>
+    <button class="btn" onclick="saveExpense()">Add expense</button>`);
+}
+function toggleExpRecur(){ expRecurring=!expRecurring; el("ex-recur").classList.toggle("on",expRecurring); }
+function saveExpense(){
+  const amount=+el("ex-amt").value||0; if(amount<=0){ el("ex-amt").focus(); return; }
+  const date=el("ex-date").value||todayISO(), category=el("ex-cat").value, note=el("ex-note").value.trim();
+  if(expRecurring){
+    const id="r"+Date.now(), dom=parseInt(date.slice(8,10))||1;
+    state.recurringExpenses.push({id, dayOfMonth:dom, category, amount, note, startMonth:date.slice(0,7), active:true});
+    syncRecurring(state);
+  } else {
+    state.expenses.push({id:"e"+Date.now(), date, category, amount, note});
+  }
+  save(); render(); openExpenses();
+}
+function deleteExpense(id){ state.expenses=state.expenses.filter(e=>e.id!==id); save(); render(); openExpenses(); }
+function stopRecurring(id){ state.recurringExpenses=state.recurringExpenses.filter(t=>t.id!==id); save(); render(); openExpenses(); }
+
+/* Tax payments */
+function openLogPayment(){
+  openSheet(`<div class="sheet-title">Log a tax payment</div>
+    <p class="muted" style="margin-top:2px">Record an estimated payment you sent. Reduces "still to set aside".</p>
+    <label class="fld"><span>Amount ($)</span><input id="tp-amt" type="number" inputmode="decimal" placeholder="${Math.max(0,Math.round(reserveRemaining()))}"/></label>
+    <label class="fld"><span>Date</span><input id="tp-date" type="date" value="${todayISO()}"/></label>
+    <label class="fld"><span>Label</span><input id="tp-label" placeholder="Q2 estimated tax"/></label>
+    <div style="height:14px"></div>
+    <button class="btn" onclick="saveTaxPayment()">Log payment</button>`);
+}
+function saveTaxPayment(){
+  const amount=+el("tp-amt").value||0; if(amount<=0){ el("tp-amt").focus(); return; }
+  state.taxPayments.push({id:"tp"+Date.now(), amount, date:el("tp-date").value||todayISO(),
+    label:el("tp-label").value.trim()||"Estimated tax"});
+  save(); render(); closeSheet(); switchTab("tax");
+}
+
+/* Income report */
+function openIncomeReport(){
+  const r=incomeReport();
+  openSheet(`<div class="sheet-title">Income report</div>
+    <div class="stat-grid" style="margin-top:10px">
+      <div class="stat"><div class="k">This month</div><div class="v green">${money(r.month)}</div></div>
+      <div class="stat"><div class="k">This quarter</div><div class="v">${money(r.quarter)}</div></div>
+      <div class="stat"><div class="k">This year</div><div class="v">${money(r.year)}</div></div>
+      <div class="stat"><div class="k">Outstanding</div><div class="v ${r.unpaid?'warn':''}">${money(r.unpaid)}</div></div>
+    </div>
+    <div class="sec-title">Revenue by client</div>
+    ${r.top.length?`<div class="card">`+r.top.slice(0,8).map(t=>{const c=state.clients.find(x=>x.id===t.cid);
+      return `<div class="row between list-item"><div class="name" style="font-size:15px">${c?c.name:"(deleted)"}</div><div class="big-num">${money(t.v)}</div></div>`;}).join("")+`</div>`:`<div class="card empty">No sales yet.</div>`}
+    <button class="btn sec" style="margin-top:10px" onclick="exportCSV()">Export CSV for accountant</button>
+    <button class="btn sec" style="margin-top:8px" onclick="closeSheet()">Close</button>`);
+}
+
+/* CSV export */
+function exportCSV(){
+  const rows=[["Type","Date","Client","Detail","Amount","Paid"]];
+  state.sales.forEach(s=>{ const c=state.clients.find(x=>x.id===s.clientId); const pt=state.packageTypes.find(p=>p.id===s.packageTypeId);
+    rows.push(["Income", s.soldAt, c?c.name:"(deleted)", (pt?pt.name:"Package")+" ("+s.sessionsPurchased+" sessions)", s.pricePaid, s.paid?"Yes":"No"]); });
+  (state.expenses||[]).forEach(e=>{ rows.push(["Expense", e.date, "", e.category+(e.note?" - "+e.note:""), -e.amount, ""]); });
+  (state.taxPayments||[]).forEach(p=>{ rows.push(["Tax payment", p.date, "", p.label||"Estimated tax", -p.amount, ""]); });
+  const csv=rows.map(r=>r.map(x=>`"${String(x).replace(/"/g,'""')}"`).join(",")).join("\n");
+  try{
+    const blob=new Blob([csv],{type:"text/csv"});
+    const url=URL.createObjectURL(blob); const a=document.createElement("a");
+    a.href=url; a.download="fitrm-export-"+todayISO()+".csv"; document.body.appendChild(a); a.click();
+    a.remove(); URL.revokeObjectURL(url);
+  }catch(e){ alert("Export not supported in this preview."); }
+}
+
+function openSellPackage(cid){
+  const opts=state.packageTypes.map(p=>`<option value="${p.id}">${p.name} — ${money(p.price)}</option>`).join("");
+  openSheet(`<div class="sheet-title">Sell package</div>
+    <p class="muted" style="margin-top:2px">to ${state.clients.find(c=>c.id===cid).name}</p>
+    <label class="fld"><span>Package</span><select id="f-pt" onchange="previewTax()">${opts}</select></label>
+    <label class="fld"><span>Payment method</span>
+      <select id="f-pay"><option>Venmo</option><option>Zelle</option><option>Cash</option><option>Card</option><option>Check</option></select></label>
+    <label class="fld"><span>Payment status</span>
+      <div class="seg"><button id="pay-yes" class="on" onclick="setPaid(true)">Paid</button>
+        <button id="pay-no" onclick="setPaid(false)">Owed</button></div></label>
+    <div class="banner" id="tax-preview" style="margin-top:16px"></div>
+    <button class="btn" onclick="saveSale('${cid}')">Record sale</button>`);
+  sellPaid=true; previewTax();
+}
+function setPaid(v){ sellPaid=v; el("pay-yes").classList.toggle("on",v); el("pay-no").classList.toggle("on",!v); }
+function previewTax(){
+  const pt=state.packageTypes.find(p=>p.id===el("f-pt").value);
+  const rate=effectiveRate(state.profile.annualIncome).rate;
+  const setAside=pt.price*rate;
+  el("tax-preview").innerHTML=`<div class="meta" style="color:#bfe8d8">Set aside for taxes</div>
+    <div class="amt">${money2(setAside)}</div>
+    <div class="meta" style="color:#bfe8d8;margin-top:2px">${(rate*100).toFixed(1)}% of ${money(pt.price)} · adds ${pt.sessions} session${pt.sessions===1?'':'s'}</div>`;
+}
+function saveSale(cid){
+  const pt=state.packageTypes.find(p=>p.id===el("f-pt").value);
+  const rate=effectiveRate(state.profile.annualIncome).rate;
+  const used=state.sessions.filter(s=>s.clientId===cid).length;
+  state.sales.push({id:"s"+Date.now(), clientId:cid, packageTypeId:pt.id,
+    sessionsPurchased:pt.sessions, pricePaid:pt.price, paymentMethod:el("f-pay").value, paid:sellPaid,
+    soldAt:todayISO(), taxSetAside:+(pt.price*rate).toFixed(2)});
+  save(); render(); closeSheet(); switchTab("clients");
+}
+function markSalePaid(id){ const s=state.sales.find(x=>x.id===id); if(s){ s.paid=true; save(); render(); openClient(s.clientId); } }
+
+function openAddSession(){
+  const copts=state.clients.map(c=>`<option value="${c.id}">${c.name}</option>`).join("");
+  recurDays=[]; recurAutoRenew=false;
+  openSheet(`<div class="sheet-title">New session</div>
+    <label class="fld"><span>Client</span><select id="f-client">${copts}</select></label>
+    <label class="fld"><span>Start date</span><input id="f-date" type="date" value="${todayISO()}" onchange="onRepeatChange()"/></label>
+    <label class="fld"><span>Time</span><input id="f-time" type="time" value="07:00"/></label>
+    <label class="fld"><span>Type</span><select id="f-type"><option>In-person</option><option>Virtual</option></select></label>
+    <label class="fld"><span>Repeat</span><select id="f-repeat" onchange="onRepeatChange()">
+      <option value="none">Does not repeat</option>
+      <option value="weekly">Weekly on selected days</option></select></label>
+    <div class="fld" id="dow-fld" style="display:none"><span>On these days</span>
+      <div class="seg" id="dow-row">${["S","M","T","W","T","F","S"].map((d,i)=>`<button type="button" data-dow="${i}" onclick="toggleDow(${i})">${d}</button>`).join("")}</div></div>
+    <div class="card" id="renew-fld" style="display:none;background:var(--surface2);margin-top:10px">
+      <div class="row between"><div class="grow"><div class="name" style="font-size:15px">Auto-renew series</div>
+        <div class="meta">Keep booking future weeks even after the pack runs out (assumes they'll renew).</div></div>
+        <button id="renew-tg" class="toggle" onclick="toggleRecurRenew()"><span></span></button></div>
+    </div>
+    <label class="fld" id="weeks-fld" style="display:none"><span>For how many weeks (if not auto-renewing)</span>
+      <input id="f-weeks" type="number" inputmode="numeric" value="8"/></label>
+    <div class="fab-note">A Google Calendar invite would auto-send to each client in the full app.</div>
+    <div style="height:14px"></div>
+    <button class="btn" onclick="saveSession()">Schedule session</button>`);
+}
+function onRepeatChange(){
+  const weekly = el("f-repeat").value==="weekly";
+  el("dow-fld").style.display = weekly ? "block" : "none";
+  el("renew-fld").style.display = weekly ? "block" : "none";
+  el("weeks-fld").style.display = (weekly && !recurAutoRenew) ? "block" : "none";
+  if(weekly && recurDays.length===0){ recurDays=[parseYMD(el("f-date").value).getDay()]; }
+  paintDow();
+}
+function toggleRecurRenew(){
+  recurAutoRenew=!recurAutoRenew;
+  el("renew-tg").classList.toggle("on",recurAutoRenew);
+  el("weeks-fld").style.display = recurAutoRenew ? "none" : "block";
+}
+function toggleDow(i){
+  recurDays = recurDays.includes(i) ? recurDays.filter(x=>x!==i) : recurDays.concat(i);
+  paintDow();
+}
+function paintDow(){
+  (document.querySelectorAll("#dow-row [data-dow]")||[]).forEach(b=>
+    b.classList.toggle("on", recurDays.includes(+b.dataset.dow)));
+}
+function saveSession(){
+  const cid=el("f-client").value;
+  const repeat=el("f-repeat").value;
+  const baseDate=el("f-date").value, time=el("f-time").value, type=el("f-type").value;
+  const start=parseYMD(baseDate);
+  if(repeat==="weekly"){
+    const days=(recurDays.length?recurDays:[start.getDay()]).slice().sort((a,b)=>a-b);
+    if(recurAutoRenew){
+      state.recurringSessions.push({id:"rt"+Date.now(), clientId:cid, days, time, type, autoRenew:true, active:true});
+      syncRecurringSessions(state);
+    } else {
+      const weeks=Math.max(1, parseInt(el("f-weeks").value)||1), ws=weekStart(start); let dates=[];
+      for(let w=0; w<weeks; w++){ days.forEach(dow=>{ const d=new Date(+ws); d.setDate(d.getDate()+w*7+dow); if(d>=start) dates.push(ymd(d)); }); }
+      dates.sort();
+      let used=state.sessions.filter(s=>s.clientId===cid).length; const stamp=Date.now();
+      dates.forEach((ds,i)=>{ used++; state.sessions.push({id:"se"+stamp+"_"+i, clientId:cid, saleId:null,
+        datetime:ds+"T"+time, duration:60, type, status:"scheduled", sessionNumber:used, notes:""}); });
+      state.recurringSessions.push({id:"rt"+Date.now(), clientId:cid, days, time, type, autoRenew:false, active:true});
+    }
+  } else {
+    const used=state.sessions.filter(s=>s.clientId===cid).length;
+    state.sessions.push({id:"se"+Date.now(), clientId:cid, saleId:null, datetime:baseDate+"T"+time,
+      duration:60, type, status:"scheduled", sessionNumber:used+1, notes:""});
+  }
+  save(); render(); closeSheet(); switchTab("calendar");
+}
+
+function openTaxProfile(){
+  const p=state.profile;
+  openSheet(`<div class="sheet-title">Tax profile</div>
+    <label class="fld"><span>State</span><select id="f-state"><option value="CA">California</option>
+      <option value="TX">Texas (no income tax)</option><option value="FL">Florida (no income tax)</option>
+      <option value="NY">New York</option></select></label>
+    <label class="fld"><span>Filing status</span><select id="f-filing">
+      <option value="single">Single</option><option value="married">Married filing jointly</option></select></label>
+    <label class="fld"><span>Business type</span><select id="f-biz">
+      <option value="sole_prop">Sole proprietor</option><option value="llc">Single-member LLC</option><option value="scorp">S-corp</option></select></label>
+    <label class="fld"><span>Estimated annual net profit</span><input id="f-income" type="number" value="${p.annualIncome}"/></label>
+    <div class="disclaim">Only California is fully modeled in this prototype. Other states are illustrative — the full app carries a complete per-state rate table.</div>
+    <div style="height:8px"></div>
+    <button class="btn" onclick="saveProfile()">Save profile</button>`);
+  el("f-state").value=p.state; el("f-filing").value=p.filingStatus; el("f-biz").value=p.businessType||"sole_prop";
+}
+function saveProfile(){
+  state.profile.state=el("f-state").value;
+  state.profile.filingStatus=el("f-filing").value;
+  state.profile.businessType=el("f-biz").value;
+  state.profile.annualIncome=+el("f-income").value||0;
+  save(); render(); closeSheet();
+}
+
+/* ============================ NAV + SHEET ============================ */
+function switchTab(tab){
+  activeTab=tab;
+  ["home","calendar","clients","packages","tax"].forEach(t=>{
+    el("screen-"+t).classList.toggle("hidden", t!==tab);
+  });
+  document.querySelectorAll(".tab").forEach(b=>b.classList.toggle("on", b.dataset.tab===tab));
+  el("screen-"+tab).scrollTop=0;
+}
+document.querySelectorAll(".tab").forEach(b=>b.addEventListener("click",()=>switchTab(b.dataset.tab)));
+
+function openSheet(html){ el("sheet-body").innerHTML=html; el("sheet").classList.add("show"); el("scrim").classList.add("show"); }
+function closeSheet(){ el("sheet").classList.remove("show"); el("scrim").classList.remove("show"); }
+el("scrim").addEventListener("click", closeSheet);
+
+// Started after the trainer logs in (see auth script below). Namespaces data per account.
+function startApp(uid){ if(uid) LS_KEY = "fitrm_poc_" + uid; state = load(); render(); }
+</script>
+
+<script>
+/* ===================== SUPABASE AUTH ===================== */
+const SB_URL  = "https://ykjcflkffletanpbwidj.supabase.co";
+const SB_ANON = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InlramNmbGtmZmxldGFucGJ3aWRqIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODExMTU4NTUsImV4cCI6MjA5NjY5MTg1NX0.sc1T8VxaT9fzevDjRf8qo2Ls6QvlHv5Gcy3Fb0C85As";
+const sb = window.supabase.createClient(SB_URL, SB_ANON);
+let authMode = "login";
+const aEl = id => document.getElementById(id);
+
+function authToggle(){
+  authMode = authMode==="login" ? "signup" : "login";
+  aEl("name-fld").style.display = authMode==="signup" ? "block" : "none";
+  aEl("au-submit").textContent  = authMode==="signup" ? "Create account" : "Log in";
+  aEl("auth-switch").innerHTML  = authMode==="signup"
+    ? 'Already have an account? <a onclick="authToggle()">Log in</a>'
+    : 'New here? <a onclick="authToggle()">Create an account</a>';
+  authErr(""); authMsg("");
+}
+function authErr(m){ const e=aEl("auth-error"); e.textContent=m; e.style.display=m?"block":"none"; }
+function authMsg(m){ const e=aEl("auth-msg"); e.innerHTML=m; e.style.display=m?"block":"none"; }
+
+async function authSubmit(){
+  const email=aEl("au-email").value.trim(), pass=aEl("au-pass").value;
+  if(!email || !pass){ authErr("Enter your email and password."); return; }
+  aEl("au-submit").disabled=true; authErr(""); authMsg("");
+  try{
+    if(authMode==="signup"){
+      const name=aEl("au-name").value.trim();
+      const { data, error } = await sb.auth.signUp({ email, password:pass, options:{ data:{ name } } });
+      if(error) authErr(error.message);
+      else if(data.session) enterApp(data.user);                 // email confirmation off
+      else { authMsg("Check your email to confirm your account, then log in."); authMode="signup"; authToggle(); }
+    } else {
+      const { data, error } = await sb.auth.signInWithPassword({ email, password:pass });
+      if(error) authErr(error.message); else enterApp(data.user);
+    }
+  }catch(e){ authErr("Couldn't reach the server. Double-check the connection keys."); }
+  aEl("au-submit").disabled=false;
+}
+async function doLogout(){ try{ await sb.auth.signOut(); }catch(e){} location.reload(); }
+
+function enterApp(user){
+  window.currentUser = user;
+  aEl("auth-screen").style.display = "none";
+  aEl("frame").style.display = "flex";
+  startApp(user.id);
+}
+
+(async function(){
+  try{
+    const { data:{ session } } = await sb.auth.getSession();
+    if(session) enterApp(session.user);
+  }catch(e){ authErr("Couldn't reach the server. Check the connection keys."); }
+})();
+
+document.addEventListener("keydown", e=>{
+  if(e.key==="Enter" && aEl("auth-screen") && aEl("auth-screen").style.display!=="none") authSubmit();
+});
+</script>
+</body>
+</html>
