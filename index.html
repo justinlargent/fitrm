@@ -214,6 +214,15 @@
   .acc.open .acc-chev{transform:rotate(180deg);}
   .acc-body{padding:2px 0 16px;}
   .acc-body .sec-title:first-child{margin-top:6px;}
+  /* Income vs expenses chart */
+  .tr-read{font-size:13px;color:var(--muted);font-weight:600;margin:2px 0 12px;line-height:1.5;}
+  .tr-read .tr-m{color:var(--text);font-weight:800;}
+  .tr-read .tr-i{color:var(--accent);font-weight:700;}
+  .tr-read .tr-e{color:var(--muted);font-weight:700;}
+  #trend-svg{cursor:crosshair;}
+  .tr-legend{display:flex;gap:18px;margin-top:10px;font-size:12px;color:var(--muted);font-weight:600;}
+  .tr-legend i{display:inline-block;width:16px;border-top:2px solid var(--accent);margin-right:6px;vertical-align:middle;}
+  .tr-legend .e i{border-top:2px dashed var(--muted);}
 
   /* ===================== MARKETING HOMEPAGE ===================== */
   #home-screen{position:fixed; inset:0; overflow-y:auto; -webkit-overflow-scrolling:touch;
@@ -728,6 +737,65 @@ function reupForecast(){
   }).filter(x=>x.f>0 || x.left<=3)
     .sort((a,b)=>(a.weeks==null?1e9:a.weeks)-(b.weeks==null?1e9:b.weeks));
 }
+
+/* ---- Income vs expenses trend (last 12 months) ---- */
+function trendData(){
+  const arr=[], now=new Date();
+  for(let i=11;i>=0;i--){
+    const m=new Date(now.getFullYear(),now.getMonth()-i,1);
+    const ym=m.getFullYear()+"-"+String(m.getMonth()+1).padStart(2,"0");
+    const income=state.sales.filter(s=>s.soldAt&&s.soldAt.slice(0,7)===ym).reduce((a,s)=>a+s.pricePaid,0);
+    const expense=(state.expenses||[]).filter(e=>e.date&&e.date.slice(0,7)===ym).reduce((a,e)=>a+e.amount,0);
+    arr.push({ym, label:m.toLocaleDateString(undefined,{month:"short"}), full:m.toLocaleDateString(undefined,{month:"short",year:"numeric"}), income, expense});
+  }
+  return arr;
+}
+const TR={W:320,H:150,padL:10,padR:10,padT:12,padB:22};
+function trChartHTML(data){
+  const {W,H,padL,padR,padT,padB}=TR, plotW=W-padL-padR, plotH=H-padT-padB, n=data.length;
+  const maxV=Math.max(100,...data.map(d=>Math.max(d.income,d.expense)));
+  const X=i=> padL+(n<=1?plotW/2:(i/(n-1))*plotW);
+  const Y=v=> padT+plotH-(v/maxV)*plotH;
+  const line=key=> data.map((d,i)=>(i?"L":"M")+X(i).toFixed(1)+" "+Y(d[key]).toFixed(1)).join(" ");
+  const area="M"+X(0).toFixed(1)+" "+(padT+plotH)+" "+data.map((d,i)=>"L"+X(i).toFixed(1)+" "+Y(d.income).toFixed(1)).join(" ")+" L"+X(n-1).toFixed(1)+" "+(padT+plotH)+" Z";
+  const xlabels=data.map((d,i)=> i%2===0?`<text x="${X(i).toFixed(1)}" y="${H-6}" text-anchor="middle" font-size="8" fill="#9a988e">${d.label}</text>`:"").join("");
+  const last=n-1, net=data[last].income-data[last].expense;
+  return `<div class="tr-read" id="trend-read"><span class="tr-m">${data[last].full}</span> &nbsp; <span class="tr-i">Income ${money(data[last].income)}</span> · <span class="tr-e">Exp ${money(data[last].expense)}</span> · <span style="color:${net>=0?'#8f9d68':'var(--danger)'};font-weight:800">Net ${money(net)}</span></div>
+    <svg id="trend-svg" viewBox="0 0 ${W} ${H}" width="100%" style="display:block;touch-action:none">
+      <defs><linearGradient id="trendg" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#8f9d68" stop-opacity="0.26"/><stop offset="1" stop-color="#8f9d68" stop-opacity="0"/></linearGradient></defs>
+      <path d="${area}" fill="url(#trendg)"/>
+      <path d="${line('income')}" fill="none" stroke="#8f9d68" stroke-width="2.2" stroke-linejoin="round" stroke-linecap="round"/>
+      <path d="${line('expense')}" fill="none" stroke="#9a988e" stroke-width="1.8" stroke-dasharray="4 3" stroke-linejoin="round" stroke-linecap="round"/>
+      <line id="trend-cross" x1="${X(last).toFixed(1)}" y1="${padT}" x2="${X(last).toFixed(1)}" y2="${padT+plotH}" stroke="#3a3b3d" stroke-width="1"/>
+      <circle id="trend-dot-i" r="3.5" fill="#8f9d68" cx="${X(last).toFixed(1)}" cy="${Y(data[last].income).toFixed(1)}"/>
+      <circle id="trend-dot-e" r="3" fill="#9a988e" cx="${X(last).toFixed(1)}" cy="${Y(data[last].expense).toFixed(1)}"/>
+      ${xlabels}
+    </svg>
+    <div class="tr-legend"><span><i></i>Income</span><span class="e"><i></i>Expenses</span></div>`;
+}
+function trSetActive(i){
+  const data=window.__trend; if(!data||!data.length) return;
+  const {W,H,padL,padR,padT,padB}=TR, plotW=W-padL-padR, plotH=H-padT-padB, n=data.length;
+  const maxV=Math.max(100,...data.map(d=>Math.max(d.income,d.expense)));
+  i=Math.max(0,Math.min(n-1,i));
+  const X=padL+(n<=1?plotW/2:(i/(n-1))*plotW);
+  const Yi=padT+plotH-(data[i].income/maxV)*plotH, Ye=padT+plotH-(data[i].expense/maxV)*plotH;
+  const set=(id,a)=>{const el=document.getElementById(id); if(el)for(const k in a)el.setAttribute(k,a[k]);};
+  set("trend-cross",{x1:X.toFixed(1),x2:X.toFixed(1)});
+  set("trend-dot-i",{cx:X.toFixed(1),cy:Yi.toFixed(1)});
+  set("trend-dot-e",{cx:X.toFixed(1),cy:Ye.toFixed(1)});
+  const net=data[i].income-data[i].expense, r=document.getElementById("trend-read");
+  if(r) r.innerHTML=`<span class="tr-m">${data[i].full}</span> &nbsp; <span class="tr-i">Income ${money(data[i].income)}</span> · <span class="tr-e">Exp ${money(data[i].expense)}</span> · <span style="color:${net>=0?'#8f9d68':'var(--danger)'};font-weight:800">Net ${money(net)}</span>`;
+}
+function initTrendChart(){
+  const svg=document.getElementById("trend-svg"); if(!svg||!window.__trend) return;
+  const {W,padL,padR}=TR, plotW=W-padL-padR, n=window.__trend.length;
+  function idx(cx){ const r=svg.getBoundingClientRect(); const vx=(cx-r.left)/r.width*W; return Math.round(((vx-padL)/plotW)*(n-1)); }
+  function move(e){ const cx=e.touches?(e.touches[0]&&e.touches[0].clientX):e.clientX; if(cx==null) return; trSetActive(idx(cx)); if(e.touches&&e.cancelable) e.preventDefault(); }
+  svg.addEventListener("mousemove",move);
+  svg.addEventListener("touchstart",move,{passive:false});
+  svg.addEventListener("touchmove",move,{passive:false});
+}
 function fmtDate(iso){ const d=new Date(iso+ (iso.length===10?"T00:00":"")); return d.toLocaleDateString(undefined,{weekday:"short",month:"short",day:"numeric"}); }
 function fmtTime(dt){ const d=new Date(dt); return d.toLocaleTimeString(undefined,{hour:"numeric",minute:"2-digit"}); }
 function nextQuarterly(){
@@ -1070,6 +1138,9 @@ function renderTax(){
   const due30=reups.filter(x=>x.due && (x.due-Date.now())<=30*DAY_MS && (x.due-Date.now())>=0);
   const reupVal30=due30.reduce((a,x)=>a+x.pkgPrice,0);
   const rep=incomeReport();
+  const trend=trendData(); window.__trend=trend;
+  const tLast=trend[trend.length-1], tNet=tLast?tLast.income-tLast.expense:0;
+  const trendBody=trChartHTML(trend);
   const projBody=`
     <div class="stat-grid">
       <div class="stat"><div class="k">Today</div><div class="v green">${money(today.total)}</div></div>
@@ -1145,8 +1216,10 @@ function renderTax(){
     ${finSection("proj","Projected revenue", `${money(month.total)} <span class="acc-sub">this month · ${money(year.total)} yr</span>`, projBody)}
     ${finSection("reup","Package re-ups", reupVal30>0?`${money(reupVal30)} <span class="acc-sub">next 30 days</span>`:`${reups.length} <span class="acc-sub">client${reups.length===1?'':'s'} tracked</span>`, reupBody)}
     ${finSection("income","Income (actual sales)", `${money(rep.month)} <span class="acc-sub">this month${rep.unpaid?` · ${money(rep.unpaid)} unpaid`:''}</span>`, incomeBody)}
+    ${finSection("trend","Income vs. expenses", `${money(tNet)} <span class="acc-sub">net this month</span>`, trendBody)}
     ${finSection("tax","Taxes", `${money(remaining)} <span class="acc-sub">still to set aside</span>`, taxBody)}`;
   el("screen-tax").innerHTML=h;
+  initTrendChart();
 }
 function finSection(id,title,headline,body){
   const open=!!finOpen[id];
