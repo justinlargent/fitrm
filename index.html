@@ -11,7 +11,7 @@
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,500;9..144,600&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,500;9..144,600&family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
 <style>
   :root{
     --bg:#0c0c0d; --surface:#151517; --surface2:#1e1f21; --line:#2b2c2e;
@@ -280,88 +280,138 @@
     .hm-hero{padding:64px 0 50px;}
     .hm-section{padding:56px 0;}
   }
+
+  /* ===================== FH HOMEPAGE (C1 earnings) ===================== */
+  #home-screen{font-family:"Inter",sans-serif;}
+  .fh-wrap{max-width:1120px;margin:0 auto;padding:0 28px;}
+  .fh-btn{display:inline-flex;align-items:center;gap:8px;font-weight:700;font-size:15px;border-radius:11px;padding:14px 26px;border:none;cursor:pointer;font-family:inherit;transition:.18s;}
+  .fh-btn.fill{background:var(--accent);color:#14160d;}.fh-btn.fill:hover{background:#aab884;}
+  .fh-btn.line{background:transparent;color:var(--text);border:1px solid var(--line);}.fh-btn.line:hover{border-color:var(--accent);color:var(--accent);}
+  .fh-nav{position:sticky;top:0;z-index:5;background:rgba(12,12,13,.82);backdrop-filter:blur(16px);-webkit-backdrop-filter:blur(16px);border-bottom:1px solid var(--line);}
+  .fh-nav .fh-wrap{display:flex;align-items:center;justify-content:space-between;height:70px;}
+  .fh-logo{display:flex;align-items:center;gap:10px;font-weight:800;font-size:20px;}.fh-logo span{color:var(--accent);}
+  .fh-navlinks{display:flex;align-items:center;gap:22px;font-size:14px;font-weight:600;color:var(--muted);}
+  .fh-navlinks a{cursor:pointer;}.fh-navlinks a:hover{color:var(--text);}
+  .fh-hero{padding:60px 0 70px;display:grid;grid-template-columns:1.02fr .98fr;gap:50px;align-items:center;}
+  .fh-eyebrow{font-size:12px;letter-spacing:3px;text-transform:uppercase;color:var(--accent);margin-bottom:20px;}
+  .fh-hero h1{font-weight:800;font-size:clamp(36px,5vw,58px);line-height:1.05;letter-spacing:-2px;min-height:2.1em;}
+  .fh-rotw{color:var(--accent);border-bottom:3px solid rgba(143,157,104,.4);transition:opacity .25s;display:inline-block;}
+  .fh-hero p{margin-top:22px;color:var(--muted);font-size:18px;max-width:46ch;}
+  .fh-ctas{margin-top:30px;display:flex;gap:13px;flex-wrap:wrap;}
+  .fh-fine{margin-top:18px;font-size:13px;color:var(--muted);}
+  .fh-calc{background:var(--surface);border:1px solid var(--line);border-radius:22px;padding:28px;}
+  .fh-tag{font-size:12px;letter-spacing:2px;text-transform:uppercase;color:var(--accent);font-weight:700;}
+  .fh-big{font-weight:900;font-size:clamp(44px,7vw,68px);letter-spacing:-3px;color:var(--accent);line-height:1;margin-top:10px;}
+  .fh-biglab{color:var(--muted);font-size:14px;font-weight:600;margin-top:4px;}
+  .fh-sl{margin-top:22px;}
+  .fh-sl label{font-size:13px;color:var(--muted);font-weight:600;display:flex;justify-content:space-between;margin-bottom:9px;}
+  .fh-sl label b{color:var(--text);}
+  .fh-calc input[type=range]{width:100%;accent-color:var(--accent);height:5px;}
+  .fh-chips{margin-top:24px;display:flex;gap:12px;flex-wrap:wrap;}
+  .fh-chip{flex:1;min-width:140px;background:var(--surface2);border:1px solid var(--line);border-radius:13px;padding:14px 16px;font-size:13px;color:var(--muted);font-weight:600;}
+  .fh-chip b{display:block;color:var(--accent);font-weight:800;font-size:20px;letter-spacing:-.5px;margin-top:3px;}
+  .fh-chip.tx b{color:var(--text);}
+  .fh-chip.pulse{animation:fhpp 1.7s ease-in-out infinite;}@keyframes fhpp{0%,100%{border-color:var(--line);}50%{border-color:var(--accent);}}
+  .fh-disc{font-size:11px;color:var(--muted);margin-top:16px;line-height:1.5;}
+  .fh-section{padding:84px 0;border-top:1px solid var(--line);}
+  .fh-kick{font-size:12px;letter-spacing:3px;text-transform:uppercase;color:var(--accent);text-align:center;margin-bottom:14px;}
+  .fh-h2{font-weight:800;font-size:clamp(28px,4.4vw,46px);letter-spacing:-1.2px;text-align:center;line-height:1.1;max-width:20ch;margin:0 auto;}
+  .fh-subh{text-align:center;color:var(--muted);max-width:54ch;margin:16px auto 0;font-size:16px;}
+  .fh-demo{margin-top:54px;display:grid;grid-template-columns:1fr 1fr;gap:30px;align-items:center;}
+  .fh-copy h3{font-size:25px;font-weight:700;letter-spacing:-.5px;margin-bottom:12px;}
+  .fh-copy p{color:var(--muted);font-size:16px;max-width:42ch;}
+  .fh-ccard{background:var(--surface);border:1px solid var(--line);border-radius:20px;padding:26px;}
+  .fh-ccard .top{display:flex;justify-content:space-between;align-items:center;}
+  .fh-ccard .nm{font-weight:700;font-size:17px;}.fh-ccard .meta{color:var(--muted);font-size:13px;}.fh-ccard .count{font-weight:800;font-size:30px;letter-spacing:-1px;}
+  .fh-bar{height:9px;background:var(--surface2);border-radius:6px;margin:18px 0;overflow:hidden;}.fh-bar i{display:block;height:100%;background:var(--accent);border-radius:6px;transition:width .4s cubic-bezier(.2,.7,.2,1);}
+  .fh-ccard .renew{color:var(--warn);font-size:13px;font-weight:700;margin-bottom:14px;min-height:18px;}
+  .fh-grid{margin-top:54px;display:grid;grid-template-columns:repeat(3,1fr);gap:18px;}
+  .fh-g{background:var(--surface);border:1px solid var(--line);border-radius:16px;padding:24px;transition:.2s;}.fh-g:hover{border-color:var(--accent);}
+  .fh-g .d{width:9px;height:9px;border-radius:3px;background:var(--accent);margin-bottom:14px;}.fh-g h4{font-size:16px;font-weight:700;margin-bottom:6px;}.fh-g p{color:var(--muted);font-size:14px;}
+  .fh-faq{max-width:760px;margin:46px auto 0;}.fh-q{border-bottom:1px solid var(--line);}
+  .fh-q>button{width:100%;text-align:left;background:none;border:none;color:var(--text);font-family:inherit;font-size:18px;font-weight:600;padding:22px 0;cursor:pointer;display:flex;justify-content:space-between;gap:16px;align-items:center;}
+  .fh-q .ans{max-height:0;overflow:hidden;transition:max-height .3s ease;color:var(--muted);font-size:15px;}.fh-q .ans p{padding-bottom:22px;}
+  .fh-q .pl{color:var(--accent);font-size:22px;transition:transform .25s;flex-shrink:0;}.fh-q.open .pl{transform:rotate(45deg);}
+  .fh-endcta{text-align:center;padding:110px 0;}.fh-endcta h2{font-weight:800;font-size:clamp(34px,6vw,64px);letter-spacing:-2px;margin-bottom:28px;line-height:1.02;}
+  .fh-footer{border-top:1px solid var(--line);padding:36px 0;}
+  .fh-footer .fh-wrap{display:flex;justify-content:space-between;font-size:13px;color:var(--muted);flex-wrap:wrap;gap:12px;}
+  .fh-footer a{cursor:pointer;}.fh-footer a:hover{color:var(--text);}
+  .fh-reveal{opacity:0;transform:translateY(28px);transition:.85s cubic-bezier(.2,.7,.2,1);}.fh-reveal.in{opacity:1;transform:none;}
+  @media(max-width:860px){.fh-hero{grid-template-columns:1fr;}.fh-demo{grid-template-columns:1fr;}.fh-grid{grid-template-columns:1fr;}.fh-navlinks a.hidesm{display:none;}.fh-hero h1{min-height:0;}}
 </style>
 </head>
 <body>
 <div id="home-screen">
-  <nav class="hm-nav"><div class="hm-wrap">
-    <div class="hm-logo">FITRM<span>.IO</span></div>
-    <div class="hm-nav-links">
-      <a class="hidesm" onclick="hmScroll('hm-how')">How it works</a>
-      <a class="hidesm" onclick="hmScroll('hm-features')">Features</a>
-      <a class="navcta" onclick="showAuth('login')">Log in</a>
-      <button class="hm-btn primary" style="padding:10px 18px" onclick="showAuth('signup')">Get started</button>
+  <nav class="fh-nav"><div class="fh-wrap">
+    <div class="fh-logo"><svg width="28" height="28" viewBox="0 0 40 40"><rect width="40" height="40" rx="9" fill="#8f9d68"/><rect x="11" y="26" width="4.5" height="6" rx="1.2" fill="#14160d"/><rect x="17.75" y="20" width="4.5" height="12" rx="1.2" fill="#14160d"/><rect x="24.5" y="13" width="4.5" height="19" rx="1.2" fill="#14160d"/><path d="M11 11h13" stroke="#14160d" stroke-width="3" stroke-linecap="round"/></svg> FITRM<span>.IO</span></div>
+    <div class="fh-navlinks">
+      <a class="hidesm" onclick="hmScroll('fh-how')">How it works</a>
+      <a class="hidesm" onclick="hmScroll('fh-faq')">FAQ</a>
+      <a onclick="showAuth('login')">Log in</a>
+      <button class="fh-btn fill" style="padding:10px 18px" onclick="showAuth('signup')">Get started</button>
     </div>
   </div></nav>
 
-  <header class="hm-hero"><div class="hm-wrap">
-    <span class="hm-eyebrow">For independent trainers</span>
-    <h1>Run your training business <em>like the pro you are.</em></h1>
-    <p>FITRM.IO brings your clients, schedule, session tracking, and taxes into one calm, powerful place — so you spend less time on admin and more time training.</p>
-    <div class="hm-cta-row">
-      <button class="hm-btn primary lg" onclick="showAuth('signup')">Get started free</button>
-      <button class="hm-btn ghost lg" onclick="hmScroll('hm-how')">See how it works</button>
+  <header class="fh-wrap fh-hero">
+    <div>
+      <div class="fh-eyebrow">For independent trainers</div>
+      <h1>You coach.<br>FITRM runs the <span class="fh-rotw" id="fh-rotw">back office</span>.</h1>
+      <p>You went independent to train people — not to count remaining sessions, guess at your income, or sweat every April. FITRM tracks it all automatically and hands you the exact number to set aside. Drag the sliders to see your year. 👉</p>
+      <div class="fh-ctas"><button class="fh-btn fill" onclick="showAuth('signup')">Start free</button><button class="fh-btn line" onclick="hmScroll('fh-how')">See how it works</button></div>
+      <div class="fh-fine">No credit card · Your data stays yours · Works on the gym floor</div>
     </div>
-    <div class="hm-trust">Built by a trainer, for trainers · No credit card required</div>
-  </div></header>
-
-  <section class="hm-section"><div class="hm-wrap">
-    <div class="hm-sec-label">Why FITRM</div>
-    <h2 class="hm-sec-title">The complete back office for the independent trainer.</h2>
-    <p class="hm-sec-sub">Everything you've been juggling across a calendar, a notes app, and a spreadsheet — finally in one place, working together.</p>
-    <div class="hm-pillars">
-      <div class="hm-pillar">
-        <div class="pnum">01</div>
-        <h3>Never lose track of a session</h3>
-        <p>Sell a package and every session counts itself down. Standing schedules book themselves out weeks ahead, and clients get flagged for renewal before they ever run out.</p>
+    <div class="fh-calc">
+      <div class="fh-tag">Your year, at this pace</div>
+      <div class="fh-big" id="fh-year">$106,250</div>
+      <div class="fh-biglab">projected income</div>
+      <div class="fh-sl"><label>Sessions per week <b id="fh-spwV">25</b></label><input type="range" id="fh-spw" min="5" max="50" step="1" value="25"></div>
+      <div class="fh-sl"><label>Average rate <b id="fh-rateV">$85</b></label><input type="range" id="fh-rt" min="40" max="160" step="5" value="85"></div>
+      <div class="fh-chips">
+        <div class="fh-chip tx">Set aside for taxes <b id="fh-tax">$0</b></div>
+        <div class="fh-chip pulse">Just one more session/week <b id="fh-delta">+$0</b></div>
       </div>
-      <div class="hm-pillar">
-        <div class="pnum">02</div>
-        <h3>Finally understand your taxes</h3>
-        <p>The only trainer platform that tells you exactly what to set aside from every package — based on your state, income, and write-offs. No more April surprises.</p>
-      </div>
-      <div class="hm-pillar">
-        <div class="pnum">03</div>
-        <h3>Hours of admin, gone</h3>
-        <p>Automatic session tracking, recurring schedules, and one-click import of your entire client list. The back office runs itself, so you can focus on coaching.</p>
-      </div>
+      <div class="fh-disc">Estimate at 50 working weeks; tax figure uses 2026 federal &amp; California brackets. Not tax advice — inside, FITRM sharpens it with your state, filing status, and write-offs.</div>
+    </div>
+  </header>
+
+  <section class="fh-section" id="fh-how"><div class="fh-wrap">
+    <div class="fh-kick fh-reveal">No more counting in your head</div>
+    <h2 class="fh-h2 fh-reveal">Sessions that count themselves down.</h2>
+    <p class="fh-subh fh-reveal">Sell a 10-pack once. Every check-in subtracts one — and FITRM taps you on the shoulder before a client runs out, so a renewal never slips by.</p>
+    <div class="fh-demo">
+      <div class="fh-copy fh-reveal"><h3>Go on — check Maya in.</h3><p>This is a client's package, live. No spreadsheet, no math, no "wait, how many does she have left?" When she's low, you'll know in time to sell the next pack — that's money most trainers leave on the table.</p><button class="fh-btn line" id="fh-reset" style="margin-top:18px">Reset demo</button></div>
+      <div class="fh-ccard fh-reveal"><div class="top"><div><div class="nm">Maya Chen</div><div class="meta">10-Session Strength</div></div><div class="count"><span id="fh-left">7</span>/10</div></div><div class="fh-bar"><i id="fh-fill" style="width:70%"></i></div><div class="renew" id="fh-renew"></div><button class="fh-btn fill" id="fh-checkin" style="width:100%">Check in a session</button></div>
     </div>
   </div></section>
 
-  <section class="hm-section" id="hm-how"><div class="hm-wrap">
-    <div class="hm-sec-label">How it works</div>
-    <h2 class="hm-sec-title">Set it up once. Let it run.</h2>
-    <div class="hm-steps">
-      <div class="hm-step"><div class="sline"></div><h4>1. Add your clients & packages</h4><p>Type them in or import your whole roster from a spreadsheet in seconds — rates, schedules and all.</p></div>
-      <div class="hm-step"><div class="sline"></div><h4>2. Set their schedules</h4><p>Book standing appointments — MWF at 7am, Tue/Thu at noon — and sessions track and count down on their own.</p></div>
-      <div class="hm-step"><div class="sline"></div><h4>3. Watch it all add up</h4><p>Your income, upcoming renewals, and exact tax set-aside update in real time, on every device.</p></div>
+  <section class="fh-section"><div class="fh-wrap">
+    <div class="fh-kick fh-reveal">One place for all of it</div>
+    <h2 class="fh-h2 fh-reveal">Everything you juggle — together at last.</h2>
+    <div class="fh-grid">
+      <div class="fh-g fh-reveal"><div class="d"></div><h4>A calendar that thinks in sessions</h4><p>See who's got how many left, at a glance — by day, week, or month.</p></div>
+      <div class="fh-g fh-reveal"><div class="d"></div><h4>Standing schedules, set once</h4><p>Book MWF or Tue/Thu a single time, and the weeks fill themselves.</p></div>
+      <div class="fh-g fh-reveal"><div class="d"></div><h4>Your real tax number</h4><p>Not a guess — your true blended rate by state, income, and write-offs.</p></div>
+      <div class="fh-g fh-reveal"><div class="d"></div><h4>Next month's income, today</h4><p>Forecast what you'll earn this week, this month, and this year.</p></div>
+      <div class="fh-g fh-reveal"><div class="d"></div><h4>Renewals you see coming</h4><p>Know who's about to run out — and what that re-sale is worth.</p></div>
+      <div class="fh-g fh-reveal"><div class="d"></div><h4>Your whole roster in 60 seconds</h4><p>Drop in a spreadsheet; clients, rates, and schedules land ready to go.</p></div>
     </div>
   </div></section>
 
-  <section class="hm-section" id="hm-features"><div class="hm-wrap">
-    <div class="hm-sec-label">Everything inside</div>
-    <h2 class="hm-sec-title">Built for the way you actually work.</h2>
-    <div class="hm-feats">
-      <div class="hm-feat"><div class="fdot"></div><h5>Smart calendar</h5><p>Day, 3-day, week and month views with at-a-glance session counts.</p></div>
-      <div class="hm-feat"><div class="fdot"></div><h5>Session countdown</h5><p>Every package tracks remaining sessions automatically.</p></div>
-      <div class="hm-feat"><div class="fdot"></div><h5>Tax calculator</h5><p>Know your real set-aside rate by state, income, and deductions.</p></div>
-      <div class="hm-feat"><div class="fdot"></div><h5>Revenue projections</h5><p>Forecast today, this week, month, and year from your pace.</p></div>
-      <div class="hm-feat"><div class="fdot"></div><h5>Re-up forecast</h5><p>See who's due to renew and what it's worth, before they lapse.</p></div>
-      <div class="hm-feat"><div class="fdot"></div><h5>Expense tracking</h5><p>Log write-offs, including recurring ones like rent and phone.</p></div>
-      <div class="hm-feat"><div class="fdot"></div><h5>CSV import</h5><p>Bring your entire client list and schedule over in one upload.</p></div>
-      <div class="hm-feat"><div class="fdot"></div><h5>Works everywhere</h5><p>Your data syncs across phone, tablet and laptop, instantly.</p></div>
+  <section class="fh-section" id="fh-faq"><div class="fh-wrap">
+    <div class="fh-kick fh-reveal">Before you ask</div>
+    <h2 class="fh-h2 fh-reveal">The questions every trainer has.</h2>
+    <div class="fh-faq fh-reveal">
+      <div class="fh-q"><button>Is this going to take forever to set up?<span class="pl">+</span></button><div class="ans"><p>Nope. Type a few clients in, or drop in a spreadsheet and your entire roster — rates and standing schedules included — is ready in under a minute. If you can use your phone's calendar, you can run FITRM.</p></div></div>
+      <div class="fh-q"><button>Will it actually get my taxes right?<span class="pl">+</span></button><div class="ans"><p>It hands you a clear, state-aware number to set aside from every package — built on self-employment tax, your income, and your write-offs. It's not tax advice, but you stop guessing and walk into April already prepared instead of scrambling.</p></div></div>
+      <div class="fh-q"><button>I already use a calendar and Venmo. Why switch?<span class="pl">+</span></button><div class="ans"><p>Because none of those tell you a client's remaining sessions, your real income, or your tax number — and they don't talk to each other. FITRM is the one place where booking, session tracking, money, and taxes finally connect.</p></div></div>
+      <div class="fh-q"><button>Who can see my clients and my income?<span class="pl">+</span></button><div class="ans"><p>Only you. Every trainer's data is walled off in their own private account, and it syncs securely across your devices.</p></div></div>
+      <div class="fh-q"><button>What's the catch on "free"?<span class="pl">+</span></button><div class="ans"><p>No catch — create an account and bring your whole business in today, no credit card. We'd rather earn your money later, once you can't imagine working without it.</p></div></div>
     </div>
   </div></section>
 
-  <section class="hm-cta"><div class="hm-wrap">
-    <h2 class="serif">Your business, dialed in.</h2>
-    <button class="hm-btn primary lg" onclick="showAuth('signup')">Get started free</button>
-  </div></section>
+  <div class="fh-endcta"><div class="fh-wrap fh-reveal"><h2>The training's the easy part.<br>Let FITRM handle the rest.</h2><button class="fh-btn fill" onclick="showAuth('signup')">Start free</button><p style="color:var(--muted);margin-top:18px;font-size:14px">No credit card · Set up in minutes</p></div></div>
 
-  <footer class="hm-footer"><div class="hm-wrap">
-    <div class="fl">FITRM.IO · © 2026</div>
-    <div><a onclick="showAuth('login')">Log in</a><a onclick="showAuth('signup')">Get started</a></div>
-  </div></footer>
+  <footer class="fh-footer"><div class="fh-wrap"><div>FITRM<span style="color:var(--accent)">.IO</span> · © 2026</div><div><a onclick="showAuth('login')">Log in</a> &nbsp; <a onclick="showAuth('signup')">Get started</a></div></div></footer>
 </div>
 
 <div id="auth-screen" style="display:none">
@@ -1804,6 +1854,39 @@ function setSyncStatus(s){
 document.addEventListener("keydown", e=>{
   if(e.key==="Enter" && aEl("auth-screen") && aEl("auth-screen").style.display!=="none") authSubmit();
 });
+</script>
+
+<script>
+/* ===================== HOMEPAGE INTERACTIONS (scoped, fh-) ===================== */
+(function(){
+  var $=function(id){return document.getElementById(id);};
+  // rotating word
+  var rw=$("fh-rotw");
+  if(rw){var words=["back office","numbers","schedule","renewals","tax math"],wi=0;
+    setInterval(function(){wi=(wi+1)%words.length;rw.style.opacity=0;setTimeout(function(){rw.textContent=words[wi];rw.style.opacity=1;},250);},2000);}
+  // earnings projector + tax
+  var FED=[[0,.10],[12400,.12],[50400,.22],[105700,.24],[201775,.32],[256225,.35],[640600,.37]];
+  var CA=[[0,.01],[10756,.02],[25499,.04],[40245,.06],[55866,.08],[70606,.093],[360659,.103],[432787,.113],[721314,.123]];
+  function prog(i,b){var t=0;for(var k=0;k<b.length;k++){var lo=b[k][0],r=b[k][1],hi=k+1<b.length?b[k+1][0]:Infinity;if(i>lo)t+=(Math.min(i,hi)-lo)*r;else break;}return t;}
+  function rate(P){if(P<=0)return 0;var sb=P*0.9235,se=Math.min(sb,184500)*0.124+sb*0.029,h=se/2,q=P*0.2;var fed=prog(Math.max(P-h-16100-q,0),FED);var st=prog(Math.max(P-h-5706,0),CA);return (se+fed+st)/P;}
+  var spw=25,rt=85,shownYear=106250;
+  function tw(target){var start=shownYear,t0=performance.now();function step(t){var p=Math.min((t-t0)/450,1);var e=1-Math.pow(1-p,3);shownYear=start+(target-start)*e;var el=$("fh-year");if(el)el.textContent='$'+Math.round(shownYear).toLocaleString();if(p<1)requestAnimationFrame(step);}requestAnimationFrame(step);}
+  function upd(){var a=$("fh-spwV");if(a)a.textContent=spw;var b=$("fh-rateV");if(b)b.textContent='$'+rt;var year=spw*rt*50;tw(year);var t=$("fh-tax");if(t)t.textContent='$'+Math.round(year*rate(year)).toLocaleString();var d=$("fh-delta");if(d)d.textContent='+$'+Math.round(rt*50).toLocaleString();}
+  var sp=$("fh-spw"),rtEl=$("fh-rt");
+  if(sp)sp.addEventListener("input",function(e){spw=+e.target.value;upd();});
+  if(rtEl)rtEl.addEventListener("input",function(e){rt=+e.target.value;upd();});
+  if(sp)upd();
+  // session demo
+  var left=7,purchased=10;
+  function rd(){var l=$("fh-left");if(l)l.textContent=left;var f=$("fh-fill");if(f)f.style.width=(left/purchased*100)+'%';var rn=$("fh-renew");if(rn)rn.textContent=left<=2?(left<=0?'Out of sessions — sell a renewal':'Running low — time to renew'):'';}
+  var ci=$("fh-checkin");if(ci)ci.addEventListener("click",function(){if(left>0){left--;rd();}});
+  var rsb=$("fh-reset");if(rsb)rsb.addEventListener("click",function(){left=7;rd();});
+  rd();
+  // faq
+  Array.prototype.forEach.call(document.querySelectorAll(".fh-q>button"),function(btn){btn.addEventListener("click",function(){var q=btn.parentElement,a=q.querySelector(".ans"),o=q.classList.contains("open");Array.prototype.forEach.call(document.querySelectorAll(".fh-q"),function(x){x.classList.remove("open");x.querySelector(".ans").style.maxHeight=null;});if(!o){q.classList.add("open");a.style.maxHeight=a.scrollHeight+"px";}});});
+  // reveal
+  if("IntersectionObserver" in window){var io=new IntersectionObserver(function(es){es.forEach(function(e){if(e.isIntersecting){e.target.classList.add("in");io.unobserve(e.target);}});},{threshold:.15});Array.prototype.forEach.call(document.querySelectorAll(".fh-reveal"),function(el){io.observe(el);});}
+})();
 </script>
 </body>
 </html>
