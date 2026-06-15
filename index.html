@@ -166,7 +166,7 @@
   .tg-dayh .tg-dnum{font-size:16px; font-weight:800; line-height:1.4;}
   .tg-dayh.today .tg-dnum{background:var(--accent); color:#14160d; border-radius:50%;
     width:26px; height:26px; line-height:26px; display:inline-block;}
-  .tg-grid{display:flex;}
+  .tg-grid{display:flex; padding-top:10px;}
   .tg-gutter{width:40px; flex-shrink:0; position:relative;}
   .tg-hour{position:relative;}
   .tg-hour span{position:absolute; top:-7px; right:5px; font-size:9px; color:var(--muted); font-weight:600;}
@@ -898,8 +898,8 @@ function sourceOptions(sel){ return ["","Referral","Instagram","Gym floor","Walk
 
 function openAddMenu(){
   openSheet(`<div class="sheet-title">Add clients</div>
-    <button class="btn" onclick="closeSheet();openAddClient()">Add one client</button>
-    <button class="btn sec" style="margin-top:8px" onclick="closeSheet();openOnboard()">Add several at once</button>
+    <button class="btn" onclick="closeSheet();openAddClient()">Add Client</button>
+    <button class="btn sec" style="margin-top:8px" onclick="closeSheet();openOnboard()">Add Multiple Clients</button>
     <button class="btn sec" style="margin-top:8px" onclick="closeSheet();openImportMenu()">Import from a spreadsheet</button>
     <button class="btn sec" style="margin-top:8px" onclick="closeSheet()">Cancel</button>`);
 }
