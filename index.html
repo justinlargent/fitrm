@@ -348,6 +348,12 @@
   .fh-reveal{opacity:0;transform:translateY(28px);transition:.85s cubic-bezier(.2,.7,.2,1);}.fh-reveal.in{opacity:1;transform:none;}
   @media(max-width:860px){.fh-hero{grid-template-columns:1fr;}.fh-demo{grid-template-columns:1fr;}.fh-grid{grid-template-columns:1fr;}.fh-navlinks a.hidesm{display:none;}.fh-hero h1{min-height:0;}}
 
+  /* Business health scorecard */
+  .kpi-grid{display:grid;grid-template-columns:repeat(2,1fr);gap:10px;}
+  .kpi-sub{font-size:11px;color:var(--muted);margin-top:3px;}
+  .kpi-sub.good{color:var(--accent);} .kpi-sub.bad{color:var(--danger);}
+  .biz-two{display:grid;grid-template-columns:1fr;gap:12px;}
+  @media(min-width:900px){ .kpi-grid{grid-template-columns:repeat(4,1fr);} .biz-two{grid-template-columns:1fr 1fr;} }
   /* Calendar metrics rail (desktop) */
   .cal-aside{display:none;}
   .goal-bar{height:9px;background:var(--surface2);border-radius:6px;margin:13px 0 8px;overflow:hidden;}
@@ -493,7 +499,7 @@
     <button class="tab" data-tab="packages">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 3 4 7v10l8 4 8-4V7z"/><path d="M4 7l8 4 8-4M12 11v10"/></svg>Packages</button>
     <button class="tab" data-tab="tax">
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 20V10M10 20V4M16 20v-7M22 20H2"/></svg>Finance</button>
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 20V10M10 20V4M16 20v-7M22 20H2"/></svg>Business</button>
   </div>
 </div>
 
@@ -775,6 +781,77 @@ function reupForecast(){
   }).filter(x=>x.f>0 || x.left<=3)
     .sort((a,b)=>(a.weeks==null?1e9:a.weeks)-(b.weeks==null?1e9:b.weeks));
 }
+
+/* ---- Business health metrics ---- */
+function bizMetrics(){
+  const now=Date.now(), m=todayISO().slice(0,7), clients=state.clients;
+  const sessOf=cid=>state.sessions.filter(s=>s.clientId===cid);
+  const lastAct=cid=>{ const ds=sessOf(cid).map(s=>+new Date(s.datetime)); return ds.length?Math.max(...ds):null; };
+  const future=cid=>state.sessions.some(s=>s.clientId===cid&&s.status==="scheduled"&&+new Date(s.datetime)>now);
+  const firstMonth=cid=>{ const d=[]; state.sales.filter(s=>s.clientId===cid).forEach(s=>d.push(s.soldAt.slice(0,7))); sessOf(cid).forEach(s=>d.push(s.datetime.slice(0,7))); return d.length?d.sort()[0]:null; };
+  const everActive=clients.filter(c=>sessOf(c.id).length||state.sales.some(s=>s.clientId===c.id));
+  const active=clients.filter(c=>c.status!=="inactive");
+  const engaged=c=>future(c.id)||((lastAct(c.id)||0)>=now-30*DAY_MS);
+  const retention=everActive.length?Math.round(everActive.filter(engaged).length/everActive.length*100):0;
+  const atRisk=active.filter(c=>state.sales.some(s=>s.clientId===c.id)&&!future(c.id)&&((lastAct(c.id)||0)<now-21*DAY_MS))
+    .map(c=>({c, days: lastAct(c.id)?Math.floor((now-lastAct(c.id))/DAY_MS):null}))
+    .sort((a,b)=>(b.days==null?1e9:b.days)-(a.days==null?1e9:a.days));
+  const withSales=clients.filter(c=>state.sales.some(s=>s.clientId===c.id));
+  const renewed=withSales.filter(c=>state.sales.filter(s=>s.clientId===c.id).length>=2);
+  const renewalRate=withSales.length?Math.round(renewed.length/withSales.length*100):0;
+  const arpc=withSales.length?state.sales.reduce((a,s)=>a+s.pricePaid,0)/withSales.length:0;
+  const since=now-120*DAY_MS;
+  const comp=state.sessions.filter(s=>s.status==="completed"&&+new Date(s.datetime)>=since).length;
+  const ns=state.sessions.filter(s=>s.status==="no-show"&&+new Date(s.datetime)>=since).length;
+  const noShowRate=(comp+ns)?Math.round(ns/(comp+ns)*100):0;
+  const cap=state.profile.weeklyCapacity||40;
+  const wkStart=weekStart(new Date()), wkEnd=new Date(+wkStart+7*DAY_MS);
+  const wkSessions=state.sessions.filter(s=>{const d=+new Date(s.datetime);return d>=+wkStart&&d<+wkEnd;}).length;
+  const capacityPct=cap?Math.min(100,Math.round(wkSessions/cap*100)):0;
+  const newThisMonth=clients.filter(c=>firstMonth(c.id)===m).length;
+  const sources={}; clients.forEach(c=>{ const s=c.source||"Unknown"; sources[s]=(sources[s]||0)+1; });
+  const srcArr=Object.entries(sources).map(([k,v])=>({k,v})).sort((a,b)=>b.v-a.v);
+  return {activeCount:active.length,newThisMonth,retention,atRisk,renewalRate,arpc,noShowRate,cap,wkSessions,capacityPct,avgRate:globalAvgSessionPrice(),srcArr};
+}
+function scorecardHTML(m){
+  return `<div class="sec-title" style="margin-top:8px">Health scorecard</div>
+  <div class="kpi-grid">
+    <div class="stat"><div class="k">Active clients</div><div class="v">${m.activeCount}</div><div class="kpi-sub good">+${m.newThisMonth} this month</div></div>
+    <div class="stat"><div class="k">Retention</div><div class="v">${m.retention}%</div><div class="kpi-sub">still engaged</div></div>
+    <div class="stat"><div class="k">At risk</div><div class="v" style="${m.atRisk.length?'color:var(--warn)':''}">${m.atRisk.length}</div><div class="kpi-sub ${m.atRisk.length?'bad':''}">quiet 21+ days</div></div>
+    <div class="stat"><div class="k">Avg client value</div><div class="v">${money(m.arpc)}</div><div class="kpi-sub">lifetime</div></div>
+    <div class="stat"><div class="k">Renewal rate</div><div class="v">${m.renewalRate}%</div><div class="kpi-sub">buy a 2nd pack</div></div>
+    <div class="stat"><div class="k">No-show rate</div><div class="v">${m.noShowRate}%</div><div class="kpi-sub">last 120 days</div></div>
+    <div class="stat" onclick="openCapacity()" style="cursor:pointer"><div class="k">Capacity</div><div class="v green">${m.capacityPct}%</div><div class="kpi-sub">${m.wkSessions} of ${m.cap}/wk · set</div></div>
+    <div class="stat"><div class="k">Avg session rate</div><div class="v">${money(m.avgRate)}</div><div class="kpi-sub">per session</div></div>
+  </div>`;
+}
+function needsAttentionHTML(m){
+  const total=m.srcArr.reduce((a,s)=>a+s.v,0)||1;
+  const atrisk = m.atRisk.length ? m.atRisk.slice(0,5).map(x=>`
+    <div class="row between list-item">
+      <div class="row"><div class="avatar">${initials(x.c.name)}</div>
+        <div><div class="name">${x.c.name}</div><div class="meta">${x.days!=null?('last seen '+x.days+'d ago'):'no sessions yet'}</div></div></div>
+      <button class="btn sec btn-sm" onclick="openClient('${x.c.id}')">Nudge</button>
+    </div>`).join("") : `<div class="empty" style="padding:20px">No one's slipping — nice work.</div>`;
+  const srcs = m.srcArr.length ? m.srcArr.map(s=>{ const pct=Math.round(s.v/total*100);
+    return `<div class="row between" style="font-size:13px;margin-top:8px"><span>${s.k}</span><span class="meta">${pct}%</span></div><div class="goal-bar" style="margin:6px 0 0"><i style="width:${pct}%"></i></div>`;}).join("") : `<div class="meta">Add clients with a source to see this.</div>`;
+  return `<div class="sec-title">Needs attention</div>
+  <div class="biz-two">
+    <div class="card"><div class="name" style="font-size:15px;margin-bottom:10px">Clients at risk</div>${atrisk}</div>
+    <div class="card"><div class="name" style="font-size:15px;margin-bottom:6px">Where clients come from</div>${srcs}</div>
+  </div>`;
+}
+function openCapacity(){
+  const c=state.profile.weeklyCapacity||"";
+  openSheet(`<div class="sheet-title">Weekly capacity</div>
+    <p class="muted" style="margin-top:2px">How many sessions can you run in a full week? Used to show how much room you have to grow.</p>
+    <label class="fld"><span>Sessions per week (max)</span><input id="cap-amt" type="number" inputmode="numeric" value="${c}" placeholder="40"/></label>
+    <div style="height:14px"></div>
+    <button class="btn" onclick="saveCapacity()">Save</button>`);
+}
+function saveCapacity(){ state.profile.weeklyCapacity=+el("cap-amt").value||0; save(); render(); closeSheet(); switchTab("tax"); }
+function sourceOptions(sel){ return ["","Referral","Instagram","Gym floor","Walk-in","Website","Other"].map(o=>`<option ${o===(sel||"")?"selected":""} value="${o}">${o||"—"}</option>`).join(""); }
 
 /* ---- Income vs expenses trend (last 12 months) ---- */
 function trendData(){
@@ -1225,6 +1302,7 @@ function renderTax(){
   const trend=trendData(); window.__trend=trend;
   const tLast=trend[trend.length-1], tNet=tLast?tLast.income-tLast.expense:0;
   const trendBody=trChartHTML(trend,"ftrend");
+  const bizm=bizMetrics();
   const projBody=`
     <div class="stat-grid">
       <div class="stat"><div class="k">Today</div><div class="v green">${money(today.total)}</div></div>
@@ -1295,8 +1373,11 @@ function renderTax(){
     <button class="btn sec" style="margin-top:8px" onclick="openTaxProfile()">Edit tax profile</button>
     <div class="disclaim">Educational estimates using 2026 federal parameters and 2025 California brackets — not tax advice. SE tax is 15.3% on 92.35% of net profit; the model applies the standard deduction, a 20% QBI deduction, and progressive federal + state brackets. Logged expenses are records to share with your CPA; update your net-profit estimate to reflect them. Confirm amounts with a tax professional and IRS Form 1040-ES.</div>`;
 
-  let h=`<div class="lg-title">Finance</div>
-    <div class="sub">Tap a section to expand</div>
+  let h=`<div class="lg-title">Business</div>
+    <div class="sub">Your health, growth &amp; money</div>
+    ${scorecardHTML(bizm)}
+    ${needsAttentionHTML(bizm)}
+    <div class="sec-title" style="margin-top:26px">Money &amp; taxes</div>
     ${finSection("proj","Projected revenue", `${money(month.total)} <span class="acc-sub">this month · ${money(year.total)} yr</span>`, projBody)}
     ${finSection("reup","Package re-ups", reupVal30>0?`${money(reupVal30)} <span class="acc-sub">next 30 days</span>`:`${reups.length} <span class="acc-sub">client${reups.length===1?'':'s'} tracked</span>`, reupBody)}
     ${finSection("income","Income (actual sales)", `${money(rep.month)} <span class="acc-sub">this month${rep.unpaid?` · ${money(rep.unpaid)} unpaid`:''}</span>`, incomeBody)}
@@ -1337,12 +1418,13 @@ function openAddClient(){
     <label class="fld"><span>Name</span><input id="f-name" placeholder="Jordan Lee"/></label>
     <label class="fld"><span>Phone</span><input id="f-phone" inputmode="tel" placeholder="(555) 555-1234"/></label>
     <label class="fld"><span>Email</span><input id="f-email" inputmode="email" placeholder="jordan@example.com"/></label>
+    <label class="fld"><span>How did they find you? (optional)</span><select id="f-source">${sourceOptions("")}</select></label>
     <div style="height:16px"></div>
     <button class="btn" onclick="saveClient()">Add client</button>`);
 }
 function saveClient(){
   const name=el("f-name").value.trim(); if(!name){ el("f-name").focus(); return; }
-  state.clients.push({id:"c"+Date.now(), name, phone:el("f-phone").value, email:el("f-email").value, status:"active"});
+  state.clients.push({id:"c"+Date.now(), name, phone:el("f-phone").value, email:el("f-email").value, status:"active", source:el("f-source").value});
   save(); render(); closeSheet(); switchTab("clients");
 }
 
@@ -1353,6 +1435,7 @@ function openEditClient(cid){
     <label class="fld"><span>Name</span><input id="ec-name" value="${esc(c.name)}"/></label>
     <label class="fld"><span>Phone</span><input id="ec-phone" inputmode="tel" value="${esc(c.phone)}"/></label>
     <label class="fld"><span>Email</span><input id="ec-email" inputmode="email" value="${esc(c.email)}"/></label>
+    <label class="fld"><span>How did they find you?</span><select id="ec-source">${sourceOptions(c.source)}</select></label>
     <div style="height:14px"></div>
     <button class="btn" onclick="saveClientEdit('${cid}')">Save changes</button>
     <button class="btn sec" style="margin-top:8px" onclick="openClient('${cid}')">Cancel</button>`);
@@ -1360,7 +1443,7 @@ function openEditClient(cid){
 function saveClientEdit(cid){
   const c=state.clients.find(x=>x.id===cid); if(!c) return;
   const name=el("ec-name").value.trim(); if(!name){ el("ec-name").focus(); return; }
-  c.name=name; c.phone=el("ec-phone").value.trim(); c.email=el("ec-email").value.trim();
+  c.name=name; c.phone=el("ec-phone").value.trim(); c.email=el("ec-email").value.trim(); c.source=el("ec-source").value;
   save(); render(); openClient(cid);
 }
 function openClient(cid){
