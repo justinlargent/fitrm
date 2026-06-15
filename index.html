@@ -391,6 +391,8 @@
   .grow-bar i{display:block;height:100%;}
   .grow-legend{display:flex;flex-wrap:wrap;gap:14px;margin-top:11px;font-size:12px;color:var(--muted);font-weight:600;}
   .grow-legend i{display:inline-block;width:10px;height:10px;border-radius:3px;margin-right:6px;vertical-align:-1px;}
+  .hr-day{padding:14px 0;border-bottom:1px solid var(--line);}
+  .hr-day input[type=time]{margin:0;}
 
   /* ===================== DESKTOP SHELL (sidebar + modal sheets) ===================== */
   .side-brand{display:none;}
@@ -851,7 +853,7 @@ function bizMetrics(){
   const comp=state.sessions.filter(s=>s.status==="completed"&&+new Date(s.datetime)>=since).length;
   const ns=state.sessions.filter(s=>s.status==="no-show"&&+new Date(s.datetime)>=since).length;
   const noShowRate=(comp+ns)?Math.round(ns/(comp+ns)*100):0;
-  const cap=state.profile.weeklyCapacity||40;
+  const cap=weeklyCapacityFromHours();
   const wkStart=weekStart(new Date()), wkEnd=new Date(+wkStart+7*DAY_MS);
   const wkSessions=state.sessions.filter(s=>{const d=+new Date(s.datetime);return d>=+wkStart&&d<+wkEnd;}).length;
   const capacityPct=cap?Math.min(100,Math.round(wkSessions/cap*100)):0;
@@ -869,7 +871,7 @@ function scorecardHTML(m){
     <div class="stat"><div class="k">Avg client value</div><div class="v">${money(m.arpc)}</div><div class="kpi-sub">lifetime</div></div>
     <div class="stat"><div class="k">Renewal rate</div><div class="v">${m.renewalRate}%</div><div class="kpi-sub">buy a 2nd pack</div></div>
     <div class="stat"><div class="k">No-show rate</div><div class="v">${m.noShowRate}%</div><div class="kpi-sub">last 120 days</div></div>
-    <div class="stat" onclick="openCapacity()" style="cursor:pointer"><div class="k">Capacity</div><div class="v green">${m.capacityPct}%</div><div class="kpi-sub">${m.wkSessions} of ${m.cap}/wk · set</div></div>
+    <div class="stat" onclick="openHours()" style="cursor:pointer"><div class="k">Capacity</div><div class="v green">${m.capacityPct}%</div><div class="kpi-sub">${m.wkSessions} of ${m.cap}/wk · hours</div></div>
     <div class="stat"><div class="k">Avg session rate</div><div class="v">${money(m.avgRate)}</div><div class="kpi-sub">per session</div></div>
   </div>`;
 }
@@ -889,15 +891,46 @@ function needsAttentionHTML(m){
     <div class="card"><div class="name" style="font-size:15px;margin-bottom:6px">Where clients come from</div>${srcs}</div>
   </div>`;
 }
-function openCapacity(){
-  const c=state.profile.weeklyCapacity||"";
-  openSheet(`<div class="sheet-title">Weekly capacity</div>
-    <p class="muted" style="margin-top:2px">How many sessions can you run in a full week? Used to show how much room you have to grow.</p>
-    <label class="fld"><span>Sessions per week (max)</span><input id="cap-amt" type="number" inputmode="numeric" value="${c}" placeholder="40"/></label>
-    <div style="height:14px"></div>
-    <button class="btn" onclick="saveCapacity()">Save</button>`);
+function toMin(t){ const p=(t||"0:0").split(":"); return (+p[0]||0)*60+(+p[1]||0); }
+function defaultHours(){ const wh={}; for(let d=0;d<7;d++) wh[d]={on:d>=1&&d<=5, blocks:[{start:"06:00",end:"14:00"}]}; return wh; }
+function weeklyCapacityFromHours(){
+  const wh=state.profile.workingHours; if(!wh) return state.profile.weeklyCapacity||40;
+  const len=state.profile.sessionLength||60; let total=0;
+  for(let d=0;d<7;d++){ const dd=wh[d]; if(!dd||!dd.on) continue; (dd.blocks||[]).forEach(b=>{ const mn=toMin(b.end)-toMin(b.start); if(mn>0) total+=Math.floor(mn/len); }); }
+  return total;
 }
-function saveCapacity(){ state.profile.weeklyCapacity=+el("cap-amt").value||0; save(); render(); closeSheet(); switchTab("tax"); }
+function openHours(){
+  hoursDraft=JSON.parse(JSON.stringify(state.profile.workingHours||defaultHours()));
+  hoursLenDraft=state.profile.sessionLength||60;
+  hoursRender();
+}
+function hoursRender(){
+  const names=["Sunday","Monday","Tuesday","Wednesday","Thursday","Friday","Saturday"];
+  let cap=0; for(let d=0;d<7;d++){ const dd=hoursDraft[d]; if(dd&&dd.on)(dd.blocks||[]).forEach(b=>{const mn=toMin(b.end)-toMin(b.start); if(mn>0)cap+=Math.floor(mn/hoursLenDraft);}); }
+  let days="";
+  for(let d=0;d<7;d++){ const dd=hoursDraft[d]||{on:false,blocks:[]};
+    days+=`<div class="hr-day"><div class="row between"><b>${names[d]}</b><button class="toggle ${dd.on?'on':''}" onclick="hToggleDay(${d})"><span></span></button></div>
+      ${dd.on?(dd.blocks||[]).map((b,i)=>`<div class="row" style="gap:8px;margin-top:8px;align-items:center">
+        <input type="time" value="${b.start}" onchange="hSetTime(${d},${i},'start',this.value)" style="flex:1"/>
+        <span class="meta">to</span>
+        <input type="time" value="${b.end}" onchange="hSetTime(${d},${i},'end',this.value)" style="flex:1"/>
+        ${dd.blocks.length>1?`<button class="ob-x" onclick="hRemoveBlock(${d},${i})">✕</button>`:''}
+      </div>`).join("")+`<button class="btn sec btn-sm" style="margin-top:8px" onclick="hAddBlock(${d})">＋ Add a split shift</button>`:''}
+    </div>`;
+  }
+  openSheet(`<div class="sheet-title">Working hours</div>
+    <p class="muted" style="margin-top:2px">Set the days and hours you train — FITRM uses this to show your true open slots.</p>
+    <label class="fld"><span>Session length</span><select onchange="hSetLen(this.value)">${[30,45,60,90].map(n=>`<option value="${n}" ${n===hoursLenDraft?'selected':''}>${n} min</option>`).join("")}</select></label>
+    <div class="card" style="background:var(--surface2);margin-top:12px"><div class="row between"><span class="meta">Weekly capacity</span><b class="big-num green">${cap} sessions</b></div></div>
+    <div style="margin-top:8px">${days}</div>
+    <button class="btn" style="margin-top:16px" onclick="saveHours()">Save working hours</button>`);
+}
+function hToggleDay(d){ if(!hoursDraft[d])hoursDraft[d]={on:false,blocks:[]}; hoursDraft[d].on=!hoursDraft[d].on; if(hoursDraft[d].on&&(!hoursDraft[d].blocks||!hoursDraft[d].blocks.length))hoursDraft[d].blocks=[{start:"06:00",end:"14:00"}]; hoursRender(); }
+function hSetTime(d,i,f,v){ hoursDraft[d].blocks[i][f]=v; hoursRender(); }
+function hAddBlock(d){ hoursDraft[d].blocks.push({start:"16:00",end:"20:00"}); hoursRender(); }
+function hRemoveBlock(d,i){ hoursDraft[d].blocks.splice(i,1); hoursRender(); }
+function hSetLen(v){ hoursLenDraft=+v; hoursRender(); }
+function saveHours(){ state.profile.workingHours=hoursDraft; state.profile.sessionLength=hoursLenDraft; save(); render(); closeSheet(); switchTab("tax"); }
 function sourceOptions(sel){ return ["","Referral","Instagram","Gym floor","Walk-in","Website","Other"].map(o=>`<option ${o===(sel||"")?"selected":""} value="${o}">${o||"—"}</option>`).join(""); }
 
 function openAddMenu(){
@@ -1070,6 +1103,7 @@ let recurDays=[];
 let recurAutoRenew=false;
 let finOpen={trend:true};
 let growOpen=false;
+let hoursDraft=null, hoursLenDraft=60;
 const DAY_MS=86400000;
 function el(id){ return document.getElementById(id); }
 
@@ -1919,6 +1953,7 @@ function openSettings(){
         <button class="toggle ${burns?'on':''}" onclick="toggleNoShow()"><span></span></button></div>
     </div>
     <button class="btn sec" onclick="closeSheet();startTour()">Take the tour</button>
+    <button class="btn sec" style="margin-top:8px" onclick="openHours()">Working hours</button>
     <button class="btn sec" style="margin-top:8px" onclick="openTaxProfile()">Tax profile</button>
     <button class="btn sec" style="margin-top:8px" onclick="openDataMenu()">Demo / reset data</button>
     ${window.currentUser?`<div class="meta" style="margin:14px 2px 6px">Signed in as ${window.currentUser.email}</div>
