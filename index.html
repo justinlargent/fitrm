@@ -45,7 +45,7 @@
   .row{display:flex; align-items:center; gap:12px;}
   .between{justify-content:space-between;}
   .grow{flex:1; min-width:0;}
-  .stat-grid{display:grid; grid-template-columns:1fr 1fr; gap:12px;}
+  .stat-grid{display:grid; grid-template-columns:1fr 1fr; gap:12px; margin-bottom:12px;}
   .stat{background:var(--surface); border:1px solid var(--line); border-radius:var(--radius); padding:16px;}
   .stat .k{font-size:12px; color:var(--muted); font-weight:600;}
   .stat .v{font-size:26px; font-weight:800; margin-top:4px; letter-spacing:-.5px;}
@@ -899,6 +899,11 @@ function weeklyCapacityFromHours(){
   for(let d=0;d<7;d++){ const dd=wh[d]; if(!dd||!dd.on) continue; (dd.blocks||[]).forEach(b=>{ const mn=toMin(b.end)-toMin(b.start); if(mn>0) total+=Math.floor(mn/len); }); }
   return total;
 }
+function todayCapacity(){
+  const len=state.profile.sessionLength||60, d=new Date().getDay(), wh=state.profile.workingHours;
+  if(wh){ if(!wh[d]||!wh[d].on) return 0; let t=0; (wh[d].blocks||[]).forEach(b=>{const mn=toMin(b.end)-toMin(b.start); if(mn>0)t+=Math.floor(mn/len);}); return t; }
+  return (d>=1&&d<=5)?8:0;
+}
 function openHours(){
   hoursDraft=JSON.parse(JSON.stringify(state.profile.workingHours||defaultHours()));
   hoursLenDraft=state.profile.sessionLength||60;
@@ -1180,6 +1185,8 @@ function renderHome(){
   const nq=nextQuarterly();
   const mGoal=state.profile.monthlyGoal||Math.max(1000,Math.round(weeklyRunRate()*4.33/100)*100);
   const mPct=mGoal>0?Math.min(100,Math.round(income/mGoal*100)):0;
+  const todayIncome=todays.reduce((a,s)=>a+avgSessionPrice(s.clientId),0);
+  const tCap=todayCapacity(), openToday=Math.max(0,tCap-todays.length), openVal=Math.round(openToday*globalAvgSessionPrice());
   let h=`
     <div class="row between">
       <div class="grow"><div class="lg-title">Today</div></div>
@@ -1187,8 +1194,8 @@ function renderHome(){
     </div>
     <div class="sub">${new Date().toLocaleDateString(undefined,{weekday:"long",month:"long",day:"numeric"})}</div>
     <div class="stat-grid">
-      <div class="stat"><div class="k">Income this month</div><div class="v green">${money(income)}</div></div>
-      <div class="stat"><div class="k">Set aside (remaining)</div><div class="v">${money(reserve)}</div></div>
+      <div class="stat"><div class="k">Today's income</div><div class="v green">${money(todayIncome)}</div><div class="kpi-sub">${todays.length} session${todays.length===1?'':'s'} booked</div></div>
+      <div class="stat" onclick="openHours()" style="cursor:pointer"><div class="k">Open today</div><div class="v">${openToday}</div><div class="kpi-sub">${openVal>0?`~${money(openVal)} to fill`:(tCap?'fully booked':'set your hours')}</div></div>
     </div>
     <div class="card" onclick="openMonthGoal()" style="cursor:pointer">
       <div class="row between"><span class="meta">This month's goal</span><span class="meta">${money(income)} of ${money(mGoal)}</span></div>
