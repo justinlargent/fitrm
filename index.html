@@ -1072,13 +1072,46 @@ function render(){
   renderHome(); renderCalendar(); renderClients(); renderPackages(); renderTax();
 }
 
+function growItems(){
+  const items=[], m=bizMetrics();
+  const low=state.clients.filter(c=>c.status==="active").map(c=>({c,r:clientSessionsRemaining(c.id)}))
+    .filter(x=>x.r<=2 && state.sales.some(s=>s.clientId===x.c.id));
+  if(low.length){ const val=low.reduce((a,x)=>a+typicalPackagePrice(x.c.id),0);
+    items.push({label:`${low.length} client${low.length===1?'':'s'} running low — sell renewals`, val, act:"switchTab('clients')"}); }
+  const unpaid=state.sales.filter(s=>!s.paid);
+  if(unpaid.length){ const val=unpaid.reduce((a,s)=>a+s.pricePaid,0); const n=new Set(unpaid.map(s=>s.clientId)).size;
+    items.push({label:`${money(val)} outstanding from ${n} client${n===1?'':'s'} — collect`, val:0, act:"openUnpaid()"}); }
+  if(m.atRisk.length){ items.push({label:`${m.atRisk.length} client${m.atRisk.length===1?'':'s'} haven't booked lately — reach out`, val:0, act:"switchTab('tax')"}); }
+  const open=Math.max(0, m.cap-m.wkSessions);
+  if(open>0){ const val=Math.round(open*globalAvgSessionPrice());
+    items.push({label:`${open} open slot${open===1?'':'s'} this week — fill them`, val, act:"switchTab('calendar')"}); }
+  return items;
+}
+function openUnpaid(){
+  const unpaid=state.sales.filter(s=>!s.paid);
+  openSheet(`<div class="sheet-title">Outstanding payments</div>
+    ${unpaid.length?unpaid.map(s=>{const c=state.clients.find(x=>x.id===s.clientId); const pt=state.packageTypes.find(p=>p.id===s.packageTypeId);
+      return `<div class="card row between" style="margin-bottom:8px"><div><div class="name">${c?c.name:"(deleted)"}</div><div class="meta">${pt?pt.name:"Package"} · ${money(s.pricePaid)}</div></div><button class="btn sec btn-sm" onclick="markSalePaid('${s.id}');openUnpaid()">Mark paid</button></div>`;}).join(""):`<div class="card empty">No outstanding payments — nice.</div>`}
+    <button class="btn sec" style="margin-top:8px" onclick="closeSheet()">Close</button>`);
+}
+function openMonthGoal(){
+  const g=state.profile.monthlyGoal||"";
+  openSheet(`<div class="sheet-title">Monthly income goal</div>
+    <p class="muted" style="margin-top:2px">Your target for the month — Home tracks your income against it.</p>
+    <label class="fld"><span>Goal ($ per month)</span><input id="mg-amt" type="number" inputmode="decimal" value="${g}" placeholder="10000"/></label>
+    <div style="height:14px"></div>
+    <button class="btn" onclick="saveMonthGoal()">Save goal</button>`);
+}
+function saveMonthGoal(){ state.profile.monthlyGoal=+el("mg-amt").value||0; save(); render(); closeSheet(); }
+
 function renderHome(){
   const todays=state.sessions.filter(s=>s.datetime.slice(0,10)===todayISO())
     .sort((a,b)=>a.datetime<b.datetime?-1:1);
-  const low=state.clients.filter(c=>c.status==="active")
-    .map(c=>({c,r:clientSessionsRemaining(c.id)})).filter(x=>x.r<=2).sort((a,b)=>a.r-b.r);
   const reserve=reserveRemaining(), income=incomeThisMonth();
   const nq=nextQuarterly();
+  const mGoal=state.profile.monthlyGoal||Math.max(1000,Math.round(weeklyRunRate()*4.33/100)*100);
+  const mPct=mGoal>0?Math.min(100,Math.round(income/mGoal*100)):0;
+  const grow=growItems();
   let h=`
     <div class="row between">
       <div class="grow"><div class="lg-title">Today</div></div>
@@ -1088,6 +1121,11 @@ function renderHome(){
     <div class="stat-grid">
       <div class="stat"><div class="k">Income this month</div><div class="v green">${money(income)}</div></div>
       <div class="stat"><div class="k">Set aside (remaining)</div><div class="v">${money(reserve)}</div></div>
+    </div>
+    <div class="card" onclick="openMonthGoal()" style="cursor:pointer">
+      <div class="row between"><span class="meta">This month's goal</span><span class="meta">${money(income)} of ${money(mGoal)}</span></div>
+      <div class="goal-bar"><i style="width:${mPct}%"></i></div>
+      <div class="row between"><span class="meta" style="color:var(--accent);font-weight:800">${mPct}%</span><span class="meta">tap to set goal</span></div>
     </div>
     <div class="sec-title">Today's sessions</div>`;
   if(todays.length){
@@ -1104,14 +1142,13 @@ function renderHome(){
     }).join("")+`</div>`;
   } else { h+=`<div class="card empty">No sessions scheduled today 🎉</div>`; }
 
-  if(low.length){
-    h+=`<div class="sec-title">Running low — time to renew</div><div class="card">`+
-      low.map(x=>`<div class="row between list-item">
-        <div class="row"><div class="avatar">${initials(x.c.name)}</div>
-          <div><div class="name">${x.c.name}</div><div class="meta">${x.r} session${x.r===1?"":"s"} left</div></div></div>
-        <span class="pill ${x.r<=0?"out":"low"}">${x.r<=0?"Out":x.r+" left"}</span>
+  h+=`<div class="sec-title">Grow this week</div>`;
+  if(grow.length){
+    h+=`<div class="card">`+grow.map(g=>`<div class="row between list-item" onclick="${g.act}" style="cursor:pointer">
+        <div class="grow"><div class="name" style="font-size:15px">${g.label}</div></div>
+        ${g.val?`<div class="big-num green">~${money(g.val)}</div>`:`<span class="meta" style="font-size:20px">›</span>`}
       </div>`).join("")+`</div>`;
-  }
+  } else { h+=`<div class="card empty">You're all caught up — nice work.</div>`; }
   const trend=trendData(); window.__trend=trend;
   h+=`<div class="sec-title">Income vs. expenses</div>
     <div class="card">${trChartHTML(trend,"htrend")}</div>`;
