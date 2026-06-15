@@ -28,11 +28,10 @@
   }
   /* Phone frame for desktop preview; full-bleed on actual phone */
   #frame{
-    max-width:430px; margin:0 auto; min-height:100%;
+    max-width:none; margin:0; min-height:100%;
     background:var(--bg); position:relative; display:flex; flex-direction:column;
-    box-shadow:0 0 60px rgba(0,0,0,.4);
   }
-  .screen{flex:1; overflow-y:auto; -webkit-overflow-scrolling:touch;
+  .screen{flex:1; overflow-y:auto; overflow-x:hidden; -webkit-overflow-scrolling:touch;
     padding:calc(var(--safe-top) + 8px) 18px 110px; }
   .hidden{display:none;}
   /* Headers */
@@ -88,8 +87,8 @@
     padding:9px; border-radius:9px; font-size:13px; cursor:pointer; font-family:inherit;}
   .seg button.on{background:var(--accent); color:#14160d;}
   /* Tab bar */
-  #tabbar{position:sticky; bottom:0; left:0; right:0; max-width:430px; margin:0 auto;
-    background:rgba(15,26,22,.86); backdrop-filter:blur(18px); -webkit-backdrop-filter:blur(18px);
+  #tabbar{position:sticky; bottom:0; left:0; right:0; margin:0;
+    background:rgba(12,12,13,.88); backdrop-filter:blur(18px); -webkit-backdrop-filter:blur(18px);
     border-top:1px solid var(--line); display:flex; padding:8px 6px calc(8px + var(--safe-bottom));}
   .tab{flex:1; background:none; border:none; color:var(--muted); display:flex; flex-direction:column;
     align-items:center; gap:3px; font-size:10px; font-weight:600; padding:4px; cursor:pointer; font-family:inherit;}
@@ -897,6 +896,13 @@ function openCapacity(){
 function saveCapacity(){ state.profile.weeklyCapacity=+el("cap-amt").value||0; save(); render(); closeSheet(); switchTab("tax"); }
 function sourceOptions(sel){ return ["","Referral","Instagram","Gym floor","Walk-in","Website","Other"].map(o=>`<option ${o===(sel||"")?"selected":""} value="${o}">${o||"—"}</option>`).join(""); }
 
+function openAddMenu(){
+  openSheet(`<div class="sheet-title">Add clients</div>
+    <button class="btn" onclick="closeSheet();openAddClient()">Add one client</button>
+    <button class="btn sec" style="margin-top:8px" onclick="closeSheet();openOnboard()">Add several at once</button>
+    <button class="btn sec" style="margin-top:8px" onclick="closeSheet();openImportMenu()">Import from a spreadsheet</button>
+    <button class="btn sec" style="margin-top:8px" onclick="closeSheet()">Cancel</button>`);
+}
 /* ---- Mass-add clients (onboarding) ---- */
 function openOnboard(){
   const list=document.getElementById("ob-list"); list.innerHTML="";
@@ -1308,6 +1314,9 @@ function openSessionSheet(id){
       <div class="tax-line"><span>Type</span><b>${s.type}</b></div>
       <div class="tax-line"><span>Status</span><b class="${s.status==='completed'?'green':''}">${s.status}</b></div>
     </div>
+    ${s.status==="scheduled" ? `<label class="fld"><span>Reschedule this session</span>
+      <div class="row" style="gap:8px"><input id="ss-date" type="date" value="${s.datetime.slice(0,10)}"/><input id="ss-time" type="time" value="${s.datetime.slice(11,16)}"/></div></label>
+      <button class="btn sec" style="margin-top:8px" onclick="rescheduleSession('${s.id}')">Save new time</button>` : ``}
     <label class="fld"><span>Session notes</span>
       <textarea id="ss-notes" rows="3" placeholder="What you worked on, PRs, injuries…">${s.notes||""}</textarea></label>
     <button class="btn sec" style="margin-top:8px" onclick="saveSessionNotes('${s.id}',true)">Save notes</button>
@@ -1319,6 +1328,9 @@ function openSessionSheet(id){
 }
 function saveSessionNotes(id,toast){ const s=state.sessions.find(x=>x.id===id); const t=el("ss-notes");
   if(s&&t){ s.notes=t.value; save(); render(); if(toast) closeSheet(); } }
+function rescheduleSession(id){ const s=state.sessions.find(x=>x.id===id); if(!s) return;
+  const d=el("ss-date").value, t=el("ss-time").value||"07:00"; if(!d) return;
+  s.notes=el("ss-notes")?el("ss-notes").value:s.notes; s.datetime=d+"T"+t; save(); render(); closeSheet(); switchTab("calendar"); }
 function completeFromSheet(id){ const t=el("ss-notes"); const s=state.sessions.find(x=>x.id===id); if(s&&t) s.notes=t.value; completeSession(id); }
 function noShowFromSheet(id){ const t=el("ss-notes"); const s=state.sessions.find(x=>x.id===id); if(s&&t) s.notes=t.value; markSession(id,"no-show"); }
 function markSession(id,status){ const s=state.sessions.find(x=>x.id===id); if(s){ s.status=status; save(); render(); } closeSheet(); }
@@ -1326,13 +1338,9 @@ function markSession(id,status){ const s=state.sessions.find(x=>x.id===id); if(s
 function renderClients(){
   const list=state.clients.slice().sort((a,b)=>a.name<b.name?-1:1);
   let h=`<div class="row between"><div class="lg-title">Clients</div>
-    <button class="btn ghost" onclick="openAddClient()">＋ Add</button></div>
+    <button class="btn ghost" onclick="openAddMenu()">＋ Add</button></div>
     <div class="sub">${list.length} active</div>
-    <div class="row" style="gap:8px;margin-bottom:14px">
-      <button class="btn sec btn-sm grow" onclick="openOnboard()">＋ Add several</button>
-      <button class="btn sec btn-sm grow" onclick="openImportMenu()">⇪ Import</button>
-      <button class="btn sec btn-sm grow" onclick="openDataMenu()">⊕ Demo</button>
-    </div>
+    <div style="height:14px"></div>
     <div class="card">`;
   h+=list.map(c=>{
     const r=clientSessionsRemaining(c.id);
