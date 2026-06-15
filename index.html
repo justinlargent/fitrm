@@ -387,6 +387,10 @@
   .cal-aside{display:none;}
   .goal-bar{height:9px;background:var(--surface2);border-radius:6px;margin:13px 0 8px;overflow:hidden;}
   .goal-bar i{display:block;height:100%;background:var(--accent);border-radius:6px;transition:width .4s cubic-bezier(.2,.7,.2,1);}
+  .grow-bar{display:flex;height:12px;border-radius:6px;overflow:hidden;background:var(--surface2);}
+  .grow-bar i{display:block;height:100%;}
+  .grow-legend{display:flex;flex-wrap:wrap;gap:14px;margin-top:11px;font-size:12px;color:var(--muted);font-weight:600;}
+  .grow-legend i{display:inline-block;width:10px;height:10px;border-radius:3px;margin-right:6px;vertical-align:-1px;}
 
   /* ===================== DESKTOP SHELL (sidebar + modal sheets) ===================== */
   .side-brand{display:none;}
@@ -1065,6 +1069,7 @@ let expRecurring=false;
 let recurDays=[];
 let recurAutoRenew=false;
 let finOpen={trend:true};
+let growOpen=false;
 const DAY_MS=86400000;
 function el(id){ return document.getElementById(id); }
 
@@ -1087,6 +1092,36 @@ function growItems(){
     items.push({label:`${open} open slot${open===1?'':'s'} this week — fill them`, val, act:"switchTab('calendar')"}); }
   return items;
 }
+function growSummary(){
+  const m=bizMetrics();
+  const lowClients=state.clients.filter(c=>c.status==="active").map(c=>({c,r:clientSessionsRemaining(c.id)})).filter(x=>x.r<=2 && state.sales.some(s=>s.clientId===x.c.id));
+  const renewVal=lowClients.reduce((a,x)=>a+typicalPackagePrice(x.c.id),0);
+  const unpaid=state.sales.filter(s=>!s.paid); const collectVal=unpaid.reduce((a,s)=>a+s.pricePaid,0);
+  const openSlots=Math.max(0,m.cap-m.wkSessions); const slotsVal=Math.round(openSlots*globalAvgSessionPrice());
+  return {renewVal,collectVal,slotsVal,total:renewVal+collectVal+slotsVal,atRisk:m.atRisk.length};
+}
+function growCardHTML(){
+  const s=growSummary();
+  if(s.total<=0 && s.atRisk===0) return `<div class="sec-title">Grow this week</div><div class="card empty">You're all caught up — nice work.</div>`;
+  const seg=(v,col)=> s.total>0&&v>0?`<i style="width:${(v/s.total*100).toFixed(1)}%;background:${col}"></i>`:"";
+  const legend=`<div class="grow-legend">
+    ${s.renewVal>0?`<span><i style="background:#8f9d68"></i>Renewals ${money(s.renewVal)}</span>`:""}
+    ${s.collectVal>0?`<span><i style="background:#c9a86a"></i>Collect ${money(s.collectVal)}</span>`:""}
+    ${s.slotsVal>0?`<span><i style="background:#7d8aa0"></i>Fill slots ${money(s.slotsVal)}</span>`:""}
+  </div>`;
+  const actions= growOpen ? `<div style="margin-top:14px;border-top:1px solid var(--line)">`+growItems().map(g=>`<div class="row between list-item" onclick="event.stopPropagation();${g.act}" style="cursor:pointer">
+      <div class="grow"><div class="name" style="font-size:14px">${g.label}</div></div>
+      ${g.val?`<div class="big-num green">~${money(g.val)}</div>`:`<span class="meta" style="font-size:20px">›</span>`}
+    </div>`).join("")+`</div>` : "";
+  return `<div class="sec-title">Grow this week</div>
+    <div class="card" onclick="toggleGrow()" style="cursor:pointer">
+      <div class="row between"><span class="meta">Within reach this week</span><span class="meta">${growOpen?"tap to collapse":"tap for actions"}</span></div>
+      <div class="big-num green" style="font-size:28px;margin:4px 0 12px">${money(s.total)}</div>
+      <div class="grow-bar">${seg(s.renewVal,"#8f9d68")}${seg(s.collectVal,"#c9a86a")}${seg(s.slotsVal,"#7d8aa0")}</div>
+      ${legend}${actions}
+    </div>`;
+}
+function toggleGrow(){ growOpen=!growOpen; renderHome(); }
 function openUnpaid(){
   const unpaid=state.sales.filter(s=>!s.paid);
   openSheet(`<div class="sheet-title">Outstanding payments</div>
@@ -1111,7 +1146,6 @@ function renderHome(){
   const nq=nextQuarterly();
   const mGoal=state.profile.monthlyGoal||Math.max(1000,Math.round(weeklyRunRate()*4.33/100)*100);
   const mPct=mGoal>0?Math.min(100,Math.round(income/mGoal*100)):0;
-  const grow=growItems();
   let h=`
     <div class="row between">
       <div class="grow"><div class="lg-title">Today</div></div>
@@ -1127,6 +1161,7 @@ function renderHome(){
       <div class="goal-bar"><i style="width:${mPct}%"></i></div>
       <div class="row between"><span class="meta" style="color:var(--accent);font-weight:800">${mPct}%</span><span class="meta">tap to set goal</span></div>
     </div>
+    ${growCardHTML()}
     <div class="sec-title">Today's sessions</div>`;
   if(todays.length){
     h+=`<div class="card">`+todays.map((s,i)=>{
@@ -1142,13 +1177,6 @@ function renderHome(){
     }).join("")+`</div>`;
   } else { h+=`<div class="card empty">No sessions scheduled today 🎉</div>`; }
 
-  h+=`<div class="sec-title">Grow this week</div>`;
-  if(grow.length){
-    h+=`<div class="card">`+grow.map(g=>`<div class="row between list-item" onclick="${g.act}" style="cursor:pointer">
-        <div class="grow"><div class="name" style="font-size:15px">${g.label}</div></div>
-        ${g.val?`<div class="big-num green">~${money(g.val)}</div>`:`<span class="meta" style="font-size:20px">›</span>`}
-      </div>`).join("")+`</div>`;
-  } else { h+=`<div class="card empty">You're all caught up — nice work.</div>`; }
   const trend=trendData(); window.__trend=trend;
   h+=`<div class="sec-title">Income vs. expenses</div>
     <div class="card">${trChartHTML(trend,"htrend")}</div>`;
