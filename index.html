@@ -1950,6 +1950,27 @@ function importCSV(text){
   return {clientsAdded, salesAdded, sessionsAdded, skipped};
 }
 
+/* Stripe Connect (take payments) */
+async function connectStripe(){
+  try{
+    const r=await fetch("/api/connect-start",{method:"POST",headers:{"Content-Type":"application/json"},
+      body:JSON.stringify({ email:(window.currentUser&&window.currentUser.email)||"", accountId:state.profile.stripeAccountId||null, returnUrl:location.origin })});
+    const d=await r.json();
+    if(d.error){ alert("Stripe error: "+d.error); return; }
+    if(d.accountId){ state.profile.stripeAccountId=d.accountId; save(); }
+    if(d.url){ location.href=d.url; }
+  }catch(e){ alert("Couldn't reach the payments server — make sure the /api functions are deployed."); }
+}
+async function checkStripeReturn(){
+  const p=new URLSearchParams(location.search);
+  if(p.get("stripe")==="return" && state.profile.stripeAccountId){
+    try{ const r=await fetch("/api/connect-status",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({accountId:state.profile.stripeAccountId})});
+      const d=await r.json(); state.profile.stripeConnected=!!d.charges_enabled; save(); render();
+    }catch(e){}
+  }
+  if(p.get("stripe")) history.replaceState({},"",location.pathname);
+}
+
 /* Settings */
 function openSettings(){
   const burns=state.profile.noShowBurns;
@@ -1959,7 +1980,10 @@ function openSettings(){
         <div class="meta">When on, a no-show counts against the client's package.</div></div>
         <button class="toggle ${burns?'on':''}" onclick="toggleNoShow()"><span></span></button></div>
     </div>
-    <button class="btn sec" onclick="closeSheet();startTour()">Take the tour</button>
+    ${state.profile.stripeConnected
+      ? `<div class="card" style="background:var(--surface2)"><div class="row between"><div class="name" style="font-size:15px">Payments</div><span class="pill ok">Stripe connected</span></div></div>`
+      : `<button class="btn sec" onclick="connectStripe()">Connect Stripe — take payments</button>`}
+    <button class="btn sec" style="margin-top:8px" onclick="closeSheet();startTour()">Take the tour</button>
     <button class="btn sec" style="margin-top:8px" onclick="openHours()">Working hours</button>
     <button class="btn sec" style="margin-top:8px" onclick="openTaxProfile()">Tax profile</button>
     <button class="btn sec" style="margin-top:8px" onclick="openDataMenu()">Demo / reset data</button>
@@ -2275,6 +2299,7 @@ async function enterApp(user){
   state = await loadStateForUser(user.id);
   render();
   maybeWelcome();
+  checkStripeReturn();
 }
 
 // Load this trainer's data: cloud first, then local cache, else empty. Migrate local->cloud on first run.
