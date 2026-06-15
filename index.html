@@ -348,6 +348,36 @@
   .fh-reveal{opacity:0;transform:translateY(28px);transition:.85s cubic-bezier(.2,.7,.2,1);}.fh-reveal.in{opacity:1;transform:none;}
   @media(max-width:860px){.fh-hero{grid-template-columns:1fr;}.fh-demo{grid-template-columns:1fr;}.fh-grid{grid-template-columns:1fr;}.fh-navlinks a.hidesm{display:none;}.fh-hero h1{min-height:0;}}
 
+  /* Mass-add onboarding overlay */
+  #onboard{position:fixed;inset:0;z-index:95;background:var(--bg);overflow-y:auto;display:none;padding-bottom:130px;}
+  #onboard.show{display:block;}
+  .ob-head{position:sticky;top:0;background:var(--bg);border-bottom:1px solid var(--line);padding:calc(var(--safe-top) + 16px) 18px 16px;z-index:2;}
+  .ob-h-title{font-size:22px;font-weight:800;}
+  .ob-h-sub{color:var(--muted);font-size:14px;margin-top:6px;max-width:560px;}
+  .ob-list{padding:16px 18px;max-width:680px;margin:0 auto;}
+  .ob-card{background:var(--surface);border:1px solid var(--line);border-radius:16px;padding:16px;margin-bottom:14px;}
+  .ob-card .ob-name{flex:1;min-width:0;font-size:16px;font-weight:600;}
+  .ob-x{background:var(--surface2);border:1px solid var(--line);color:var(--muted);border-radius:10px;width:42px;flex-shrink:0;cursor:pointer;font-family:inherit;font-size:15px;}
+  .ob-grid2{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:10px;}
+  .ob-sched{display:flex;gap:10px;margin-top:10px;align-items:center;}
+  .ob-sched .ob-days{flex:1;}
+  .ob-sched .ob-time{width:118px;}
+  .ob-card .ob-pkg{margin-top:10px;}
+  .ob-day.on{background:var(--accent);color:#14160d;}
+  .ob-foot{position:fixed;bottom:0;left:0;right:0;max-width:680px;margin:0 auto;background:var(--bg);border-top:1px solid var(--line);padding:14px 18px calc(14px + var(--safe-bottom));z-index:3;}
+  /* Guided tour */
+  #tour{position:fixed;inset:0;z-index:120;display:none;}
+  #tour.show{display:block;}
+  #tour-scrim{position:absolute;inset:0;background:rgba(0,0,0,.42);}
+  #tour-card{position:absolute;left:50%;bottom:24px;transform:translateX(-50%);width:min(440px,calc(100% - 32px));
+    background:var(--surface);border:1px solid var(--line);border-radius:20px;padding:22px;z-index:2;}
+  .tour-ic{font-size:26px;color:var(--accent);}
+  .tour-title{font-size:20px;font-weight:800;margin-top:8px;}
+  .tour-body{color:var(--muted);font-size:15px;margin-top:8px;line-height:1.55;}
+  .tour-dots{display:flex;gap:6px;margin-top:16px;}
+  .tour-dot{width:7px;height:7px;border-radius:50%;background:var(--line);}
+  .tour-dot.on{background:var(--accent);}
+  @media(min-width:900px){ #tour-card{bottom:auto;top:50%;transform:translate(-50%,-50%);} }
   /* Business health scorecard */
   .kpi-grid{display:grid;grid-template-columns:repeat(2,1fr);gap:10px;}
   .kpi-sub{font-size:11px;color:var(--muted);margin-top:3px;}
@@ -507,6 +537,20 @@
 <div id="sheet"><div class="grab"></div><div id="sheet-body"></div></div>
 <input type="file" id="csv-input" accept=".csv,text/csv" style="display:none" onchange="handleCSVFile(event)">
 <div id="cloud-status"></div>
+
+<div id="onboard">
+  <div class="ob-head">
+    <div class="row between"><div class="ob-h-title">Add your clients</div><button class="btn ghost" onclick="closeOnboard()">Close</button></div>
+    <p class="ob-h-sub">Add as many as you like — only the name is required. Add a schedule and package and FITRM sets up their sessions automatically.</p>
+  </div>
+  <div id="ob-list" class="ob-list"></div>
+  <div class="ob-foot">
+    <button class="btn sec" onclick="obAddCard()">＋ Add another client</button>
+    <button class="btn" style="margin-top:10px" onclick="obSave()">Save all</button>
+  </div>
+</div>
+
+<div id="tour"><div id="tour-scrim" onclick="endTour()"></div><div id="tour-card"></div></div>
 
 <script>
 /* ============================ STATE ============================ */
@@ -852,6 +896,88 @@ function openCapacity(){
 }
 function saveCapacity(){ state.profile.weeklyCapacity=+el("cap-amt").value||0; save(); render(); closeSheet(); switchTab("tax"); }
 function sourceOptions(sel){ return ["","Referral","Instagram","Gym floor","Walk-in","Website","Other"].map(o=>`<option ${o===(sel||"")?"selected":""} value="${o}">${o||"—"}</option>`).join(""); }
+
+/* ---- Mass-add clients (onboarding) ---- */
+function openOnboard(){
+  const list=document.getElementById("ob-list"); list.innerHTML="";
+  for(let i=0;i<3;i++) list.insertAdjacentHTML("beforeend", obCardHTML());
+  document.getElementById("onboard").classList.add("show");
+}
+function closeOnboard(){ document.getElementById("onboard").classList.remove("show"); }
+function obAddCard(){ const list=document.getElementById("ob-list"); list.insertAdjacentHTML("beforeend", obCardHTML());
+  list.lastElementChild.scrollIntoView({behavior:"smooth",block:"center"}); list.lastElementChild.querySelector(".ob-name").focus(); }
+function obCardHTML(){
+  const pkgs=`<option value="">No package yet</option>`+state.packageTypes.map(p=>`<option value="${p.id}">${p.name} — ${money(p.price)}</option>`).join("");
+  return `<div class="ob-card">
+    <div class="row" style="gap:10px"><input class="ob-name" placeholder="Client name"/><button class="ob-x" onclick="this.closest('.ob-card').remove()" aria-label="remove">✕</button></div>
+    <div class="ob-grid2"><input class="ob-phone" inputmode="tel" placeholder="Phone (optional)"/><select class="ob-source">${sourceOptions("")}</select></div>
+    <div class="ob-sched">
+      <div class="seg ob-days">${["S","M","T","W","T","F","S"].map((d,i)=>`<button type="button" class="ob-day" data-dow="${i}" onclick="this.classList.toggle('on')">${d}</button>`).join("")}</div>
+      <input class="ob-time" type="time" value="07:00"/>
+    </div>
+    <select class="ob-pkg">${pkgs}</select>
+  </div>`;
+}
+function obSave(){
+  const cards=document.querySelectorAll("#ob-list .ob-card"); let added=0; const stamp=Date.now();
+  cards.forEach((card,idx)=>{
+    const name=card.querySelector(".ob-name").value.trim(); if(!name) return;
+    const phone=card.querySelector(".ob-phone").value.trim();
+    const source=card.querySelector(".ob-source").value;
+    const time=card.querySelector(".ob-time").value||"07:00";
+    const ptId=card.querySelector(".ob-pkg").value;
+    const days=Array.prototype.map.call(card.querySelectorAll(".ob-day.on"),b=>+b.dataset.dow).sort((a,b)=>a-b);
+    const cid="c"+stamp+"_"+idx;
+    state.clients.push({id:cid,name,phone,email:"",status:"active",source});
+    if(ptId){ const pt=state.packageTypes.find(p=>p.id===ptId); if(pt){ const rate=effectiveRate(state.profile.annualIncome).rate;
+      state.sales.push({id:"s"+stamp+"_"+idx,clientId:cid,packageTypeId:pt.id,sessionsPurchased:pt.sessions,pricePaid:pt.price,paymentMethod:"",paid:true,soldAt:todayISO(),taxSetAside:+(pt.price*rate).toFixed(2)}); } }
+    if(days.length){ state.recurringSessions.push({id:"rt"+stamp+"_"+idx,clientId:cid,days,time,type:"In-person",autoRenew:true,active:true}); }
+    added++;
+  });
+  if(added){ syncRecurringSessions(state); save(); render(); }
+  closeOnboard(); switchTab("clients");
+  if(added) openSheet(`<div class="sheet-title">Added ${added} client${added===1?"":"s"} ✓</div><p class="muted">Any standing schedules are already on your calendar.</p><button class="btn" onclick="closeSheet()">Done</button>`);
+}
+
+/* ---- First-run welcome ---- */
+let welcomeShown=false;
+function maybeWelcome(){
+  if(welcomeShown || (state.clients&&state.clients.length>0)) return;
+  welcomeShown=true;
+  openSheet(`<div class="sheet-title">Welcome to FITRM 👋</div>
+    <p class="muted">Let's get your business in. Start by adding your clients — then your calendar, income, and taxes fill in automatically.</p>
+    <button class="btn" onclick="closeSheet();openOnboard()">Add my clients</button>
+    <button class="btn sec" style="margin-top:8px" onclick="closeSheet();startTour()">Take a 1-minute tour</button>
+    <button class="btn sec" style="margin-top:8px" onclick="closeSheet()">I'll explore on my own</button>`);
+}
+
+/* ---- Guided tour ---- */
+const tourSteps=[
+  {tab:"home",ic:"⌂",title:"Welcome to FITRM",body:"Your whole training business in one place — clients, schedule, money, and taxes, all working together. Here's the 60-second tour."},
+  {tab:"home",ic:"⌂",title:"Home",body:"Your day at a glance: today's sessions, clients running low, income this month, and your money trend."},
+  {tab:"calendar",ic:"▦",title:"Calendar",body:"Book a standing schedule once — MWF at 7am, say — and sessions track themselves, counting down each client's package automatically."},
+  {tab:"clients",ic:"☺",title:"Clients",body:"Your roster. Sell a package and remaining sessions update on their own. Add clients one at a time, in bulk, or by import."},
+  {tab:"packages",ic:"▣",title:"Packages",body:"Define what you sell — how many sessions are in a pack and the price. These power the session countdown and your tax math."},
+  {tab:"tax",ic:"$",title:"Business",body:"The payoff: projected income, who's due to renew, your real tax set-aside, plus your growth health — retention, renewals, and where clients come from."}
+];
+let tourIdx=0;
+function startTour(){ tourIdx=0; document.getElementById("tour").classList.add("show"); tourRender(); }
+function endTour(){ document.getElementById("tour").classList.remove("show"); }
+function tourNext(){ if(tourIdx<tourSteps.length-1){ tourIdx++; tourRender(); } else endTour(); }
+function tourPrev(){ if(tourIdx>0){ tourIdx--; tourRender(); } }
+function tourRender(){
+  const s=tourSteps[tourIdx]; switchTab(s.tab);
+  const dots=tourSteps.map((_,i)=>`<span class="tour-dot ${i===tourIdx?'on':''}"></span>`).join("");
+  document.getElementById("tour-card").innerHTML=`
+    <div class="tour-ic">${s.ic}</div>
+    <div class="tour-title">${s.title}</div>
+    <div class="tour-body">${s.body}</div>
+    <div class="tour-dots">${dots}</div>
+    <div class="row between" style="margin-top:18px">
+      <button class="btn sec btn-sm" onclick="endTour()">Skip</button>
+      <div class="row" style="gap:8px">${tourIdx>0?`<button class="btn sec btn-sm" onclick="tourPrev()">Back</button>`:""}<button class="btn btn-sm" onclick="tourNext()">${tourIdx<tourSteps.length-1?"Next":"Done"}</button></div>
+    </div>`;
+}
 
 /* ---- Income vs expenses trend (last 12 months) ---- */
 function trendData(){
@@ -1203,8 +1329,9 @@ function renderClients(){
     <button class="btn ghost" onclick="openAddClient()">＋ Add</button></div>
     <div class="sub">${list.length} active</div>
     <div class="row" style="gap:8px;margin-bottom:14px">
-      <button class="btn sec btn-sm grow" onclick="openImportMenu()">⇪ Import CSV</button>
-      <button class="btn sec btn-sm grow" onclick="openDataMenu()">⊕ Demo data</button>
+      <button class="btn sec btn-sm grow" onclick="openOnboard()">＋ Add several</button>
+      <button class="btn sec btn-sm grow" onclick="openImportMenu()">⇪ Import</button>
+      <button class="btn sec btn-sm grow" onclick="openDataMenu()">⊕ Demo</button>
     </div>
     <div class="card">`;
   h+=list.map(c=>{
@@ -1718,7 +1845,8 @@ function openSettings(){
         <div class="meta">When on, a no-show counts against the client's package.</div></div>
         <button class="toggle ${burns?'on':''}" onclick="toggleNoShow()"><span></span></button></div>
     </div>
-    <button class="btn sec" onclick="openTaxProfile()">Tax profile</button>
+    <button class="btn sec" onclick="closeSheet();startTour()">Take the tour</button>
+    <button class="btn sec" style="margin-top:8px" onclick="openTaxProfile()">Tax profile</button>
     <button class="btn sec" style="margin-top:8px" onclick="openDataMenu()">Demo / reset data</button>
     ${window.currentUser?`<div class="meta" style="margin:14px 2px 6px">Signed in as ${window.currentUser.email}</div>
       <button class="btn sec" style="color:var(--danger)" onclick="doLogout()">Log out</button>`:''}
@@ -2031,6 +2159,7 @@ async function enterApp(user){
   LS_KEY = "fitrm_poc_" + user.id;            // per-account local cache
   state = await loadStateForUser(user.id);
   render();
+  maybeWelcome();
 }
 
 // Load this trainer's data: cloud first, then local cache, else empty. Migrate local->cloud on first run.
