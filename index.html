@@ -1102,7 +1102,7 @@ function growSummary(){
 }
 function growCardHTML(){
   const s=growSummary();
-  if(s.total<=0 && s.atRisk===0) return `<div class="sec-title">Grow this week</div><div class="card empty">You're all caught up — nice work.</div>`;
+  if(s.total<=0 && s.atRisk===0) return `<div class="sec-title">Growth levers</div><div class="card empty">You're all caught up — nice work.</div>`;
   const seg=(v,col)=> s.total>0&&v>0?`<i style="width:${(v/s.total*100).toFixed(1)}%;background:${col}"></i>`:"";
   const legend=`<div class="grow-legend">
     ${s.renewVal>0?`<span><i style="background:#8f9d68"></i>Renewals ${money(s.renewVal)}</span>`:""}
@@ -1113,7 +1113,7 @@ function growCardHTML(){
       <div class="grow"><div class="name" style="font-size:14px">${g.label}</div></div>
       ${g.val?`<div class="big-num green">~${money(g.val)}</div>`:`<span class="meta" style="font-size:20px">›</span>`}
     </div>`).join("")+`</div>` : "";
-  return `<div class="sec-title">Grow this week</div>
+  return `<div class="sec-title">Growth levers</div>
     <div class="card" onclick="toggleGrow()" style="cursor:pointer">
       <div class="row between"><span class="meta">Within reach this week</span><span class="meta">${growOpen?"tap to collapse":"tap for actions"}</span></div>
       <div class="big-num green" style="font-size:28px;margin:4px 0 12px">${money(s.total)}</div>
