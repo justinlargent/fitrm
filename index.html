@@ -347,6 +347,43 @@
   .fh-footer a{cursor:pointer;}.fh-footer a:hover{color:var(--text);}
   .fh-reveal{opacity:0;transform:translateY(28px);transition:.85s cubic-bezier(.2,.7,.2,1);}.fh-reveal.in{opacity:1;transform:none;}
   @media(max-width:860px){.fh-hero{grid-template-columns:1fr;}.fh-demo{grid-template-columns:1fr;}.fh-grid{grid-template-columns:1fr;}.fh-navlinks a.hidesm{display:none;}.fh-hero h1{min-height:0;}}
+
+  /* Calendar metrics rail (desktop) */
+  .cal-aside{display:none;}
+  .goal-bar{height:9px;background:var(--surface2);border-radius:6px;margin:13px 0 8px;overflow:hidden;}
+  .goal-bar i{display:block;height:100%;background:var(--accent);border-radius:6px;transition:width .4s cubic-bezier(.2,.7,.2,1);}
+
+  /* ===================== DESKTOP SHELL (sidebar + modal sheets) ===================== */
+  .side-brand{display:none;}
+  @media(min-width:900px){
+    #frame{max-width:none;margin:0;flex-direction:row;box-shadow:none;min-height:100vh;}
+    /* bottom tab bar -> left sidebar */
+    #tabbar{order:-1;position:sticky;top:0;height:100vh;width:236px;flex-shrink:0;
+      flex-direction:column;justify-content:flex-start;align-items:stretch;gap:4px;
+      border-top:none;border-right:1px solid var(--line);padding:26px 14px;
+      background:var(--bg);backdrop-filter:none;-webkit-backdrop-filter:none;}
+    .side-brand{display:block;font-weight:800;font-size:21px;letter-spacing:.3px;color:var(--text);padding:4px 14px 24px;}
+    .side-brand span{color:var(--accent);}
+    #tabbar .tab{flex:none;flex-direction:row;justify-content:flex-start;gap:14px;width:100%;
+      padding:12px 14px;border-radius:12px;font-size:15px;font-weight:600;color:var(--muted);}
+    #tabbar .tab svg{width:21px;height:21px;}
+    #tabbar .tab.on{background:var(--surface2);color:var(--accent);}
+    /* content uses the full screen, capped & centered for readability */
+    .screen{height:100vh;max-height:100vh;padding:32px max(44px,calc((100% - 960px)/2)) 60px;}
+    .lg-title{font-size:30px;}
+    /* bottom sheets -> centered modal dialogs */
+    #sheet{top:50%;left:50%;right:auto;bottom:auto;width:min(520px,calc(100% - 80px));max-width:520px;
+      border-radius:22px;max-height:84vh;transform:translate(-50%,-46%);opacity:0;
+      transition:transform .25s cubic-bezier(.32,.72,0,1),opacity .25s ease;pointer-events:none;}
+    #sheet.show{transform:translate(-50%,-50%);opacity:1;pointer-events:auto;}
+    .grab{display:none;}
+    #cloud-status{top:16px;}
+    /* calendar uses the width + shows a metrics rail */
+    #screen-calendar{padding:32px 40px 60px;}
+    .cal-layout{display:flex;gap:26px;align-items:flex-start;}
+    .cal-main{flex:1;min-width:0;}
+    .cal-aside{display:block;width:300px;flex-shrink:0;}
+  }
 </style>
 </head>
 <body>
@@ -446,6 +483,7 @@
   <div id="screen-tax" class="screen hidden"></div>
 
   <div id="tabbar">
+    <div class="side-brand">FITRM<span>.IO</span></div>
     <button class="tab on" data-tab="home">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 10.5 12 3l9 7.5"/><path d="M5 9.5V20h14V9.5"/></svg>Home</button>
     <button class="tab" data-tab="calendar">
@@ -751,7 +789,10 @@ function trendData(){
   return arr;
 }
 const TR={W:320,H:150,padL:10,padR:10,padT:12,padB:22};
-function trChartHTML(data){
+function trReadHTML(d){ const net=d.income-d.expense;
+  return `<span class="tr-m">${d.full}</span> &nbsp; <span class="tr-i">Income ${money(d.income)}</span> · <span class="tr-e">Exp ${money(d.expense)}</span> · <span style="color:${net>=0?'#8f9d68':'var(--danger)'};font-weight:800">Net ${money(net)}</span>`; }
+function trChartHTML(data, pfx){
+  pfx=pfx||"trend";
   const {W,H,padL,padR,padT,padB}=TR, plotW=W-padL-padR, plotH=H-padT-padB, n=data.length;
   const maxV=Math.max(100,...data.map(d=>Math.max(d.income,d.expense)));
   const X=i=> padL+(n<=1?plotW/2:(i/(n-1))*plotW);
@@ -759,21 +800,21 @@ function trChartHTML(data){
   const line=key=> data.map((d,i)=>(i?"L":"M")+X(i).toFixed(1)+" "+Y(d[key]).toFixed(1)).join(" ");
   const area="M"+X(0).toFixed(1)+" "+(padT+plotH)+" "+data.map((d,i)=>"L"+X(i).toFixed(1)+" "+Y(d.income).toFixed(1)).join(" ")+" L"+X(n-1).toFixed(1)+" "+(padT+plotH)+" Z";
   const xlabels=data.map((d,i)=> i%2===0?`<text x="${X(i).toFixed(1)}" y="${H-6}" text-anchor="middle" font-size="8" fill="#9a988e">${d.label}</text>`:"").join("");
-  const last=n-1, net=data[last].income-data[last].expense;
-  return `<div class="tr-read" id="trend-read"><span class="tr-m">${data[last].full}</span> &nbsp; <span class="tr-i">Income ${money(data[last].income)}</span> · <span class="tr-e">Exp ${money(data[last].expense)}</span> · <span style="color:${net>=0?'#8f9d68':'var(--danger)'};font-weight:800">Net ${money(net)}</span></div>
-    <svg id="trend-svg" viewBox="0 0 ${W} ${H}" width="100%" style="display:block;touch-action:none">
-      <defs><linearGradient id="trendg" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#8f9d68" stop-opacity="0.26"/><stop offset="1" stop-color="#8f9d68" stop-opacity="0"/></linearGradient></defs>
-      <path d="${area}" fill="url(#trendg)"/>
+  const last=n-1;
+  return `<div class="tr-read" id="${pfx}-read">${trReadHTML(data[last])}</div>
+    <svg id="${pfx}-svg" data-pfx="${pfx}" viewBox="0 0 ${W} ${H}" width="100%" style="display:block;touch-action:none">
+      <defs><linearGradient id="${pfx}g" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#8f9d68" stop-opacity="0.26"/><stop offset="1" stop-color="#8f9d68" stop-opacity="0"/></linearGradient></defs>
+      <path d="${area}" fill="url(#${pfx}g)"/>
       <path d="${line('income')}" fill="none" stroke="#8f9d68" stroke-width="2.2" stroke-linejoin="round" stroke-linecap="round"/>
       <path d="${line('expense')}" fill="none" stroke="#9a988e" stroke-width="1.8" stroke-dasharray="4 3" stroke-linejoin="round" stroke-linecap="round"/>
-      <line id="trend-cross" x1="${X(last).toFixed(1)}" y1="${padT}" x2="${X(last).toFixed(1)}" y2="${padT+plotH}" stroke="#3a3b3d" stroke-width="1"/>
-      <circle id="trend-dot-i" r="3.5" fill="#8f9d68" cx="${X(last).toFixed(1)}" cy="${Y(data[last].income).toFixed(1)}"/>
-      <circle id="trend-dot-e" r="3" fill="#9a988e" cx="${X(last).toFixed(1)}" cy="${Y(data[last].expense).toFixed(1)}"/>
+      <line id="${pfx}-cross" x1="${X(last).toFixed(1)}" y1="${padT}" x2="${X(last).toFixed(1)}" y2="${padT+plotH}" stroke="#3a3b3d" stroke-width="1"/>
+      <circle id="${pfx}-dot-i" r="3.5" fill="#8f9d68" cx="${X(last).toFixed(1)}" cy="${Y(data[last].income).toFixed(1)}"/>
+      <circle id="${pfx}-dot-e" r="3" fill="#9a988e" cx="${X(last).toFixed(1)}" cy="${Y(data[last].expense).toFixed(1)}"/>
       ${xlabels}
     </svg>
     <div class="tr-legend"><span><i></i>Income</span><span class="e"><i></i>Expenses</span></div>`;
 }
-function trSetActive(i){
+function trSetActive(pfx,i){
   const data=window.__trend; if(!data||!data.length) return;
   const {W,H,padL,padR,padT,padB}=TR, plotW=W-padL-padR, plotH=H-padT-padB, n=data.length;
   const maxV=Math.max(100,...data.map(d=>Math.max(d.income,d.expense)));
@@ -781,17 +822,17 @@ function trSetActive(i){
   const X=padL+(n<=1?plotW/2:(i/(n-1))*plotW);
   const Yi=padT+plotH-(data[i].income/maxV)*plotH, Ye=padT+plotH-(data[i].expense/maxV)*plotH;
   const set=(id,a)=>{const el=document.getElementById(id); if(el)for(const k in a)el.setAttribute(k,a[k]);};
-  set("trend-cross",{x1:X.toFixed(1),x2:X.toFixed(1)});
-  set("trend-dot-i",{cx:X.toFixed(1),cy:Yi.toFixed(1)});
-  set("trend-dot-e",{cx:X.toFixed(1),cy:Ye.toFixed(1)});
-  const net=data[i].income-data[i].expense, r=document.getElementById("trend-read");
-  if(r) r.innerHTML=`<span class="tr-m">${data[i].full}</span> &nbsp; <span class="tr-i">Income ${money(data[i].income)}</span> · <span class="tr-e">Exp ${money(data[i].expense)}</span> · <span style="color:${net>=0?'#8f9d68':'var(--danger)'};font-weight:800">Net ${money(net)}</span>`;
+  set(pfx+"-cross",{x1:X.toFixed(1),x2:X.toFixed(1)});
+  set(pfx+"-dot-i",{cx:X.toFixed(1),cy:Yi.toFixed(1)});
+  set(pfx+"-dot-e",{cx:X.toFixed(1),cy:Ye.toFixed(1)});
+  const r=document.getElementById(pfx+"-read"); if(r) r.innerHTML=trReadHTML(data[i]);
 }
-function initTrendChart(){
-  const svg=document.getElementById("trend-svg"); if(!svg||!window.__trend) return;
+function initTrendChart(pfx){
+  pfx=pfx||"trend";
+  const svg=document.getElementById(pfx+"-svg"); if(!svg||!window.__trend) return;
   const {W,padL,padR}=TR, plotW=W-padL-padR, n=window.__trend.length;
   function idx(cx){ const r=svg.getBoundingClientRect(); const vx=(cx-r.left)/r.width*W; return Math.round(((vx-padL)/plotW)*(n-1)); }
-  function move(e){ const cx=e.touches?(e.touches[0]&&e.touches[0].clientX):e.clientX; if(cx==null) return; trSetActive(idx(cx)); if(e.touches&&e.cancelable) e.preventDefault(); }
+  function move(e){ const cx=e.touches?(e.touches[0]&&e.touches[0].clientX):e.clientX; if(cx==null) return; trSetActive(pfx,idx(cx)); if(e.touches&&e.cancelable) e.preventDefault(); }
   svg.addEventListener("mousemove",move);
   svg.addEventListener("touchstart",move,{passive:false});
   svg.addEventListener("touchmove",move,{passive:false});
@@ -814,7 +855,7 @@ let sellPaid=true;
 let expRecurring=false;
 let recurDays=[];
 let recurAutoRenew=false;
-let finOpen={};
+let finOpen={trend:true};
 const DAY_MS=86400000;
 function el(id){ return document.getElementById(id); }
 
@@ -862,6 +903,9 @@ function renderHome(){
         <span class="pill ${x.r<=0?"out":"low"}">${x.r<=0?"Out":x.r+" left"}</span>
       </div>`).join("")+`</div>`;
   }
+  const trend=trendData(); window.__trend=trend;
+  h+=`<div class="sec-title">Income vs. expenses</div>
+    <div class="card">${trChartHTML(trend,"htrend")}</div>`;
   h+=`<div class="sec-title">Taxes</div>
     <div class="card row between" onclick="switchTab('tax')" style="cursor:pointer">
       <div><div class="name">Next quarterly payment</div>
@@ -869,6 +913,7 @@ function renderHome(){
       <div class="big-num green">${money(reserve)}</div>
     </div>`;
   el("screen-home").innerHTML=h;
+  initTrendChart("htrend");
 }
 
 function ymd(d){ const x=new Date(d); return x.getFullYear()+"-"+String(x.getMonth()+1).padStart(2,"0")+"-"+String(x.getDate()).padStart(2,"0"); }
@@ -912,7 +957,7 @@ function goDay(ds){ calAnchor=ds; calView="day"; renderCalendar(); }
 
 function renderCalendar(){
   const labels={day:"Day","3day":"3 Days",week:"Week",month:"Month"};
-  let h=`<div class="row between"><div class="lg-title">Schedule</div>
+  let cal=`<div class="row between"><div class="lg-title">Schedule</div>
     <button class="btn ghost" onclick="openAddSession()">＋ Add</button></div>
     <div class="seg" style="margin-bottom:14px">
       ${["day","3day","week","month"].map(v=>`<button class="${calView===v?'on':''}" onclick="setCalView('${v}')">${labels[v]}</button>`).join("")}
@@ -927,19 +972,58 @@ function renderCalendar(){
 
   if(calView==="day"){
     const ss=sessionsOn(calAnchor);
-    h+= ss.length ? `<div class="card">`+ss.map(sessionRow).join("")+`</div>`
+    cal+= ss.length ? `<div class="card">`+ss.map(sessionRow).join("")+`</div>`
                   : `<div class="card empty" style="padding:22px">No sessions this day</div>`;
   } else if(calView==="month"){
-    h+=renderMonth();
+    cal+=renderMonth();
   } else {
     const a=parseYMD(calAnchor);
     let days;
     if(calView==="3day") days=[0,1,2].map(i=>ymd(new Date(a.getTime()+i*DAY_MS)));
     else { const s=weekStart(a); days=[0,1,2,3,4,5,6].map(i=>ymd(new Date(s.getTime()+i*DAY_MS))); }
-    h+=renderTimeGrid(days);
+    cal+=renderTimeGrid(days);
   }
-  el("screen-calendar").innerHTML=h;
+  el("screen-calendar").innerHTML=`<div class="cal-layout"><div class="cal-main">${cal}</div>${calAside()}</div>`;
 }
+function calAside(){
+  const now=new Date(), wkStart=weekStart(now), wkEnd=new Date(+wkStart+7*DAY_MS);
+  const weekSessions=state.sessions.filter(s=>{const d=+new Date(s.datetime);return d>=+wkStart&&d<+wkEnd;});
+  const weekRev=weekSessions.reduce((a,s)=>a+avgSessionPrice(s.clientId),0);
+  const todayStr=todayISO();
+  const todaySessions=state.sessions.filter(s=>s.datetime.slice(0,10)===todayStr);
+  const todayRev=todaySessions.reduce((a,s)=>a+avgSessionPrice(s.clientId),0);
+  const last28=state.sessions.filter(s=>{const d=+new Date(s.datetime);return d>=Date.now()-28*DAY_MS&&d<=Date.now();}).length;
+  const avgWk=last28/4;
+  const goal=state.profile.weeklyGoal||Math.max(500,Math.round(weeklyRunRate()/50)*50);
+  const pct=goal>0?Math.min(100,Math.round(weekRev/goal*100)):0;
+  return `<aside class="cal-aside">
+    <div class="sec-title" style="margin-top:0">This week's goal</div>
+    <div class="card">
+      <div class="row between"><span class="meta">Booked revenue</span><b class="big-num green">${money(weekRev)}</b></div>
+      <div class="goal-bar"><i style="width:${pct}%"></i></div>
+      <div class="row between"><span class="meta">of ${money(goal)} goal</span><span class="meta" style="font-weight:800;color:var(--accent)">${pct}%</span></div>
+      <button class="btn sec btn-sm" style="width:100%;margin-top:14px" onclick="openGoal()">Set weekly goal</button>
+    </div>
+    <div class="sec-title">Today</div>
+    <div class="card">
+      <div class="row between"><span class="meta">${todaySessions.length} session${todaySessions.length===1?'':'s'} booked</span><b class="big-num">${money(todayRev)}</b></div>
+    </div>
+    <div class="sec-title">Your pace</div>
+    <div class="card">
+      <div class="row between"><span class="meta">Sessions this week</span><b class="big-num">${weekSessions.length}</b></div>
+      <div class="row between" style="margin-top:10px"><span class="meta">Weekly average</span><b class="meta" style="font-weight:800">${avgWk.toFixed(1)}</b></div>
+    </div>
+  </aside>`;
+}
+function openGoal(){
+  const g=state.profile.weeklyGoal||"";
+  openSheet(`<div class="sheet-title">Weekly revenue goal</div>
+    <p class="muted" style="margin-top:2px">Set a target for the week — the calendar tracks your booked revenue against it.</p>
+    <label class="fld"><span>Goal ($ per week)</span><input id="g-amt" type="number" inputmode="decimal" value="${g}" placeholder="2500"/></label>
+    <div style="height:14px"></div>
+    <button class="btn" onclick="saveGoal()">Save goal</button>`);
+}
+function saveGoal(){ state.profile.weeklyGoal=+el("g-amt").value||0; save(); render(); closeSheet(); switchTab("calendar"); }
 
 function fmtTimeShort(d){ let h=d.getHours(), m=d.getMinutes(); const ap=h<12?"a":"p"; h=h%12||12; return h+(m?":"+String(m).padStart(2,"0"):"")+ap; }
 function gridRange(days){
@@ -1140,7 +1224,7 @@ function renderTax(){
   const rep=incomeReport();
   const trend=trendData(); window.__trend=trend;
   const tLast=trend[trend.length-1], tNet=tLast?tLast.income-tLast.expense:0;
-  const trendBody=trChartHTML(trend);
+  const trendBody=trChartHTML(trend,"ftrend");
   const projBody=`
     <div class="stat-grid">
       <div class="stat"><div class="k">Today</div><div class="v green">${money(today.total)}</div></div>
@@ -1219,7 +1303,7 @@ function renderTax(){
     ${finSection("trend","Income vs. expenses", `${money(tNet)} <span class="acc-sub">net this month</span>`, trendBody)}
     ${finSection("tax","Taxes", `${money(remaining)} <span class="acc-sub">still to set aside</span>`, taxBody)}`;
   el("screen-tax").innerHTML=h;
-  initTrendChart();
+  initTrendChart("ftrend");
 }
 function finSection(id,title,headline,body){
   const open=!!finOpen[id];
