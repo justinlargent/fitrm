@@ -2108,7 +2108,8 @@ function openSellPackage(cid){
       <div class="seg"><button id="pay-yes" class="on" onclick="setPaid(true)">Paid</button>
         <button id="pay-no" onclick="setPaid(false)">Owed</button></div></label>
     <div class="banner" id="tax-preview" style="margin-top:16px"></div>
-    <button class="btn" onclick="saveSale('${cid}')">Record sale</button>`);
+    <button class="btn" onclick="saveSale('${cid}')">Record sale</button>
+    ${state.profile.stripeConnected?`<button class="btn sec" style="margin-top:8px" onclick="chargeCard('${cid}')">Charge card via Stripe</button>`:''}`);
   sellPaid=true; previewTax();
 }
 function setPaid(v){ sellPaid=v; el("pay-yes").classList.toggle("on",v); el("pay-no").classList.toggle("on",!v); }
@@ -2130,6 +2131,26 @@ function saveSale(cid){
   save(); render(); closeSheet(); switchTab("clients");
 }
 function markSalePaid(id){ const s=state.sales.find(x=>x.id===id); if(s){ s.paid=true; save(); render(); openClient(s.clientId); } }
+async function chargeCard(cid){
+  const pt=state.packageTypes.find(p=>p.id===el("f-pt").value); if(!pt) return;
+  const client=state.clients.find(c=>c.id===cid);
+  const rate=effectiveRate(state.profile.annualIncome).rate;
+  const saleId="s"+Date.now();
+  // Record the sale as pending; the webhook + reconcile will flip it to paid.
+  state.sales.push({id:saleId, clientId:cid, packageTypeId:pt.id,
+    sessionsPurchased:pt.sessions, pricePaid:pt.price, paymentMethod:"Card", paid:false,
+    soldAt:todayISO(), taxSetAside:+(pt.price*rate).toFixed(2)});
+  save();
+  try{
+    const r=await fetch("/api/create-checkout",{method:"POST",headers:{"Content-Type":"application/json"},
+      body:JSON.stringify({ accountId:state.profile.stripeAccountId, amount:pt.price, saleId,
+        trainerUid:(window.currentUser&&window.currentUser.id)||"", clientName:client?client.name:"",
+        description:pt.name, returnUrl:location.origin })});
+    const d=await r.json();
+    if(d.error){ alert("Stripe error: "+d.error); return; }
+    if(d.url){ location.href=d.url; }
+  }catch(e){ alert("Couldn't reach the payments server."); }
+}
 
 function openAddSession(){
   const copts=state.clients.map(c=>`<option value="${c.id}">${c.name}</option>`).join("");
@@ -2300,6 +2321,23 @@ async function enterApp(user){
   render();
   maybeWelcome();
   checkStripeReturn();
+  reconcilePayments();
+  const pp=new URLSearchParams(location.search);
+  if(pp.get("paid")==="success"){ setTimeout(reconcilePayments,2500); setTimeout(reconcilePayments,6000); }
+  if(pp.get("paid")) history.replaceState({},"",location.pathname);
+}
+
+// Pull paid rows the webhook wrote and flip the matching local sales to paid.
+async function reconcilePayments(){
+  if(!window.currentUser) return;
+  try{
+    const { data } = await sb.from("payments").select("sale_id,status").eq("trainer_id", window.currentUser.id).eq("status","paid");
+    if(data && data.length){
+      const paid=new Set(data.map(p=>p.sale_id)); let changed=false;
+      (state.sales||[]).forEach(s=>{ if(paid.has(s.id) && !s.paid){ s.paid=true; changed=true; } });
+      if(changed){ save(); render(); }
+    }
+  }catch(e){}
 }
 
 // Load this trainer's data: cloud first, then local cache, else empty. Migrate local->cloud on first run.
