@@ -2108,8 +2108,8 @@ function openSellPackage(cid){
       <div class="seg"><button id="pay-yes" class="on" onclick="setPaid(true)">Paid</button>
         <button id="pay-no" onclick="setPaid(false)">Owed</button></div></label>
     <div class="banner" id="tax-preview" style="margin-top:16px"></div>
-    <button class="btn sec" onclick="saveSale('${cid}')">Record sale</button>
-    ${state.profile.stripeConnected?`<button class="btn" style="margin-top:8px" onclick="chargeCard('${cid}')">Charge Card</button>`:''}`);
+    ${state.profile.stripeConnected?`<button class="btn" onclick="chargeCard('${cid}')">Charge Card</button>`:''}
+    <button class="btn sec" style="margin-top:8px" onclick="saveSale('${cid}')">Record sale</button>`);
   sellPaid=true; previewTax();
 }
 function setPaid(v){ sellPaid=v; el("pay-yes").classList.toggle("on",v); el("pay-no").classList.toggle("on",!v); }
