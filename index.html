@@ -788,10 +788,16 @@ function incomeReport(){
 
 /* ---- Revenue projection engine ---- */
 function activeClients(){ return state.clients.filter(c=>c.status!=="inactive"); }
+function avgPackageRate(){
+  const pts=(state.packageTypes||[]).filter(p=>p.sessions>0 && p.price>0);
+  if(!pts.length) return 75;            // no packages defined yet — last-resort placeholder
+  const rates=pts.map(p=>p.price/p.sessions);
+  return rates.reduce((a,r)=>a+r,0)/rates.length;
+}
 function globalAvgSessionPrice(){
   const sess=state.sales.reduce((a,s)=>a+s.sessionsPurchased,0);
   const rev=state.sales.reduce((a,s)=>a+s.pricePaid,0);
-  return sess>0 ? rev/sess : 75;
+  return sess>0 ? rev/sess : avgPackageRate();   // fall back to avg package rate before any sales
 }
 function avgSessionPrice(cid){
   const sales=state.sales.filter(s=>s.clientId===cid);
@@ -1571,6 +1577,7 @@ function renderTax(){
   const today=projectFor("today",false), week=projectFor("week",false);
   const month=projectFor("month",true), year=projectFor("year",true);
   const extra=globalAvgSessionPrice()*52;
+  const extraBasis=state.sales.length ? "your average sold session" : "your average package price";
   const reups=reupForecast();
   const due30=reups.filter(x=>x.due && (x.due-Date.now())<=30*DAY_MS && (x.due-Date.now())>=0);
   const reupVal30=due30.reduce((a,x)=>a+x.pkgPrice,0);
@@ -1595,7 +1602,7 @@ function renderTax(){
     <div class="banner">
       <div class="meta" style="color:#dfe3d0">Motivation check</div>
       <div class="amt">${money(extra)}</div>
-      <div class="meta" style="color:#dfe3d0;margin-top:2px">One extra session per week is worth ~${money(extra)} a year.</div>
+      <div class="meta" style="color:#dfe3d0;margin-top:2px">One extra session per week is worth ~${money(extra)} a year — based on ${extraBasis}.</div>
     </div>`;
 
   const reupBody=`
