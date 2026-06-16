@@ -2327,10 +2327,17 @@ async function enterApp(user){
   if(pp.get("paid")) history.replaceState({},"",location.pathname);
 }
 
-// Pull paid rows the webhook wrote and flip the matching local sales to paid.
+// Ask the server to check Stripe for any pending payments, then flip matching local sales to paid.
 async function reconcilePayments(){
   if(!window.currentUser) return;
   try{
+    // First, have the server confirm pending payments straight from Stripe (no webhook needed).
+    if(state.profile && state.profile.stripeAccountId){
+      try{
+        await fetch("/api/refresh-payments",{method:"POST",headers:{"Content-Type":"application/json"},
+          body:JSON.stringify({ trainerUid:window.currentUser.id, accountId:state.profile.stripeAccountId })});
+      }catch(e){}
+    }
     const { data } = await sb.from("payments").select("sale_id,status").eq("trainer_id", window.currentUser.id).eq("status","paid");
     if(data && data.length){
       const paid=new Set(data.map(p=>p.sale_id)); let changed=false;
