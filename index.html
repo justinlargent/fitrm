@@ -694,9 +694,23 @@ function emptyState(){ return { profile:{ state:"CA", filingStatus:"single", bus
   packageTypes:[], clients:[], sales:[], sessions:[], expenses:[], taxPayments:[], recurringExpenses:[], recurringSessions:[] }; }
 
 /* ============================ TAX ENGINE (CA sole proprietor, est.) ============================ */
-const FED_2026_SINGLE=[[0,.10],[12400,.12],[50400,.22],[105700,.24],[201775,.32],[256225,.35],[640600,.37]];
-const CA_2025_SINGLE=[[0,.01],[10756,.02],[25499,.04],[40245,.06],[55866,.08],[70606,.093],[360659,.103],[432787,.113],[721314,.123]];
-const FED_STD_SINGLE=16100, CA_STD_SINGLE=5706, SS_WAGE_BASE=184500;
+const SS_WAGE_BASE=184500;
+// Verified June 2026 vs IRS Rev. Proc. 2025-32 (federal TY2026) and CA FTB 2025 Form 540 rate schedules.
+// b = [bracket lower bound, marginal rate]; std = standard deduction; amed = 0.9% additional-Medicare threshold.
+const FED_2026={
+  single:{b:[[0,.10],[12400,.12],[50400,.22],[105700,.24],[201775,.32],[256225,.35],[640600,.37]], std:16100, amed:200000},
+  mfj:   {b:[[0,.10],[24800,.12],[100800,.22],[211400,.24],[403550,.32],[512450,.35],[768700,.37]], std:32200, amed:250000},
+  hoh:   {b:[[0,.10],[17700,.12],[67450,.22],[105700,.24],[201750,.32],[256200,.35],[640600,.37]], std:24150, amed:200000},
+  mfs:   {b:[[0,.10],[12400,.12],[50400,.22],[105700,.24],[201775,.32],[256225,.35],[384350,.37]], std:16100, amed:125000},
+};
+const CA_2025={
+  single:{b:[[0,.01],[11079,.02],[26264,.04],[41452,.06],[57542,.08],[72724,.093],[371479,.103],[445771,.113],[742953,.123]], std:5706},
+  mfj:   {b:[[0,.01],[22158,.02],[52528,.04],[82904,.06],[115084,.08],[145448,.093],[742958,.103],[891542,.113],[1485906,.123]], std:11412},
+  hoh:   {b:[[0,.01],[22173,.02],[52530,.04],[67716,.06],[83805,.08],[98990,.093],[505208,.103],[606251,.113],[1010417,.123]], std:11412},
+  mfs:   {b:[[0,.01],[11079,.02],[26264,.04],[41452,.06],[57542,.08],[72724,.093],[371479,.103],[445771,.113],[742953,.123]], std:5706},
+};
+function filingKey(){ const f=(state.profile&&state.profile.filingStatus)||"single"; if(f==="married")return"mfj"; return ({single:1,mfj:1,hoh:1,mfs:1}[f]?f:"single"); }
+function filingLabel(f){ return {single:"Single",married:"Married filing jointly",mfj:"Married filing jointly",hoh:"Head of household",mfs:"Married filing separately"}[f]||"Single"; }
 
 function progressive(income, brackets){
   let tax=0;
@@ -710,18 +724,20 @@ function progressive(income, brackets){
 function effectiveRate(netProfit){
   const P=Math.max(netProfit,0);
   if(P===0) return {rate:0, seTax:0, fedTax:0, caTax:0, total:0};
+  const k=filingKey(), F=FED_2026[k], C=CA_2025[k];
   const seBase=P*0.9235;
   const ss=Math.min(seBase,SS_WAGE_BASE)*0.124;
   const medicare=seBase*0.029;
   const seTax=ss+medicare;
   const halfSE=seTax/2;
+  const addlMed=Math.max(0,seBase-F.amed)*0.009;   // 0.9% additional Medicare (high earners), not deductible
   const qbi=P*0.20;
-  const fedTI=Math.max(P-halfSE-FED_STD_SINGLE-qbi,0);
-  const fedTax=progressive(fedTI,FED_2026_SINGLE);
-  const caTI=Math.max(P-halfSE-CA_STD_SINGLE,0);
-  const caTax=progressive(caTI,CA_2025_SINGLE);
-  const total=seTax+fedTax+caTax;
-  return {rate:total/P, seTax, fedTax, caTax, total};
+  const fedTI=Math.max(P-halfSE-F.std-qbi,0);
+  const fedTax=progressive(fedTI,F.b);
+  const caTI=Math.max(P-halfSE-C.std,0);
+  const caTax=progressive(caTI,C.b);
+  const total=seTax+addlMed+fedTax+caTax;
+  return {rate:total/P, seTax:seTax+addlMed, fedTax, caTax, total};
 }
 
 /* ============================ DERIVED ============================ */
@@ -1178,6 +1194,24 @@ function openMonthGoal(){
 }
 function saveMonthGoal(){ state.profile.monthlyGoal=+el("mg-amt").value||0; save(); render(); closeSheet(); }
 
+// Clients running low on sessions — prompt the trainer to re-sell before they lapse.
+function lowSessionsNudge(){
+  const low=state.clients
+    .filter(c=>c.status!=="inactive" && clientTotalPurchased(c.id)>0)
+    .map(c=>({c, rem:clientSessionsRemaining(c.id)}))
+    .filter(x=>x.rem<=2)
+    .sort((a,b)=>a.rem-b.rem);
+  if(!low.length) return "";
+  const rows=low.slice(0,5).map(x=>`
+    <div class="row between list-item">
+      <div class="row"><div class="avatar">${initials(x.c.name)}</div>
+        <div><div class="name">${x.c.name}</div>
+          <div class="meta">${x.rem<=0?'out of sessions':x.rem+' session'+(x.rem===1?'':'s')+' left'}</div></div></div>
+      <button class="btn btn-sm" onclick="openSellPackage('${x.c.id}')">Renew</button>
+    </div>`).join("");
+  return `<div class="sec-title">Time to renew</div>
+    <div class="card">${rows}</div>`;
+}
 function renderHome(){
   const todays=state.sessions.filter(s=>s.datetime.slice(0,10)===todayISO())
     .sort((a,b)=>a.datetime<b.datetime?-1:1);
@@ -1203,6 +1237,7 @@ function renderHome(){
       <div class="row between"><span class="meta" style="color:var(--accent);font-weight:800">${mPct}%</span><span class="meta">tap to set goal</span></div>
     </div>
     ${growCardHTML()}
+    ${lowSessionsNudge()}
     <div class="sec-title">Today's sessions</div>`;
   if(todays.length){
     h+=`<div class="card">`+todays.map((s,i)=>{
@@ -1583,7 +1618,7 @@ function renderTax(){
     <button class="btn sec" onclick="openIncomeReport()">Full income report</button>`;
 
   const taxBody=`
-    <div class="sub" style="margin:2px 0 10px">${stateLabel} · ${biz} · ${p.filingStatus}</div>
+    <div class="sub" style="margin:2px 0 10px">${stateLabel} · ${biz} · ${filingLabel(p.filingStatus)}</div>
     <div class="banner">
       <div class="meta" style="color:#dfe3d0">Still to set aside (this year)</div>
       <div class="amt">${money(remaining)}</div>
@@ -2231,7 +2266,7 @@ function openTaxProfile(){
       <option value="TX">Texas (no income tax)</option><option value="FL">Florida (no income tax)</option>
       <option value="NY">New York</option></select></label>
     <label class="fld"><span>Filing status</span><select id="f-filing">
-      <option value="single">Single</option><option value="married">Married filing jointly</option></select></label>
+      <option value="single">Single</option><option value="married">Married filing jointly</option><option value="hoh">Head of household</option><option value="mfs">Married filing separately</option></select></label>
     <label class="fld"><span>Business type</span><select id="f-biz">
       <option value="sole_prop">Sole proprietor</option><option value="llc">Single-member LLC</option><option value="scorp">S-corp</option></select></label>
     <label class="fld"><span>Estimated annual net profit</span><input id="f-income" type="number" value="${p.annualIncome}"/></label>
