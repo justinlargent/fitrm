@@ -5,9 +5,9 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" />
 <meta name="apple-mobile-web-app-capable" content="yes" />
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
-<meta name="apple-mobile-web-app-title" content="FITRM" />
+<meta name="apple-mobile-web-app-title" content="Fitrm" />
 <meta name="theme-color" content="#0f1a16" />
-<title>FITRM.IO</title>
+<title>Fitrm.IO</title>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -428,83 +428,185 @@
 </style>
 </head>
 <body>
+<style>
+#home-screen{--ink:#20231d;--charcoal:#1b1d19;--moss:#8f9d68;--cream:#efe7d3;--paper:#f3ecda;--rust:#c2643f;--sage:#6b6a55;--bone:#f4f2ea;--serif:"Fraunces",Georgia,serif;--sans:"Inter",Helvetica,Arial,sans-serif;background:var(--cream);color:var(--ink);font-family:var(--sans);line-height:1.6;}
+#home-screen .wrap{max-width:1080px;margin:0 auto;padding:0 28px}
+#home-screen .wm{font-family:var(--serif);font-weight:500;letter-spacing:.5px}
+#home-screen .dot{color:var(--moss);background:transparent;width:auto;height:auto;border-radius:0;display:inline;flex-shrink:1}
+#home-screen .eyebrow{font-size:12px;letter-spacing:3px;text-transform:uppercase;color:var(--rust)}
+#home-screen .hpnav{display:flex;align-items:center;justify-content:space-between;padding:22px 28px;max-width:1080px;margin:0 auto}
+#home-screen .hpnav .brand{font-family:var(--serif);font-weight:500;font-size:24px}
+#home-screen .hpnav .links{display:flex;align-items:center;gap:26px;font-size:14px}
+#home-screen .hpnav .links a{color:var(--ink);text-decoration:none;cursor:pointer}
+#home-screen .btn{font-family:var(--sans);font-size:14px;font-weight:500;letter-spacing:1px;border-radius:24px;padding:11px 22px;border:1.5px solid var(--ink);cursor:pointer;text-decoration:none;display:inline-block;width:auto;background:transparent;color:var(--ink)}
+#home-screen .btn.ghost{background:transparent;color:var(--ink);border:1.5px solid var(--ink);padding:11px 22px}
+#home-screen .btn.solid{background:var(--ink);color:var(--cream)}
+#home-screen .btn.solid:hover{background:#2c3026}
+#home-screen .btn.navcta{background:var(--moss);color:#ffffff;border-color:var(--moss)}
+#home-screen .btn.navcta:hover{background:#7e8c59;border-color:#7e8c59}
+#home-screen .hero{text-align:center;padding:54px 0 64px;border-bottom:1.5px solid var(--ink)}
+#home-screen .lockup{display:flex;align-items:center;justify-content:center;gap:22px;margin-bottom:18px}
+#home-screen .stripes{display:flex;flex-direction:column;gap:7px}
+#home-screen .stripes i{display:block;height:5px;border-radius:3px}
+#home-screen .stripes i.a{width:54px;background:var(--moss)}
+#home-screen .stripes i.b{width:42px;background:var(--rust);align-self:flex-end}
+#home-screen .stripes i.c{width:54px;background:var(--moss)}
+#home-screen .stripes.r i.a,#home-screen .stripes.r i.c{align-self:flex-start}
+#home-screen .stripes.r i.b{align-self:flex-start}
+#home-screen .hero h1{font-family:var(--serif);font-weight:500;font-size:84px;line-height:.95;letter-spacing:1px}
+#home-screen .hero .tagline{margin-top:18px;font-size:13px;letter-spacing:4px;text-transform:uppercase;font-weight:500}
+#home-screen .hero .sub{max-width:560px;margin:20px auto 30px;font-size:18px;color:#3a3c33}
+#home-screen .hero .cta{display:flex;gap:14px;justify-content:center;flex-wrap:wrap}
+#home-screen .feat{padding:64px 0}
+#home-screen .feat .head{text-align:center;margin-bottom:40px}
+#home-screen .feat .head h2{font-family:var(--serif);font-weight:500;font-size:34px;margin:8px auto 0;max-width:20ch}
+#home-screen .grid{display:grid;grid-template-columns:repeat(3,1fr);gap:20px}
+#home-screen .card{background:var(--paper);border:1.5px solid var(--ink);border-radius:12px;padding:26px}
+#home-screen .card .bar{width:40px;height:5px;border-radius:3px;background:var(--moss);margin-bottom:16px}
+#home-screen .card h3{font-family:var(--serif);font-weight:500;font-size:21px;margin-bottom:8px}
+#home-screen .card p{font-size:15px;color:#3a3c33}
+#home-screen .money{background:var(--charcoal);color:var(--bone);padding:60px 0;text-align:center}
+#home-screen .money .eyebrow{color:var(--moss)}
+#home-screen .money h2{font-family:var(--serif);font-weight:500;font-size:36px;margin:10px 0 12px;color:var(--bone)}
+#home-screen .money p{max-width:560px;margin:0 auto;color:#cfd2c4;font-size:17px}
+#home-screen .money .num{font-family:var(--serif);font-size:56px;color:var(--moss);margin-top:24px;font-weight:500}
+#home-screen .money .numlabel{font-size:13px;letter-spacing:2px;text-transform:uppercase;color:#9aa089;margin-top:4px}
+#home-screen .quotes{padding:64px 0;border-top:1.5px solid var(--ink)}
+#home-screen .quotes .head{text-align:center;margin-bottom:40px}
+#home-screen .qgrid{display:grid;grid-template-columns:repeat(3,1fr);gap:20px}
+#home-screen .quote{background:var(--paper);border:1.5px solid var(--ink);border-radius:12px;padding:24px}
+#home-screen .quote .stars{color:var(--rust);letter-spacing:2px;font-size:13px;margin-bottom:10px}
+#home-screen .quote p{font-family:var(--serif);font-size:18px;line-height:1.5}
+#home-screen .quote .who{margin-top:16px;font-size:12px;color:var(--sage);letter-spacing:2px;text-transform:uppercase}
+#home-screen .pricing{padding:64px 0;background:var(--charcoal);color:var(--bone);text-align:center}
+#home-screen .pricing .eyebrow{color:var(--moss)}
+#home-screen .pricing h2{font-family:var(--serif);font-weight:500;color:var(--bone);font-size:34px;margin-top:8px}
+#home-screen .plan{max-width:360px;margin:32px auto 0;background:var(--cream);color:var(--ink);border-radius:16px;padding:32px;text-align:left;border:2px solid var(--ink)}
+#home-screen .plan-name{font-family:var(--serif);font-weight:500;font-size:22px}
+#home-screen .price{font-family:var(--serif);font-weight:500;font-size:56px;margin:4px 0 18px;line-height:1}
+#home-screen .price span{font-size:18px;color:var(--sage)}
+#home-screen .plan ul{list-style:none}
+#home-screen .plan li{padding:9px 0;border-bottom:1px solid rgba(32,35,29,.12);font-size:15px}
+#home-screen .plan li::before{content:"— ";color:var(--moss);font-weight:500}
+#home-screen .plan .btn{display:block;text-align:center;margin-top:22px}
+#home-screen .fine{margin-top:14px;font-size:13px;color:var(--sage);text-align:center}
+#home-screen .founder{margin-top:24px;font-size:15px;color:var(--moss);letter-spacing:1px}
+#home-screen .faq{padding:64px 0}
+#home-screen .faq .head{text-align:center;margin-bottom:36px}
+#home-screen .qa{max-width:760px;margin:0 auto}
+#home-screen .qa .item{border-top:1.5px solid var(--ink);padding:22px 4px}
+#home-screen .qa .item:last-child{border-bottom:1.5px solid var(--ink)}
+#home-screen .qa h4{font-family:var(--serif);font-weight:500;font-size:20px;margin-bottom:6px}
+#home-screen .qa p{font-size:15px;color:#3a3c33}
+#home-screen .endcta{text-align:center;padding:64px 0}
+#home-screen .endcta h2{font-family:var(--serif);font-weight:500;font-size:40px;margin-bottom:10px}
+#home-screen .endcta p{color:#3a3c33;margin-bottom:24px}
+#home-screen .hpfooter{border-top:1.5px solid var(--ink);padding:28px;display:flex;align-items:center;justify-content:space-between;max-width:1080px;margin:0 auto;font-size:12px;letter-spacing:1px}
+#home-screen .hpfooter .wm{font-size:18px}
+#home-screen .hpfooter .meta{color:var(--sage);text-transform:uppercase;letter-spacing:2px}
+@media(max-width:760px){#home-screen .hero h1{font-size:52px}#home-screen .grid,#home-screen .qgrid{grid-template-columns:1fr}#home-screen .hpnav .links a:not(.btn){display:none}}
+</style>
 <div id="home-screen">
-  <nav class="fh-nav"><div class="fh-wrap">
-    <div class="fh-logo"><svg width="28" height="28" viewBox="0 0 40 40"><rect width="40" height="40" rx="9" fill="#8f9d68"/><rect x="11" y="26" width="4.5" height="6" rx="1.2" fill="#14160d"/><rect x="17.75" y="20" width="4.5" height="12" rx="1.2" fill="#14160d"/><rect x="24.5" y="13" width="4.5" height="19" rx="1.2" fill="#14160d"/><path d="M11 11h13" stroke="#14160d" stroke-width="3" stroke-linecap="round"/></svg> FITRM<span>.IO</span></div>
-    <div class="fh-navlinks">
-      <a class="hidesm" onclick="hmScroll('fh-how')">How it works</a>
-      <a class="hidesm" onclick="hmScroll('fh-faq')">FAQ</a>
+  <nav class="hpnav">
+    <div class="brand wm">Fitrm<span class="dot">.</span></div>
+    <div class="links">
+      <a onclick="hmScroll('hp-features')">Features</a>
+      <a onclick="hmScroll('hp-pricing')">Pricing</a>
       <a onclick="showAuth('login')">Log in</a>
-      <button class="fh-btn fill" style="padding:10px 18px" onclick="showAuth('signup')">Get started</button>
+      <a onclick="showAuth('signup')" class="btn navcta">START FREE</a>
     </div>
-  </div></nav>
+  </nav>
 
-  <header class="fh-wrap fh-hero">
-    <div>
-      <div class="fh-eyebrow">For independent trainers</div>
-      <h1>You coach.<br>FITRM runs the <span class="fh-rotw" id="fh-rotw">back office</span>.</h1>
-      <p>You went independent to train people — not to count remaining sessions, guess at your income, or sweat every April. FITRM tracks it all automatically and hands you the exact number to set aside. Drag the sliders to see your year. 👉</p>
-      <div class="fh-ctas"><button class="fh-btn fill" onclick="showAuth('signup')">Start free</button><button class="fh-btn line" onclick="hmScroll('fh-how')">See how it works</button></div>
-      <div class="fh-fine">No credit card · Your data stays yours · Works on the gym floor</div>
-    </div>
-    <div class="fh-calc">
-      <div class="fh-tag">Your year, at this pace</div>
-      <div class="fh-big" id="fh-year">$106,250</div>
-      <div class="fh-biglab">projected income</div>
-      <div class="fh-sl"><label>Sessions per week <b id="fh-spwV">25</b></label><input type="range" id="fh-spw" min="5" max="50" step="1" value="25"></div>
-      <div class="fh-sl"><label>Average rate <b id="fh-rateV">$85</b></label><input type="range" id="fh-rt" min="40" max="160" step="5" value="85"></div>
-      <div class="fh-chips">
-        <div class="fh-chip tx">Set aside for taxes <b id="fh-tax">$0</b></div>
-        <div class="fh-chip pulse">Just one more session/week <b id="fh-delta">+$0</b></div>
+  <header class="hero">
+    <div class="wrap">
+      <div class="lockup">
+        <div class="stripes"><i class="a"></i><i class="b"></i><i class="c"></i></div>
+        <h1 class="wm">Fitrm<span class="dot">.</span></h1>
+        <div class="stripes r"><i class="a"></i><i class="b"></i><i class="c"></i></div>
       </div>
-      <div class="fh-disc">Estimate at 50 working weeks; tax figure uses 2026 federal &amp; California brackets. Not tax advice — inside, FITRM sharpens it with your state, filing status, and write-offs.</div>
+      <div class="tagline">The back office for fitness</div>
+      <p class="sub">Fitness admin, simplified. Clients, sessions, payments, taxes — sorted.</p>
+      <div class="cta">
+        <a onclick="showAuth('signup')" class="btn solid">START FREE</a>
+        <a onclick="hmScroll('hp-features')" class="btn ghost">See how it works</a>
+      </div>
     </div>
   </header>
 
-  <section class="fh-section" id="fh-how"><div class="fh-wrap">
-    <div class="fh-kick fh-reveal">No more counting in your head</div>
-    <h2 class="fh-h2 fh-reveal">Sessions that count themselves down.</h2>
-    <p class="fh-subh fh-reveal">Sell a 10-pack once. Every check-in subtracts one — and FITRM taps you on the shoulder before a client runs out, so a renewal never slips by.</p>
-    <div class="fh-demo">
-      <div class="fh-copy fh-reveal"><h3>Go on — check Maya in.</h3><p>This is a client's package, live. No spreadsheet, no math, no "wait, how many does she have left?" When she's low, you'll know in time to sell the next pack — that's money most trainers leave on the table.</p><button class="fh-btn line" id="fh-reset" style="margin-top:18px">Reset demo</button></div>
-      <div class="fh-ccard fh-reveal"><div class="top"><div><div class="nm">Maya Chen</div><div class="meta">10-Session Strength</div></div><div class="count"><span id="fh-left">7</span>/10</div></div><div class="fh-bar"><i id="fh-fill" style="width:70%"></i></div><div class="renew" id="fh-renew"></div><button class="fh-btn fill" id="fh-checkin" style="width:100%">Check in a session</button></div>
+  <section class="feat" id="hp-features">
+    <div class="wrap">
+      <div class="head"><h2>Fitrm makes business growth and client management easy.</h2></div>
+      <div class="grid">
+        <div class="card"><div class="bar"></div><h3>Clients &amp; packages</h3><p>Track every session seamlessly, never miss a renewal, and let taxes set themselves aside in the background.</p></div>
+        <div class="card"><div class="bar" style="background:var(--rust)"></div><h3>Card payments</h3><p>Charge a card and the money lands straight in your bank. Other platforms tack on an extra fee — we don't. Standard processing, not a penny more.</p></div>
+        <div class="card"><div class="bar"></div><h3>Taxes, handled</h3><p>Every sale automatically sets aside the right percentage based on your real tax liability. Say goodbye to April surprises.</p></div>
+      </div>
     </div>
-  </div></section>
+  </section>
 
-  <section class="fh-section"><div class="fh-wrap">
-    <div class="fh-kick fh-reveal">One place for all of it</div>
-    <h2 class="fh-h2 fh-reveal">Everything you juggle — together at last.</h2>
-    <div class="fh-grid">
-      <div class="fh-g fh-reveal"><div class="d"></div><h4>A calendar that thinks in sessions</h4><p>See who's got how many left, at a glance — by day, week, or month.</p></div>
-      <div class="fh-g fh-reveal"><div class="d"></div><h4>Standing schedules, set once</h4><p>Book MWF or Tue/Thu a single time, and the weeks fill themselves.</p></div>
-      <div class="fh-g fh-reveal"><div class="d"></div><h4>Your real tax number</h4><p>Not a guess — your true blended rate by state, income, and write-offs.</p></div>
-      <div class="fh-g fh-reveal"><div class="d"></div><h4>Next month's income, today</h4><p>Forecast what you'll earn this week, this month, and this year.</p></div>
-      <div class="fh-g fh-reveal"><div class="d"></div><h4>Renewals you see coming</h4><p>Know who's about to run out — and what that re-sale is worth.</p></div>
-      <div class="fh-g fh-reveal"><div class="d"></div><h4>Your whole roster in 60 seconds</h4><p>Drop in a spreadsheet; clients, rates, and schedules land ready to go.</p></div>
+  <section class="money">
+    <div class="wrap">
+      <div class="eyebrow">Know your money</div>
+      <h2>Know your numbers.</h2>
+      <p>Fitness pros aren't accountants. Fitrm does the math for you — federal, state, and the parts everyone forgets.</p>
+      <div style="font-family:var(--serif);font-size:22px;color:var(--moss);margin-top:18px">Preparation = separation.</div>
+      <div class="num">$244.59</div>
+      <div class="numlabel">set aside from a $750 package</div>
     </div>
-  </div></section>
+  </section>
 
-  <section class="fh-section" id="fh-faq"><div class="fh-wrap">
-    <div class="fh-kick fh-reveal">Before you ask</div>
-    <h2 class="fh-h2 fh-reveal">The questions every trainer has.</h2>
-    <div class="fh-faq fh-reveal">
-      <div class="fh-q"><button>Is this going to take forever to set up?<span class="pl">+</span></button><div class="ans"><p>Nope. Type a few clients in, or drop in a spreadsheet and your entire roster — rates and standing schedules included — is ready in under a minute. If you can use your phone's calendar, you can run FITRM.</p></div></div>
-      <div class="fh-q"><button>Will it actually get my taxes right?<span class="pl">+</span></button><div class="ans"><p>It hands you a clear, state-aware number to set aside from every package — built on self-employment tax, your income, and your write-offs. It's not tax advice, but you stop guessing and walk into April already prepared instead of scrambling.</p></div></div>
-      <div class="fh-q"><button>I already use a calendar and Venmo. Why switch?<span class="pl">+</span></button><div class="ans"><p>Because none of those tell you a client's remaining sessions, your real income, or your tax number — and they don't talk to each other. FITRM is the one place where booking, session tracking, money, and taxes finally connect.</p></div></div>
-      <div class="fh-q"><button>Who can see my clients and my income?<span class="pl">+</span></button><div class="ans"><p>Only you. Every trainer's data is walled off in their own private account, and it syncs securely across your devices.</p></div></div>
-      <div class="fh-q"><button>What's the catch on "free"?<span class="pl">+</span></button><div class="ans"><p>No catch — create an account and bring your whole business in today, no credit card. We'd rather earn your money later, once you can't imagine working without it.</p></div></div>
+  <section class="pricing" id="hp-pricing">
+    <div class="wrap">
+      <div class="eyebrow">Pricing</div>
+      <h2>One simple plan.</h2>
+      <div class="plan">
+        <div class="plan-name">Fitrm Pro</div>
+        <div class="price">$29<span>/mo</span></div>
+        <ul>
+          <li>Unlimited clients &amp; packages</li>
+          <li>Session &amp; package tracking</li>
+          <li>Card payments — no added fee</li>
+          <li>Automatic tax set-aside</li>
+          <li>Business &amp; growth dashboard</li>
+        </ul>
+        <a onclick="showAuth('signup')" class="btn solid">START FREE</a>
+        <div class="fine">Free during beta · or $290/year (2 months free)</div>
+      </div>
+      <div class="founder">Beta trainers lock in founder pricing — $19/mo for life.</div>
     </div>
-  </div></section>
+  </section>
 
-  <div class="fh-endcta"><div class="fh-wrap fh-reveal"><h2>The training's the easy part.<br>Let FITRM handle the rest.</h2><button class="fh-btn fill" onclick="showAuth('signup')">Start free</button><p style="color:var(--muted);margin-top:18px;font-size:14px">No credit card · Set up in minutes</p></div></div>
+  <section class="faq">
+    <div class="wrap">
+      <div class="head"><div class="eyebrow">Questions</div><h2 class="wm" style="font-size:34px;margin-top:8px">Good to know.</h2></div>
+      <div class="qa">
+        <div class="item"><h4>Is it really free right now?</h4><p>Yes. Fitrm is free during the beta. When it goes paid, you'll get plenty of notice — and beta trainers keep founder pricing for life.</p></div>
+        <div class="item"><h4>Do you take a cut of my payments?</h4><p>No. Unlike most platforms, Fitrm adds zero fees on top of payments. You just cover standard card processing — the same rate every business pays.</p></div>
+        <div class="item"><h4>How accurate are the tax numbers?</h4><p>We calculate federal and state set-asides for your filing status using current-year tax tables. It's a smart estimate to keep you ahead — not a replacement for your accountant at filing time.</p></div>
+        <div class="item"><h4>Do I need a website or any tech skills?</h4><p>None. Sign up, add your clients and packages, and you're running. It works right in your browser on your phone or computer.</p></div>
+        <div class="item"><h4>Can I cancel anytime?</h4><p>Anytime, no contracts. Your data is yours, and you can export it whenever you want.</p></div>
+      </div>
+    </div>
+  </section>
 
-  <footer class="fh-footer"><div class="fh-wrap"><div>FITRM<span style="color:var(--accent)">.IO</span> · © 2026</div><div><a onclick="showAuth('login')">Log in</a> &nbsp; <a onclick="showAuth('signup')">Get started</a></div></div></footer>
+  <section class="endcta">
+    <div class="wrap">
+      <h2 class="wm">Run it like a pro.</h2>
+      <p>Free while we're in beta. Set up in two minutes.</p>
+      <a onclick="showAuth('signup')" class="btn solid">START FREE</a>
+    </div>
+  </section>
+
+  <footer class="hpfooter">
+    <div class="wm">Fitrm<span class="dot">.</span></div>
+    <div class="meta">Est. 2026 · California</div>
+  </footer>
 </div>
 
 <div id="auth-screen" style="display:none">
   <div id="auth-card">
     <div id="auth-back" onclick="showHome()">← Back</div>
-    <div id="auth-logo">FITRM<span>.IO</span></div>
+    <div id="auth-logo">Fitrm<span>.IO</span></div>
     <div id="auth-tagline">Run your training business — clients, schedule & taxes in one place.</div>
     <div id="auth-error"></div>
     <label class="auth-fld" id="name-fld" style="display:none"><span>Your name</span><input id="au-name" autocomplete="name" placeholder="Jordan Lee"/></label>
@@ -524,7 +626,7 @@
   <div id="screen-tax" class="screen hidden"></div>
 
   <div id="tabbar">
-    <div class="side-brand">FITRM<span>.IO</span></div>
+    <div class="side-brand">Fitrm<span>.IO</span></div>
     <button class="tab on" data-tab="home">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 10.5 12 3l9 7.5"/><path d="M5 9.5V20h14V9.5"/></svg>Home</button>
     <button class="tab" data-tab="calendar">
@@ -546,7 +648,7 @@
 <div id="onboard">
   <div class="ob-head">
     <div class="row between"><div class="ob-h-title">Add your clients</div><button class="btn ghost" onclick="closeOnboard()">Close</button></div>
-    <p class="ob-h-sub">Add as many as you like — only the name is required. Add a schedule and package and FITRM sets up their sessions automatically.</p>
+    <p class="ob-h-sub">Add as many as you like — only the name is required. Add a schedule and package and Fitrm sets up their sessions automatically.</p>
   </div>
   <div id="ob-list" class="ob-list"></div>
   <div class="ob-foot">
@@ -946,7 +1048,7 @@ function hoursRender(){
     </div>`;
   }
   openSheet(`<div class="sheet-title">Working hours</div>
-    <p class="muted" style="margin-top:2px">Set the days and hours you train — FITRM uses this to show your true open slots.</p>
+    <p class="muted" style="margin-top:2px">Set the days and hours you train — Fitrm uses this to show your true open slots.</p>
     <label class="fld"><span>Session length</span><select onchange="hSetLen(this.value)">${[30,45,60,90].map(n=>`<option value="${n}" ${n===hoursLenDraft?'selected':''}>${n} min</option>`).join("")}</select></label>
     <div class="card" style="background:var(--surface2);margin-top:12px"><div class="row between"><span class="meta">Weekly capacity</span><b class="big-num green">${cap} sessions</b></div></div>
     <div style="margin-top:8px">${days}</div>
@@ -1014,7 +1116,7 @@ let welcomeShown=false;
 function maybeWelcome(){
   if(welcomeShown || (state.clients&&state.clients.length>0)) return;
   welcomeShown=true;
-  openSheet(`<div class="sheet-title">Welcome to FITRM 👋</div>
+  openSheet(`<div class="sheet-title">Welcome to Fitrm 👋</div>
     <p class="muted">Let's get your business in. Start by adding your clients — then your calendar, income, and taxes fill in automatically.</p>
     <button class="btn" onclick="closeSheet();openOnboard()">Add my clients</button>
     <button class="btn sec" style="margin-top:8px" onclick="closeSheet();startTour()">Take a 1-minute tour</button>
@@ -1023,7 +1125,7 @@ function maybeWelcome(){
 
 /* ---- Guided tour ---- */
 const tourSteps=[
-  {tab:"home",ic:"⌂",title:"Welcome to FITRM",body:"Your whole training business in one place — clients, schedule, money, and taxes, all working together. Here's the 60-second tour."},
+  {tab:"home",ic:"⌂",title:"Welcome to Fitrm",body:"Your whole training business in one place — clients, schedule, money, and taxes, all working together. Here's the 60-second tour."},
   {tab:"home",ic:"⌂",title:"Home",body:"Your day at a glance: today's sessions, clients running low, income this month, and your money trend."},
   {tab:"calendar",ic:"▦",title:"Calendar",body:"Book a standing schedule once — MWF at 7am, say — and sessions track themselves, counting down each client's package automatically."},
   {tab:"clients",ic:"☺",title:"Clients",body:"Your roster. Sell a package and remaining sessions update on their own. Add clients one at a time, in bulk, or by import."},
