@@ -846,11 +846,13 @@ function effectiveRate(netProfit){
 const money=n=>"$"+Math.round(n).toLocaleString();
 const money2=n=>"$"+n.toFixed(2);
 function clientSessionsRemaining(cid){
-  const purchased=state.sales.filter(s=>s.clientId===cid).reduce((a,s)=>a+s.sessionsPurchased,0);
+  const sales=state.sales.filter(s=>s.clientId===cid);
+  const purchased=sales.reduce((a,s)=>a+s.sessionsPurchased,0);
+  const prior=sales.reduce((a,s)=>a+(s.priorUsed||0),0);   // sessions already used before logging an in-progress pack
   const burns=state.profile.noShowBurns;
   const used=state.sessions.filter(s=>s.clientId===cid &&
     (s.status==="completed" || (burns && s.status==="no-show"))).length;
-  return purchased-used;
+  return purchased-prior-used;
 }
 function clientLifetime(cid){ return state.sales.filter(s=>s.clientId===cid).reduce((a,s)=>a+s.pricePaid,0); }
 function clientTotalPurchased(cid){ return state.sales.filter(s=>s.clientId===cid).reduce((a,s)=>a+s.sessionsPurchased,0); }
@@ -1862,6 +1864,7 @@ function openClient(cid){
       <div class="stat"><div class="k">Lifetime spend</div><div class="v">${money(clientLifetime(cid))}</div></div>
     </div>
     <button class="btn" style="margin-top:14px" onclick="openSellPackage('${cid}')">Sell package</button>
+    <button class="btn sec" style="margin-top:8px" onclick="openExistingPackage('${cid}')">Add existing package</button>
     ${(function(){ const t=clientRecurring(cid); if(!t) return ""; const L=["Su","M","Tu","W","Th","F","Sa"];
       const dl=t.days.slice().sort((a,b)=>a-b).map(d=>L[d]).join(" ");
       return `<div class="card" style="margin-top:12px"><div class="row between">
@@ -1874,7 +1877,7 @@ function openClient(cid){
     ${sales.length?sales.map(s=>{const pt=state.packageTypes.find(p=>p.id===s.packageTypeId); const nm=pt?pt.name:"Package";
       return `<div class="card" style="margin-bottom:8px">
         <div class="row between">
-          <div><div class="name">${nm}</div><div class="meta">${s.sessionsPurchased} sessions · ${fmtDate(s.soldAt)} · ${s.paymentMethod}</div></div>
+          <div><div class="name">${nm}</div><div class="meta">${s.sessionsPurchased} sessions · ${fmtDate(s.soldAt)} · ${s.paymentMethod}${s.priorUsed?` · logged with ${s.priorUsed} used`:''}</div></div>
           <div style="text-align:right"><div class="big-num">${money(s.pricePaid)}</div>
             <div class="meta">tax: ${money(s.taxSetAside)}</div></div>
         </div>
@@ -2257,6 +2260,49 @@ function exportCSV(){
   }catch(e){ alert("Export not supported in this preview."); }
 }
 
+let epPaid=true;
+function openExistingPackage(cid){
+  const c=state.clients.find(x=>x.id===cid);
+  const opts=pkgOptionsHTML();
+  openSheet(`<div class="sheet-title">Add existing package</div>
+    <p class="muted" style="margin-top:2px">Log a pack ${c?c.name:"this client"} is already partway through — to get your tracking up to date.</p>
+    <label class="fld"><span>Package</span><select id="ep-pt" onchange="epPreview()">${opts}</select></label>
+    <label class="fld"><span>Sessions left</span><input id="ep-left" type="number" inputmode="numeric" placeholder="how many remaining" oninput="epPreview()"/></label>
+    <label class="fld"><span>Original purchase date</span><input id="ep-date" type="date" value="${todayISO()}"/></label>
+    <label class="fld"><span>Payment method</span>
+      <select id="ep-pay"><option>Imported</option><option>Venmo</option><option>Zelle</option><option>Cash</option><option>Card</option><option>Check</option></select></label>
+    <label class="fld"><span>Payment status</span>
+      <div class="seg"><button id="ep-yes" class="on" onclick="epSetPaid(true)">Paid</button>
+        <button id="ep-no" onclick="epSetPaid(false)">Owed</button></div></label>
+    <div class="banner" id="ep-preview" style="margin-top:16px"></div>
+    <button class="btn" onclick="saveExistingPackage('${cid}')">Add package</button>`);
+  epPaid=true; epPreview();
+}
+function epSetPaid(v){ epPaid=v; el("ep-yes").classList.toggle("on",v); el("ep-no").classList.toggle("on",!v); }
+function epPreview(){
+  const pt=state.packageTypes.find(p=>p.id===el("ep-pt").value);
+  if(!pt){ el("ep-preview").innerHTML=""; return; }
+  const full=pt.sessions;
+  let left=parseInt(el("ep-left").value); if(isNaN(left)) left=full;
+  left=Math.max(0,Math.min(full,left));
+  const used=full-left;
+  el("ep-preview").innerHTML=`<div class="meta" style="color:#dfe3d0">${pt.name}</div>
+    <div class="amt">${left} of ${full} left</div>
+    <div class="meta" style="color:#dfe3d0;margin-top:2px">${used} already used · ${money(pt.price)} pack · added to ${fmtDate(el("ep-date").value||todayISO())}</div>`;
+}
+function saveExistingPackage(cid){
+  const pt=state.packageTypes.find(p=>p.id===el("ep-pt").value); if(!pt) return;
+  const full=pt.sessions;
+  let left=parseInt(el("ep-left").value); if(isNaN(left)) left=full;
+  left=Math.max(0,Math.min(full,left));
+  const used=full-left;
+  const rate=effectiveRate(state.profile.annualIncome).rate;
+  const soldAt=el("ep-date").value||todayISO();
+  state.sales.push({id:"s"+Date.now(), clientId:cid, packageTypeId:pt.id,
+    sessionsPurchased:full, priorUsed:used, pricePaid:pt.price, paymentMethod:el("ep-pay").value,
+    paid:epPaid, soldAt, taxSetAside:+(pt.price*rate).toFixed(2)});
+  save(); render(); closeSheet(); openClient(cid);
+}
 function openSellPackage(cid){
   const opts=pkgOptionsHTML();
   openSheet(`<div class="sheet-title">Sell package</div>
