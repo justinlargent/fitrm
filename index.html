@@ -1966,7 +1966,7 @@ function resetAll(){
 }
 
 /* ---- CSV import ---- */
-const CSV_TEMPLATE_HEADERS=["name","phone","email","package_name","package_sessions","package_price","paid","recur_days","session_time","start_date","sessions_remaining","auto_renew"];
+const CSV_TEMPLATE_HEADERS=["name","phone","email","package_name","package_sessions","package_price","paid","recur_days","session_time","start_date","sessions_remaining","used_dates","auto_renew"];
 const CSV_TEMPLATE_ROWS=[
   ["Alex Rivera","(415) 555-0201","alex@example.com","12-Session Strength","12","900","yes","MWF","07:00","2026-06-15","12","no"],
   ["Sam Okafor","(510) 555-0202","sam@example.com","8-Session Block","8","640","no","Tue/Thu","18:00","2026-06-16","5","no"],
@@ -1980,7 +1980,7 @@ function openImportMenu(){
   openSheet(`<div class="sheet-title">Import clients from CSV</div>
     <p class="muted" style="margin-top:2px">Bulk-add clients with their package, rate, and recurring schedule in one upload.</p>
     <button class="btn" onclick="triggerCSVImport()">Choose CSV file</button>
-    <div class="fab-note" style="margin:10px 0 14px;text-align:left;line-height:1.5">Columns: name, phone, email, package_name, package_sessions (full pack size), package_price, paid (yes/no), recur_days (e.g. MWF or Tue/Thu), session_time (e.g. 7:00 or 6:30 PM), start_date (YYYY-MM-DD), sessions_remaining (books out until they run out), auto_renew (yes = keep the series going past the pack).</div>
+    <div class="fab-note" style="margin:10px 0 14px;text-align:left;line-height:1.5">Columns: name, phone, email, package_name, package_sessions (full pack size), package_price, paid (yes/no), recur_days (e.g. MWF or Tue/Thu), session_time (e.g. 7:00 or 6:30 PM), start_date (YYYY-MM-DD), sessions_remaining (books out until they run out), used_dates (optional — exact past session dates separated by semicolons, e.g. 2026-01-05;2026-01-12 — builds real history and overrides sessions_remaining), auto_renew (yes = keep the series going past the pack).</div>
     <button class="btn sec" onclick="downloadTemplate()">Download CSV template</button>
     <button class="btn sec" style="margin-top:8px" onclick="closeSheet()">Close</button>`);
 }
@@ -2047,6 +2047,16 @@ function parseTime(str){
   if(ap==="pm"&&h<12) h+=12; if(ap==="am"&&h===12) h=0; if(h>23) h%=24;
   return String(h).padStart(2,"0")+":"+String(min).padStart(2,"0");
 }
+function parseUsedDates(str){
+  if(!str) return [];
+  return String(str).split(/[;|,\n\r\t ]+/).map(t=>t.trim()).filter(Boolean).map(t=>{
+    let m=t.match(/^(\d{4})-(\d{1,2})-(\d{1,2})$/);
+    if(m) return m[1]+"-"+m[2].padStart(2,"0")+"-"+m[3].padStart(2,"0");
+    m=t.match(/^(\d{1,2})\/(\d{1,2})\/(\d{2,4})$/);
+    if(m){ const y=m[3].length===2?("20"+m[3]):m[3]; return y+"-"+m[1].padStart(2,"0")+"-"+m[2].padStart(2,"0"); }
+    const d=new Date(t); return isNaN(d)?null:ymd(d);
+  }).filter(Boolean);
+}
 function importCSV(text){
   const rows=parseCSV(text);
   let clientsAdded=0, salesAdded=0, sessionsAdded=0, skipped=0;
@@ -2077,25 +2087,37 @@ function importCSV(text){
     const time=parseTime(r.session_time||"")||"07:00";
     const autoRenew=/^(y|yes|true|1|x)$/i.test((r.auto_renew||"").trim());
     let counter=0;
+    // Exact past session dates (if provided) — builds real history and sets remaining precisely.
+    const usedDates=parseUsedDates(r.used_dates);
+    let effRem=rem;
+    if(usedDates.length){
+      effRem=Math.max(0, psess - usedDates.length);
+      usedDates.sort().forEach(ds=>{ counter++;
+        state.sessions.push({id:"ise"+Date.now()+"_"+idx+"_u"+counter, clientId:cid, saleId:null,
+          datetime:ds+"T"+time, duration:60, type:"In-person", status:"completed", sessionNumber:counter, notes:""});
+        sessionsAdded++; });
+    }
     if(days.length){
       const sorted=days.slice().sort((a,b)=>a-b);
-      // (1) past completed sessions to reflect what's already been used from the pack (not for auto-renew clients)
-      const used=Math.max(0, psess - rem);
-      if(!autoRenew && used>0){
-        const back=[]; let d=parseYMD(startStr), g=0;
-        while(back.length<used && g++<used*20+90){ d=new Date(+d-DAY_MS); if(sorted.includes(d.getDay())) back.push(ymd(d)); }
-        back.reverse().forEach(ds=>{ counter++;
-          state.sessions.push({id:"ise"+Date.now()+"_"+idx+"_p"+counter, clientId:cid, saleId:null,
-            datetime:ds+"T"+time, duration:60, type:"In-person", status:"completed", sessionNumber:counter, notes:""});
-          sessionsAdded++; });
+      // (1) approximate past-used backfill ONLY when exact dates weren't given
+      if(!usedDates.length && !autoRenew){
+        const used=Math.max(0, psess - rem);
+        if(used>0){
+          const back=[]; let d=parseYMD(startStr), g=0;
+          while(back.length<used && g++<used*20+90){ d=new Date(+d-DAY_MS); if(sorted.includes(d.getDay())) back.push(ymd(d)); }
+          back.reverse().forEach(ds=>{ counter++;
+            state.sessions.push({id:"ise"+Date.now()+"_"+idx+"_p"+counter, clientId:cid, saleId:null,
+              datetime:ds+"T"+time, duration:60, type:"In-person", status:"completed", sessionNumber:counter, notes:""});
+            sessionsAdded++; });
+        }
       }
-      // (2) future: book out until sessions run out, or roll forward if auto-renew
+      // (2) future: book out the remaining sessions, or roll forward if auto-renew
       if(autoRenew){
         state.recurringSessions.push({id:"rt"+Date.now()+"_"+idx, clientId:cid, days:sorted, time, type:"In-person", autoRenew:true, active:true});
       } else {
         const start=parseYMD(startStr), ws=weekStart(start); let count=0, w=0;
-        while(count<rem && w<520){
-          for(const dow of sorted){ if(count>=rem) break;
+        while(count<effRem && w<520){
+          for(const dow of sorted){ if(count>=effRem) break;
             const d=new Date(+ws); d.setDate(d.getDate()+w*7+dow);
             if(d>=start){ counter++; count++;
               state.sessions.push({id:"ise"+Date.now()+"_"+idx+"_f"+counter, clientId:cid, saleId:null,
