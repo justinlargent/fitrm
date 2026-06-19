@@ -14,9 +14,9 @@
 <link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,500;9..144,600&family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
 <style>
   :root{
-    --bg:#0c0c0d; --surface:#151517; --surface2:#1e1f21; --line:#2b2c2e;
-    --accent:#8f9d68; --accent-deep:#6b7850; --text:#f3f2ec; --muted:#9a988e;
-    --danger:#cf8b7a; --warn:#c9a86a; --radius:18px;
+    --bg:#1b1d19; --surface:#24261f; --surface2:#2c2f26; --line:#34372c;
+    --accent:#8f9d68; --accent-deep:#6b7850; --text:#f4f2ea; --muted:#a7ab98;
+    --danger:#cf8b7a; --warn:#c2643f; --rust:#c2643f; --radius:18px;
     --safe-top:env(safe-area-inset-top,0px); --safe-bottom:env(safe-area-inset-bottom,0px);
   }
   *{box-sizing:border-box;-webkit-tap-highlight-color:transparent;}
@@ -35,7 +35,7 @@
     padding:calc(var(--safe-top) + 8px) 18px 110px; }
   .hidden{display:none;}
   /* Headers */
-  .lg-title{font-size:34px; font-weight:800; letter-spacing:-.5px; margin:6px 0 2px;}
+  .lg-title{font-family:"Fraunces",serif; font-size:34px; font-weight:500; letter-spacing:0; margin:6px 0 2px;}
   .sub{color:var(--muted); font-size:14px; margin:0 0 18px;}
   .sec-title{font-size:13px; text-transform:uppercase; letter-spacing:.8px;
     color:var(--muted); font-weight:700; margin:22px 4px 10px;}
@@ -104,7 +104,7 @@
     transition:transform .3s cubic-bezier(.32,.72,0,1); z-index:50; max-height:90vh; overflow-y:auto;}
   #sheet.show{transform:translateY(0);}
   .grab{width:38px;height:5px;background:var(--line);border-radius:3px;margin:6px auto 14px;}
-  .sheet-title{font-size:22px;font-weight:800;margin:0 0 4px;}
+  .sheet-title{font-family:"Fraunces",serif;font-size:23px;font-weight:500;margin:0 0 4px;}
   .list-item{padding:14px 0; border-bottom:1px solid var(--line);}
   .list-item:last-child{border-bottom:none;}
   .tax-line{display:flex; justify-content:space-between; padding:10px 0; border-bottom:1px solid var(--line); font-size:14px;}
@@ -403,7 +403,7 @@
       flex-direction:column;justify-content:flex-start;align-items:stretch;gap:4px;
       border-top:none;border-right:1px solid var(--line);padding:26px 14px;
       background:var(--bg);backdrop-filter:none;-webkit-backdrop-filter:none;}
-    .side-brand{display:block;font-weight:800;font-size:21px;letter-spacing:.3px;color:var(--text);padding:4px 14px 24px;}
+    .side-brand{display:block;font-family:"Fraunces",serif;font-weight:500;font-size:23px;letter-spacing:.3px;color:var(--text);padding:4px 14px 24px;}
     .side-brand span{color:var(--accent);}
     #tabbar .tab{flex:none;flex-direction:row;justify-content:flex-start;gap:14px;width:100%;
       padding:12px 14px;border-radius:12px;font-size:15px;font-weight:600;color:var(--muted);}
@@ -606,7 +606,7 @@
 <div id="auth-screen" style="display:none">
   <div id="auth-card">
     <div id="auth-back" onclick="showHome()">← Back</div>
-    <div id="auth-logo">Fitrm<span>.IO</span></div>
+    <div id="auth-logo" style="font-family:'Fraunces',serif">Fitrm<span>.</span></div>
     <div id="auth-tagline">Run your training business — clients, schedule & taxes in one place.</div>
     <div id="auth-error"></div>
     <label class="auth-fld" id="name-fld" style="display:none"><span>Your name</span><input id="au-name" autocomplete="name" placeholder="Jordan Lee"/></label>
@@ -626,7 +626,7 @@
   <div id="screen-tax" class="screen hidden"></div>
 
   <div id="tabbar">
-    <div class="side-brand">Fitrm<span>.IO</span></div>
+    <div class="side-brand">Fitrm<span>.</span></div>
     <button class="tab on" data-tab="home">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 10.5 12 3l9 7.5"/><path d="M5 9.5V20h14V9.5"/></svg>Home</button>
     <button class="tab" data-tab="calendar">
@@ -1079,7 +1079,7 @@ function closeOnboard(){ document.getElementById("onboard").classList.remove("sh
 function obAddCard(){ const list=document.getElementById("ob-list"); list.insertAdjacentHTML("beforeend", obCardHTML());
   list.lastElementChild.scrollIntoView({behavior:"smooth",block:"center"}); list.lastElementChild.querySelector(".ob-name").focus(); }
 function obCardHTML(){
-  const pkgs=`<option value="">No package yet</option>`+state.packageTypes.map(p=>`<option value="${p.id}">${p.name} — ${money(p.price)}</option>`).join("");
+  const pkgs=pkgOptionsHTML('<option value="">No package yet</option>');
   return `<div class="ob-card">
     <div class="row" style="gap:10px"><input class="ob-name" placeholder="Client name"/><button class="ob-x" onclick="this.closest('.ob-card').remove()" aria-label="remove">✕</button></div>
     <div class="ob-grid2"><input class="ob-phone" inputmode="tel" placeholder="Phone (optional)"/><select class="ob-source">${sourceOptions("")}</select></div>
@@ -1603,15 +1603,27 @@ function renderClients(){
   el("screen-clients").innerHTML=h;
 }
 
+function pkgGroupName(p){ return (p.group&&p.group.trim())||"Standard"; }
+function pkgGroupList(){ const s=new Set(["Standard","Grandfathered"]); state.packageTypes.forEach(p=>s.add(pkgGroupName(p))); return [...s]; }
+function pkgGroupOrder(keys){ return keys.slice().sort((a,b)=> a==="Standard"?-1 : b==="Standard"?1 : a.localeCompare(b)); }
+function pkgOptionsHTML(lead){
+  const groups={};
+  state.packageTypes.forEach(p=>{ const g=pkgGroupName(p); (groups[g]=groups[g]||[]).push(p); });
+  let o=lead||"";
+  pkgGroupOrder(Object.keys(groups)).forEach(g=>{ o+=`<optgroup label="${g}">`+groups[g].map(p=>`<option value="${p.id}">${p.name} — ${money(p.price)}</option>`).join("")+`</optgroup>`; });
+  return o;
+}
 function renderPackages(){
   const rate=effectiveRate(state.profile.annualIncome).rate;
   let h=`<div class="row between"><div class="lg-title">Packages</div>
     <button class="btn ghost" onclick="openAddPackageType()">＋ Add</button></div>
-    <div class="sub">The package types you sell · used when you sell to a client</div>`;
+    <div class="sub">The package types you sell · organized into folders</div>`;
   if(!state.packageTypes.length){
     h+=`<div class="card empty">No package types yet.<br>Tap “＋ Add” to create your first one.</div>`;
   } else {
-    h+=state.packageTypes.map(p=>{
+    const groups={};
+    state.packageTypes.forEach(p=>{ const g=pkgGroupName(p); (groups[g]=groups[g]||[]).push(p); });
+    const cardHTML=p=>{
       const per=p.sessions? p.price/p.sessions : p.price;
       const sold=state.sales.filter(s=>s.packageTypeId===p.id).length;
       return `<div class="card">
@@ -1624,7 +1636,8 @@ function renderPackages(){
           <span class="meta">Set aside per sale: <b class="green">${money(p.price*rate)}</b></span>
           <span class="pill grey">${sold} sold</span>
         </div></div>`;
-    }).join("");
+    };
+    pkgGroupOrder(Object.keys(groups)).forEach(g=>{ h+=`<div class="sec-title">${g} · ${groups[g].length}</div>`+groups[g].map(cardHTML).join(""); });
   }
   el("screen-packages").innerHTML=h;
 }
@@ -1634,6 +1647,8 @@ function openAddPackageType(id){
     <label class="fld"><span>Name</span><input id="pt-name" placeholder="10-Session Strength" value="${p?p.name:''}"/></label>
     <label class="fld"><span>Number of sessions</span><input id="pt-sess" type="number" inputmode="numeric" placeholder="10" value="${p?p.sessions:''}"/></label>
     <label class="fld"><span>Price ($)</span><input id="pt-price" type="number" inputmode="decimal" placeholder="750" value="${p?p.price:''}"/></label>
+    <label class="fld"><span>Folder</span><input id="pt-group" list="pt-grouplist" placeholder="Standard" value="${p?(p.group||'Standard'):'Standard'}"/></label>
+    <datalist id="pt-grouplist">${pkgGroupList().map(g=>`<option value="${g}"></option>`).join("")}</datalist>
     <div id="pt-preview" class="banner" style="margin-top:16px"></div>
     <button class="btn" onclick="savePackageType(${p?`'${p.id}'`:'null'})">${p?'Save changes':'Add package'}</button>
     ${p?`<button class="btn sec" style="background:transparent;color:var(--danger);border:1px solid var(--line);margin-top:8px" onclick="confirmDeletePackageType('${p.id}')">Delete package type</button>`:''}`);
@@ -1652,8 +1667,9 @@ function savePackageType(id){
   const sessions=Math.max(1, parseInt(el("pt-sess").value)||0);
   const price=+el("pt-price").value||0;
   if(!name){ el("pt-name").focus(); return; }
-  if(id){ const p=state.packageTypes.find(x=>x.id===id); p.name=name; p.sessions=sessions; p.price=price; }
-  else { state.packageTypes.push({id:"pt"+Date.now(), name, sessions, price}); }
+  const group=((el("pt-group")&&el("pt-group").value)||"").trim()||"Standard";
+  if(id){ const p=state.packageTypes.find(x=>x.id===id); p.name=name; p.sessions=sessions; p.price=price; p.group=group; }
+  else { state.packageTypes.push({id:"pt"+Date.now(), name, sessions, price, group}); }
   save(); render(); closeSheet(); switchTab("packages");
 }
 function confirmDeletePackageType(id){
@@ -2242,7 +2258,7 @@ function exportCSV(){
 }
 
 function openSellPackage(cid){
-  const opts=state.packageTypes.map(p=>`<option value="${p.id}">${p.name} — ${money(p.price)}</option>`).join("");
+  const opts=pkgOptionsHTML();
   openSheet(`<div class="sheet-title">Sell package</div>
     <p class="muted" style="margin-top:2px">to ${state.clients.find(c=>c.id===cid).name}</p>
     <label class="fld"><span>Package</span><select id="f-pt" onchange="previewTax()">${opts}</select></label>
