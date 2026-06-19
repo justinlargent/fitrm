@@ -1,0 +1,2606 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" />
+<meta name="apple-mobile-web-app-capable" content="yes" />
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+<meta name="apple-mobile-web-app-title" content="Fitrm" />
+<meta name="theme-color" content="#0f1a16" />
+<title>Fitrm.IO</title>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,500;9..144,600&family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --bg:#1b1d19; --surface:#24261f; --surface2:#2c2f26; --line:#34372c;
+    --accent:#8f9d68; --accent-deep:#6b7850; --text:#f4f2ea; --muted:#a7ab98;
+    --danger:#cf8b7a; --warn:#c2643f; --rust:#c2643f; --radius:18px;
+    --safe-top:env(safe-area-inset-top,0px); --safe-bottom:env(safe-area-inset-bottom,0px);
+  }
+  *{box-sizing:border-box;-webkit-tap-highlight-color:transparent;}
+  html,body{margin:0;padding:0;height:100%;}
+  body{
+    font-family:-apple-system,BlinkMacSystemFont,"SF Pro Text","Segoe UI",Roboto,sans-serif;
+    background:var(--bg); color:var(--text);
+    overscroll-behavior:none; -webkit-font-smoothing:antialiased;
+  }
+  /* Phone frame for desktop preview; full-bleed on actual phone */
+  #frame{
+    max-width:none; margin:0; min-height:100%;
+    background:var(--bg); position:relative; display:flex; flex-direction:column;
+  }
+  .screen{flex:1; overflow-y:auto; overflow-x:hidden; -webkit-overflow-scrolling:touch;
+    padding:calc(var(--safe-top) + 8px) 18px 110px; }
+  .hidden{display:none;}
+  /* Headers */
+  .lg-title{font-family:"Fraunces",serif; font-size:34px; font-weight:500; letter-spacing:0; margin:6px 0 2px;}
+  .sub{color:var(--muted); font-size:14px; margin:0 0 18px;}
+  .sec-title{font-size:13px; text-transform:uppercase; letter-spacing:.8px;
+    color:var(--muted); font-weight:700; margin:22px 4px 10px;}
+  /* Cards */
+  .card{background:var(--surface); border:1px solid var(--line); border-radius:var(--radius);
+    padding:16px; margin-bottom:12px;}
+  .row{display:flex; align-items:center; gap:12px;}
+  .between{justify-content:space-between;}
+  .grow{flex:1; min-width:0;}
+  .stat-grid{display:grid; grid-template-columns:1fr 1fr; gap:12px; margin-bottom:12px;}
+  .stat{background:var(--surface); border:1px solid var(--line); border-radius:var(--radius); padding:16px;}
+  .stat .k{font-size:12px; color:var(--muted); font-weight:600;}
+  .stat .v{font-size:26px; font-weight:800; margin-top:4px; letter-spacing:-.5px;}
+  .stat .v.green{color:var(--accent);}
+  .pill{font-size:11px; font-weight:700; padding:4px 9px; border-radius:999px; white-space:nowrap;}
+  .pill.ok{background:rgba(39,192,138,.15); color:var(--accent);}
+  .pill.low{background:rgba(244,183,64,.16); color:var(--warn);}
+  .pill.out{background:rgba(255,107,107,.16); color:var(--danger);}
+  .pill.grey{background:var(--surface2); color:var(--muted);}
+  .avatar{width:42px;height:42px;border-radius:50%;background:linear-gradient(135deg,var(--accent),var(--accent-deep));
+    display:flex;align-items:center;justify-content:center;font-weight:800;color:#14160d;flex-shrink:0;font-size:16px;}
+  .name{font-weight:700; font-size:16px;}
+  .meta{color:var(--muted); font-size:13px;}
+  .big-num{font-size:15px; font-weight:800;}
+  .muted{color:var(--muted);}
+  .green{color:var(--accent);}
+  .warn{color:var(--warn);} .danger{color:var(--danger);}
+  /* Buttons */
+  .btn{display:inline-flex;align-items:center;justify-content:center;gap:8px;
+    background:var(--accent); color:#14160d; font-weight:800; font-size:16px;
+    border:none; border-radius:14px; padding:15px 18px; width:100%; cursor:pointer;}
+  .btn:active{transform:scale(.98);}
+  .btn.sec{background:var(--surface2); color:var(--text); border:1px solid var(--line);}
+  .btn.ghost{background:transparent; color:var(--accent); width:auto; padding:8px 4px;}
+  .btn-sm{padding:10px 14px; font-size:14px; width:auto;}
+  /* Inputs */
+  label.fld{display:block; margin:12px 0 0;}
+  label.fld span{font-size:13px; color:var(--muted); font-weight:600; margin-bottom:6px; display:block;}
+  input,select,textarea{width:100%; background:var(--surface2); border:1px solid var(--line); color:var(--text);
+    border-radius:12px; padding:14px; font-size:16px; font-family:inherit; outline:none; resize:vertical;}
+  input:focus,select:focus,textarea:focus{border-color:var(--accent);}
+  .toggle{width:48px; height:28px; border-radius:14px; background:var(--surface); border:1px solid var(--line);
+    position:relative; cursor:pointer; flex-shrink:0; padding:0;}
+  .toggle span{position:absolute; top:2px; left:2px; width:22px; height:22px; border-radius:50%; background:var(--muted); transition:.18s;}
+  .toggle.on{background:var(--accent-deep); border-color:var(--accent);}
+  .toggle.on span{left:23px; background:var(--accent);}
+  .seg{display:flex; gap:6px; background:var(--surface2); padding:4px; border-radius:12px;}
+  .seg button{flex:1; background:transparent; border:none; color:var(--muted); font-weight:700;
+    padding:9px; border-radius:9px; font-size:13px; cursor:pointer; font-family:inherit;}
+  .seg button.on{background:var(--accent); color:#14160d;}
+  /* Tab bar */
+  #tabbar{position:sticky; bottom:0; left:0; right:0; margin:0;
+    background:rgba(12,12,13,.88); backdrop-filter:blur(18px); -webkit-backdrop-filter:blur(18px);
+    border-top:1px solid var(--line); display:flex; padding:8px 6px calc(8px + var(--safe-bottom));}
+  .tab{flex:1; background:none; border:none; color:var(--muted); display:flex; flex-direction:column;
+    align-items:center; gap:3px; font-size:10px; font-weight:600; padding:4px; cursor:pointer; font-family:inherit;}
+  .tab svg{width:24px;height:24px;}
+  .tab.on{color:var(--accent);}
+  /* Sheet / modal */
+  #scrim{position:fixed; inset:0; background:rgba(0,0,0,.5); opacity:0; pointer-events:none;
+    transition:opacity .25s; z-index:40;}
+  #scrim.show{opacity:1; pointer-events:auto;}
+  #sheet{position:fixed; left:0; right:0; bottom:0; max-width:430px; margin:0 auto;
+    background:var(--surface); border-radius:24px 24px 0 0; border:1px solid var(--line);
+    padding:10px 18px calc(24px + var(--safe-bottom)); transform:translateY(100%);
+    transition:transform .3s cubic-bezier(.32,.72,0,1); z-index:50; max-height:90vh; overflow-y:auto;}
+  #sheet.show{transform:translateY(0);}
+  .grab{width:38px;height:5px;background:var(--line);border-radius:3px;margin:6px auto 14px;}
+  .sheet-title{font-family:"Fraunces",serif;font-size:23px;font-weight:500;margin:0 0 4px;}
+  .list-item{padding:14px 0; border-bottom:1px solid var(--line);}
+  .list-item:last-child{border-bottom:none;}
+  .tax-line{display:flex; justify-content:space-between; padding:10px 0; border-bottom:1px solid var(--line); font-size:14px;}
+  .tax-line:last-child{border-bottom:none;}
+  .tax-line b{font-weight:800;}
+  .banner{background:linear-gradient(135deg,var(--accent-deep),#143f30); border:1px solid var(--accent-deep);
+    border-radius:var(--radius); padding:18px; margin-bottom:14px;}
+  .banner .amt{font-size:32px; font-weight:800; letter-spacing:-1px;}
+  .disclaim{font-size:11px; color:var(--muted); line-height:1.5; margin-top:10px;}
+  .empty{text-align:center; color:var(--muted); padding:40px 20px; font-size:14px;}
+  .dot{width:7px;height:7px;border-radius:50%;background:var(--accent);flex-shrink:0;}
+  .timeline-time{font-size:13px;font-weight:800;width:62px;flex-shrink:0;}
+  .fab-note{font-size:12px;color:var(--muted);text-align:center;margin-top:4px;}
+  /* Auth screen */
+  #auth-screen{position:fixed; inset:0; background:radial-gradient(circle at 50% 0%, #18191b, #0c0c0d 70%);
+    display:flex; align-items:center; justify-content:center; padding:24px; z-index:100;}
+  #auth-card{width:100%; max-width:380px;}
+  #auth-logo{font-size:34px; font-weight:800; letter-spacing:-1px; text-align:center; color:var(--text);}
+  #auth-logo span{color:var(--accent);}
+  #auth-tagline{text-align:center; color:var(--muted); font-size:14px; margin:8px 0 26px; line-height:1.5;}
+  .auth-fld{display:block; margin-bottom:12px;}
+  .auth-fld span{font-size:13px; color:var(--muted); font-weight:600; margin-bottom:6px; display:block;}
+  #auth-card .btn{margin-top:6px;}
+  #auth-switch{text-align:center; color:var(--muted); font-size:14px; margin-top:18px;}
+  #auth-switch a{color:var(--accent); font-weight:700; cursor:pointer;}
+  #auth-error{background:rgba(255,107,107,.14); color:var(--danger); border-radius:10px; padding:10px 12px;
+    font-size:13px; margin-bottom:12px; display:none;}
+  #auth-msg{background:rgba(39,192,138,.14); color:var(--accent); border-radius:10px; padding:10px 12px;
+    font-size:13px; margin-top:14px; display:none; text-align:center;}
+  /* Cloud sync status */
+  #cloud-status{position:fixed; top:calc(var(--safe-top) + 8px); left:50%; transform:translateX(-50%) translateY(-12px);
+    background:var(--surface2); border:1px solid var(--line); color:var(--muted); font-size:11px; font-weight:700;
+    padding:5px 12px; border-radius:999px; z-index:200; opacity:0; transition:opacity .25s, transform .25s; pointer-events:none;}
+  #cloud-status.show{opacity:1; transform:translateX(-50%) translateY(0);}
+  #cloud-status.warn{color:var(--warn); border-color:var(--warn);}
+  /* Calendar */
+  .cal-nav{display:flex; align-items:center; justify-content:space-between; margin-bottom:10px;}
+  .cal-arrow{background:var(--surface2); border:1px solid var(--line); color:var(--text);
+    width:40px; height:40px; border-radius:11px; font-size:22px; line-height:1; cursor:pointer;}
+  .cal-arrow:active{transform:scale(.95);}
+  .cal-label{font-weight:800; font-size:17px; text-align:center; flex:1;}
+  .cal-grid{display:grid; grid-template-columns:repeat(7,1fr); gap:6px;}
+  .cal-dow{text-align:center; color:var(--muted); font-size:11px; font-weight:700; padding-bottom:2px;}
+  .cal-cell{aspect-ratio:1; background:var(--surface); border:1px solid var(--line); border-radius:12px;
+    display:flex; flex-direction:column; align-items:center; justify-content:center; gap:4px;
+    cursor:pointer; color:var(--text); font-family:inherit;}
+  .cal-cell:active{transform:scale(.96);}
+  .cal-cell.today{border-color:var(--accent); background:var(--surface2);}
+  .cal-cell.muted-cell{opacity:.35;}
+  .cal-day{font-size:14px; font-weight:700;}
+  .cal-count{min-width:18px; height:18px; border-radius:9px; background:var(--accent); color:#14160d;
+    font-size:11px; font-weight:800; display:flex; align-items:center; justify-content:center; padding:0 5px;}
+  .cal-count.empty-dot{background:transparent;}
+  /* Time-grid (Google-style) for 3-day & week */
+  .tg-head{display:flex; position:sticky; top:0; background:var(--bg); z-index:3; padding-bottom:6px; margin-bottom:2px;}
+  .tg-gutter-h{width:40px; flex-shrink:0;}
+  .tg-dayh{flex:1; text-align:center; min-width:0;}
+  .tg-dayh .tg-dow{font-size:10px; color:var(--muted); font-weight:700; text-transform:uppercase;}
+  .tg-dayh .tg-dnum{font-size:16px; font-weight:800; line-height:1.4;}
+  .tg-dayh.today .tg-dnum{background:var(--accent); color:#14160d; border-radius:50%;
+    width:26px; height:26px; line-height:26px; display:inline-block;}
+  .tg-grid{display:flex; padding-top:10px;}
+  .tg-gutter{width:40px; flex-shrink:0; position:relative;}
+  .tg-hour{position:relative;}
+  .tg-hour span{position:absolute; top:-7px; right:5px; font-size:9px; color:var(--muted); font-weight:600;}
+  .tg-cols{flex:1; display:flex; position:relative;
+    background-image:repeating-linear-gradient(to bottom, var(--line) 0, var(--line) 1px, transparent 1px, transparent 48px);}
+  .tg-col{flex:1; position:relative; border-left:1px solid var(--line); min-width:0;}
+  .tg-event{position:absolute; left:2px; right:2px; background:var(--surface2); border:1px solid var(--line);
+    border-radius:5px; padding:2px 4px; overflow:hidden; cursor:pointer; box-sizing:border-box;}
+  .tg-event:active{transform:scale(.98);}
+  .tg-event.done{background:var(--accent-deep); border-color:var(--accent);}
+  .tg-event.cancel{border-style:dashed; opacity:.6;}
+  .tg-ev-t{font-size:9px; font-weight:800; color:var(--muted); line-height:1.1;}
+  .tg-event.done .tg-ev-t{color:#dfe3d0;}
+  .tg-ev-n{font-size:9px; font-weight:700; color:#cdccc2; line-height:1.2; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;}
+  .tg-event.done .tg-ev-n{color:#f3f2ec;}
+  .tg-event.cancel .tg-ev-n{text-decoration:line-through;}
+  /* Month cells with event chips */
+  .mcell{min-height:64px; background:var(--surface); border:1px solid var(--line); border-radius:10px;
+    padding:4px; display:flex; flex-direction:column; gap:2px; align-items:stretch; cursor:pointer;
+    font-family:inherit; color:var(--text); overflow:hidden;}
+  .mcell:active{transform:scale(.97);}
+  .mcell.today{border-color:var(--accent);}
+  .mnum{font-size:11px; font-weight:700; align-self:flex-end;}
+  .mnum.t{background:var(--accent); color:#14160d; border-radius:50%; width:17px; height:17px;
+    display:flex; align-items:center; justify-content:center; font-size:10px;}
+  .mchip{font-size:8.5px; font-weight:700; background:var(--surface2); color:#cdccc2; border-radius:3px;
+    padding:1px 3px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; line-height:1.35;}
+  .mchip.done{background:var(--accent-deep); color:#f3f2ec;}
+  .mchip.cancel{opacity:.55; text-decoration:line-through;}
+  .mmore{font-size:8px; color:var(--muted); font-weight:700; padding-left:2px;}
+  .cal-legend{display:flex; gap:18px; justify-content:center; margin:-2px 0 14px; font-size:11px; color:var(--muted); font-weight:600;}
+  .cal-legend i{display:inline-block; width:10px; height:10px; border-radius:3px; margin-right:5px; vertical-align:-1px;}
+  .lg-dot.grey{background:var(--surface2); border:1px solid var(--line);}
+  .lg-dot.green{background:var(--accent-deep); border:1px solid var(--accent);}
+  /* Accordion (Finance sections) */
+  .acc{border-bottom:1px solid var(--line);}
+  .acc-head{width:100%; background:none; border:none; color:var(--text); display:flex; align-items:center;
+    justify-content:space-between; gap:12px; padding:16px 2px; cursor:pointer; font-family:inherit; text-align:left;}
+  .acc-head:active{opacity:.6;}
+  .acc-title{font-size:12px; text-transform:uppercase; letter-spacing:.6px; color:var(--muted); font-weight:700;}
+  .acc-headline{font-size:21px; font-weight:800; margin-top:3px; letter-spacing:-.3px;}
+  .acc-sub{font-size:13px; font-weight:600; color:var(--muted); letter-spacing:0;}
+  .acc-chev{width:20px; height:20px; color:var(--muted); transition:transform .2s; flex-shrink:0;}
+  .acc.open .acc-chev{transform:rotate(180deg);}
+  .acc-body{padding:2px 0 16px;}
+  .acc-body .sec-title:first-child{margin-top:6px;}
+  /* Income vs expenses chart */
+  .tr-read{font-size:13px;color:var(--muted);font-weight:600;margin:2px 0 12px;line-height:1.5;}
+  .tr-read .tr-m{color:var(--text);font-weight:800;}
+  .tr-read .tr-i{color:var(--accent);font-weight:700;}
+  .tr-read .tr-e{color:var(--muted);font-weight:700;}
+  #trend-svg{cursor:crosshair;}
+  .tr-legend{display:flex;gap:18px;margin-top:10px;font-size:12px;color:var(--muted);font-weight:600;}
+  .tr-legend i{display:inline-block;width:16px;border-top:2px solid var(--accent);margin-right:6px;vertical-align:middle;}
+  .tr-legend .e i{border-top:2px dashed var(--muted);}
+
+  /* ===================== MARKETING HOMEPAGE ===================== */
+  #home-screen{position:fixed; inset:0; overflow-y:auto; -webkit-overflow-scrolling:touch;
+    background:var(--bg); color:var(--text); z-index:90;}
+  .hm-wrap{max-width:1080px; margin:0 auto; padding:0 28px;}
+  .hm-nav{position:sticky; top:0; z-index:5; background:rgba(12,12,13,.78); backdrop-filter:blur(14px);
+    -webkit-backdrop-filter:blur(14px); border-bottom:1px solid var(--line);}
+  .hm-nav .hm-wrap{display:flex; align-items:center; justify-content:space-between; height:66px;}
+  .hm-logo{font-size:20px; font-weight:800; letter-spacing:.5px;}
+  .hm-logo span{color:var(--accent);}
+  .hm-nav-links{display:flex; align-items:center; gap:26px;}
+  .hm-nav-links a{color:var(--muted); font-size:14px; font-weight:600; text-decoration:none; cursor:pointer;}
+  .hm-nav-links a:hover{color:var(--text);}
+  .hm-nav-links a.navcta{color:var(--text);}
+  .hm-btn{display:inline-flex; align-items:center; justify-content:center; gap:8px; cursor:pointer; border:none;
+    font-family:inherit; font-weight:700; font-size:15px; border-radius:10px; padding:12px 22px; transition:.15s;}
+  .hm-btn.primary{background:var(--accent); color:#14160d;}
+  .hm-btn.primary:hover{background:#a0ae77;}
+  .hm-btn.ghost{background:transparent; color:var(--text); border:1px solid var(--line);}
+  .hm-btn.ghost:hover{border-color:var(--accent); color:var(--accent);}
+  .hm-btn.lg{padding:16px 30px; font-size:16px;}
+  .hm-hero{text-align:center; padding:96px 0 70px;}
+  .hm-eyebrow{display:inline-block; font-size:12px; font-weight:700; letter-spacing:2.5px; text-transform:uppercase;
+    color:var(--accent); border:1px solid var(--line); border-radius:999px; padding:7px 16px; margin-bottom:30px;}
+  .hm-hero h1{font-family:"Fraunces",serif; font-weight:500; font-size:clamp(38px,6vw,68px); line-height:1.05;
+    letter-spacing:-1px; margin:0 0 22px;}
+  .hm-hero h1 em{font-style:italic; color:var(--accent);}
+  .hm-hero p{max-width:620px; margin:0 auto 34px; color:var(--muted); font-size:clamp(16px,2.2vw,20px); line-height:1.6;}
+  .hm-cta-row{display:flex; gap:14px; justify-content:center; flex-wrap:wrap;}
+  .hm-trust{margin-top:26px; color:var(--muted); font-size:13px; letter-spacing:.3px;}
+  .hm-section{padding:72px 0; border-top:1px solid var(--line);}
+  .hm-sec-label{text-align:center; font-size:12px; font-weight:700; letter-spacing:2.5px; text-transform:uppercase; color:var(--accent); margin-bottom:14px;}
+  .hm-sec-title{text-align:center; font-family:"Fraunces",serif; font-weight:500; font-size:clamp(28px,4vw,42px);
+    letter-spacing:-.5px; margin:0 auto 14px; max-width:760px; line-height:1.15;}
+  .hm-sec-sub{text-align:center; color:var(--muted); max-width:600px; margin:0 auto 50px; font-size:16px; line-height:1.6;}
+  .hm-pillars{display:grid; grid-template-columns:repeat(3,1fr); gap:20px;}
+  .hm-pillar{background:var(--surface); border:1px solid var(--line); border-radius:18px; padding:30px 26px;}
+  .hm-pillar .pnum{font-family:"Fraunces",serif; font-size:30px; color:var(--accent); font-weight:500;}
+  .hm-pillar h3{font-size:21px; font-weight:700; margin:14px 0 10px; letter-spacing:-.3px;}
+  .hm-pillar p{color:var(--muted); font-size:15px; line-height:1.65; margin:0;}
+  .hm-steps{display:grid; grid-template-columns:repeat(3,1fr); gap:24px;}
+  .hm-step .sline{height:2px; background:var(--line); margin-bottom:20px; position:relative;}
+  .hm-step .sline::before{content:""; position:absolute; left:0; top:-3px; width:8px; height:8px; border-radius:50%; background:var(--accent);}
+  .hm-step h4{font-size:18px; font-weight:700; margin:0 0 8px;}
+  .hm-step p{color:var(--muted); font-size:14.5px; line-height:1.6; margin:0;}
+  .hm-feats{display:grid; grid-template-columns:repeat(4,1fr); gap:16px;}
+  .hm-feat{background:var(--surface); border:1px solid var(--line); border-radius:14px; padding:20px 18px;}
+  .hm-feat .fdot{width:8px; height:8px; border-radius:50%; background:var(--accent); margin-bottom:12px;}
+  .hm-feat h5{font-size:15px; font-weight:700; margin:0 0 5px;}
+  .hm-feat p{color:var(--muted); font-size:13px; line-height:1.5; margin:0;}
+  .hm-cta{text-align:center; padding:88px 0;}
+  .hm-cta h2{font-family:"Fraunces",serif; font-weight:500; font-size:clamp(30px,5vw,52px); letter-spacing:-.5px; margin:0 0 26px;}
+  .hm-footer{border-top:1px solid var(--line); padding:34px 0;}
+  .hm-footer .hm-wrap{display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:14px;}
+  .hm-footer .fl{color:var(--muted); font-size:13px;}
+  .hm-footer a{color:var(--muted); font-size:13px; text-decoration:none; margin-left:20px; cursor:pointer;}
+  .hm-footer a:hover{color:var(--text);}
+  #auth-back{display:inline-block; color:var(--muted); font-size:13px; font-weight:600; cursor:pointer; margin-bottom:18px;}
+  #auth-back:hover{color:var(--text);}
+  @media(max-width:760px){
+    .hm-pillars,.hm-steps{grid-template-columns:1fr;}
+    .hm-feats{grid-template-columns:1fr 1fr;}
+    .hm-nav-links .hidesm{display:none;}
+    .hm-hero{padding:64px 0 50px;}
+    .hm-section{padding:56px 0;}
+  }
+
+  /* ===================== FH HOMEPAGE (C1 earnings) ===================== */
+  #home-screen{font-family:"Inter",sans-serif;}
+  .fh-wrap{max-width:1120px;margin:0 auto;padding:0 28px;}
+  .fh-btn{display:inline-flex;align-items:center;gap:8px;font-weight:700;font-size:15px;border-radius:11px;padding:14px 26px;border:none;cursor:pointer;font-family:inherit;transition:.18s;}
+  .fh-btn.fill{background:var(--accent);color:#14160d;}.fh-btn.fill:hover{background:#aab884;}
+  .fh-btn.line{background:transparent;color:var(--text);border:1px solid var(--line);}.fh-btn.line:hover{border-color:var(--accent);color:var(--accent);}
+  .fh-nav{position:sticky;top:0;z-index:5;background:rgba(12,12,13,.82);backdrop-filter:blur(16px);-webkit-backdrop-filter:blur(16px);border-bottom:1px solid var(--line);}
+  .fh-nav .fh-wrap{display:flex;align-items:center;justify-content:space-between;height:70px;}
+  .fh-logo{display:flex;align-items:center;gap:10px;font-weight:800;font-size:20px;}.fh-logo span{color:var(--accent);}
+  .fh-navlinks{display:flex;align-items:center;gap:22px;font-size:14px;font-weight:600;color:var(--muted);}
+  .fh-navlinks a{cursor:pointer;}.fh-navlinks a:hover{color:var(--text);}
+  .fh-hero{padding:60px 0 70px;display:grid;grid-template-columns:1.02fr .98fr;gap:50px;align-items:center;}
+  .fh-eyebrow{font-size:12px;letter-spacing:3px;text-transform:uppercase;color:var(--accent);margin-bottom:20px;}
+  .fh-hero h1{font-weight:800;font-size:clamp(36px,5vw,58px);line-height:1.05;letter-spacing:-2px;min-height:2.1em;}
+  .fh-rotw{color:var(--accent);border-bottom:3px solid rgba(143,157,104,.4);transition:opacity .25s;display:inline-block;}
+  .fh-hero p{margin-top:22px;color:var(--muted);font-size:18px;max-width:46ch;}
+  .fh-ctas{margin-top:30px;display:flex;gap:13px;flex-wrap:wrap;}
+  .fh-fine{margin-top:18px;font-size:13px;color:var(--muted);}
+  .fh-calc{background:var(--surface);border:1px solid var(--line);border-radius:22px;padding:28px;}
+  .fh-tag{font-size:12px;letter-spacing:2px;text-transform:uppercase;color:var(--accent);font-weight:700;}
+  .fh-big{font-weight:900;font-size:clamp(44px,7vw,68px);letter-spacing:-3px;color:var(--accent);line-height:1;margin-top:10px;}
+  .fh-biglab{color:var(--muted);font-size:14px;font-weight:600;margin-top:4px;}
+  .fh-sl{margin-top:22px;}
+  .fh-sl label{font-size:13px;color:var(--muted);font-weight:600;display:flex;justify-content:space-between;margin-bottom:9px;}
+  .fh-sl label b{color:var(--text);}
+  .fh-calc input[type=range]{width:100%;accent-color:var(--accent);height:5px;}
+  .fh-chips{margin-top:24px;display:flex;gap:12px;flex-wrap:wrap;}
+  .fh-chip{flex:1;min-width:140px;background:var(--surface2);border:1px solid var(--line);border-radius:13px;padding:14px 16px;font-size:13px;color:var(--muted);font-weight:600;}
+  .fh-chip b{display:block;color:var(--accent);font-weight:800;font-size:20px;letter-spacing:-.5px;margin-top:3px;}
+  .fh-chip.tx b{color:var(--text);}
+  .fh-chip.pulse{animation:fhpp 1.7s ease-in-out infinite;}@keyframes fhpp{0%,100%{border-color:var(--line);}50%{border-color:var(--accent);}}
+  .fh-disc{font-size:11px;color:var(--muted);margin-top:16px;line-height:1.5;}
+  .fh-section{padding:84px 0;border-top:1px solid var(--line);}
+  .fh-kick{font-size:12px;letter-spacing:3px;text-transform:uppercase;color:var(--accent);text-align:center;margin-bottom:14px;}
+  .fh-h2{font-weight:800;font-size:clamp(28px,4.4vw,46px);letter-spacing:-1.2px;text-align:center;line-height:1.1;max-width:20ch;margin:0 auto;}
+  .fh-subh{text-align:center;color:var(--muted);max-width:54ch;margin:16px auto 0;font-size:16px;}
+  .fh-demo{margin-top:54px;display:grid;grid-template-columns:1fr 1fr;gap:30px;align-items:center;}
+  .fh-copy h3{font-size:25px;font-weight:700;letter-spacing:-.5px;margin-bottom:12px;}
+  .fh-copy p{color:var(--muted);font-size:16px;max-width:42ch;}
+  .fh-ccard{background:var(--surface);border:1px solid var(--line);border-radius:20px;padding:26px;}
+  .fh-ccard .top{display:flex;justify-content:space-between;align-items:center;}
+  .fh-ccard .nm{font-weight:700;font-size:17px;}.fh-ccard .meta{color:var(--muted);font-size:13px;}.fh-ccard .count{font-weight:800;font-size:30px;letter-spacing:-1px;}
+  .fh-bar{height:9px;background:var(--surface2);border-radius:6px;margin:18px 0;overflow:hidden;}.fh-bar i{display:block;height:100%;background:var(--accent);border-radius:6px;transition:width .4s cubic-bezier(.2,.7,.2,1);}
+  .fh-ccard .renew{color:var(--warn);font-size:13px;font-weight:700;margin-bottom:14px;min-height:18px;}
+  .fh-grid{margin-top:54px;display:grid;grid-template-columns:repeat(3,1fr);gap:18px;}
+  .fh-g{background:var(--surface);border:1px solid var(--line);border-radius:16px;padding:24px;transition:.2s;}.fh-g:hover{border-color:var(--accent);}
+  .fh-g .d{width:9px;height:9px;border-radius:3px;background:var(--accent);margin-bottom:14px;}.fh-g h4{font-size:16px;font-weight:700;margin-bottom:6px;}.fh-g p{color:var(--muted);font-size:14px;}
+  .fh-faq{max-width:760px;margin:46px auto 0;}.fh-q{border-bottom:1px solid var(--line);}
+  .fh-q>button{width:100%;text-align:left;background:none;border:none;color:var(--text);font-family:inherit;font-size:18px;font-weight:600;padding:22px 0;cursor:pointer;display:flex;justify-content:space-between;gap:16px;align-items:center;}
+  .fh-q .ans{max-height:0;overflow:hidden;transition:max-height .3s ease;color:var(--muted);font-size:15px;}.fh-q .ans p{padding-bottom:22px;}
+  .fh-q .pl{color:var(--accent);font-size:22px;transition:transform .25s;flex-shrink:0;}.fh-q.open .pl{transform:rotate(45deg);}
+  .fh-endcta{text-align:center;padding:110px 0;}.fh-endcta h2{font-weight:800;font-size:clamp(34px,6vw,64px);letter-spacing:-2px;margin-bottom:28px;line-height:1.02;}
+  .fh-footer{border-top:1px solid var(--line);padding:36px 0;}
+  .fh-footer .fh-wrap{display:flex;justify-content:space-between;font-size:13px;color:var(--muted);flex-wrap:wrap;gap:12px;}
+  .fh-footer a{cursor:pointer;}.fh-footer a:hover{color:var(--text);}
+  .fh-reveal{opacity:0;transform:translateY(28px);transition:.85s cubic-bezier(.2,.7,.2,1);}.fh-reveal.in{opacity:1;transform:none;}
+  @media(max-width:860px){.fh-hero{grid-template-columns:1fr;}.fh-demo{grid-template-columns:1fr;}.fh-grid{grid-template-columns:1fr;}.fh-navlinks a.hidesm{display:none;}.fh-hero h1{min-height:0;}}
+
+  /* Mass-add onboarding overlay */
+  #onboard{position:fixed;inset:0;z-index:95;background:var(--bg);overflow-y:auto;display:none;padding-bottom:130px;}
+  #onboard.show{display:block;}
+  .ob-head{position:sticky;top:0;background:var(--bg);border-bottom:1px solid var(--line);padding:calc(var(--safe-top) + 16px) 18px 16px;z-index:2;}
+  .ob-h-title{font-size:22px;font-weight:800;}
+  .ob-h-sub{color:var(--muted);font-size:14px;margin-top:6px;max-width:560px;}
+  .ob-list{padding:16px 18px;max-width:680px;margin:0 auto;}
+  .ob-card{background:var(--surface);border:1px solid var(--line);border-radius:16px;padding:16px;margin-bottom:14px;}
+  .ob-card .ob-name{flex:1;min-width:0;font-size:16px;font-weight:600;}
+  .ob-x{background:var(--surface2);border:1px solid var(--line);color:var(--muted);border-radius:10px;width:42px;flex-shrink:0;cursor:pointer;font-family:inherit;font-size:15px;}
+  .ob-grid2{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:10px;}
+  .ob-sched{display:flex;gap:10px;margin-top:10px;align-items:center;}
+  .ob-sched .ob-days{flex:1;}
+  .ob-sched .ob-time{width:118px;}
+  .ob-card .ob-pkg{margin-top:10px;}
+  .ob-day.on{background:var(--accent);color:#14160d;}
+  .ob-foot{position:fixed;bottom:0;left:0;right:0;max-width:680px;margin:0 auto;background:var(--bg);border-top:1px solid var(--line);padding:14px 18px calc(14px + var(--safe-bottom));z-index:3;}
+  /* Guided tour */
+  #tour{position:fixed;inset:0;z-index:120;display:none;}
+  #tour.show{display:block;}
+  #tour-scrim{position:absolute;inset:0;background:rgba(0,0,0,.42);}
+  #tour-card{position:absolute;left:50%;bottom:24px;transform:translateX(-50%);width:min(440px,calc(100% - 32px));
+    background:var(--surface);border:1px solid var(--line);border-radius:20px;padding:22px;z-index:2;}
+  .tour-ic{font-size:26px;color:var(--accent);}
+  .tour-title{font-size:20px;font-weight:800;margin-top:8px;}
+  .tour-body{color:var(--muted);font-size:15px;margin-top:8px;line-height:1.55;}
+  .tour-dots{display:flex;gap:6px;margin-top:16px;}
+  .tour-dot{width:7px;height:7px;border-radius:50%;background:var(--line);}
+  .tour-dot.on{background:var(--accent);}
+  @media(min-width:900px){ #tour-card{bottom:auto;top:50%;transform:translate(-50%,-50%);} }
+  /* Business health scorecard */
+  .kpi-grid{display:grid;grid-template-columns:repeat(2,1fr);gap:10px;}
+  .kpi-sub{font-size:11px;color:var(--muted);margin-top:3px;}
+  .kpi-sub.good{color:var(--accent);} .kpi-sub.bad{color:var(--danger);}
+  .biz-two{display:grid;grid-template-columns:1fr;gap:12px;}
+  @media(min-width:900px){ .kpi-grid{grid-template-columns:repeat(4,1fr);} .biz-two{grid-template-columns:1fr 1fr;} }
+  /* Calendar metrics rail (desktop) */
+  .cal-aside{display:none;}
+  .goal-bar{height:9px;background:var(--surface2);border-radius:6px;margin:13px 0 8px;overflow:hidden;}
+  .goal-bar i{display:block;height:100%;background:var(--accent);border-radius:6px;transition:width .4s cubic-bezier(.2,.7,.2,1);}
+  .grow-bar{display:flex;height:12px;border-radius:6px;overflow:hidden;background:var(--surface2);}
+  .grow-bar i{display:block;height:100%;}
+  .grow-legend{display:flex;flex-wrap:wrap;gap:14px;margin-top:11px;font-size:12px;color:var(--muted);font-weight:600;}
+  .grow-legend i{display:inline-block;width:10px;height:10px;border-radius:3px;margin-right:6px;vertical-align:-1px;}
+  .hr-day{padding:14px 0;border-bottom:1px solid var(--line);}
+  .hr-day input[type=time]{margin:0;}
+
+  /* ===================== DESKTOP SHELL (sidebar + modal sheets) ===================== */
+  .side-brand{display:none;}
+  @media(min-width:900px){
+    #frame{max-width:none;margin:0;flex-direction:row;box-shadow:none;min-height:100vh;}
+    /* bottom tab bar -> left sidebar */
+    #tabbar{order:-1;position:sticky;top:0;height:100vh;width:236px;flex-shrink:0;
+      flex-direction:column;justify-content:flex-start;align-items:stretch;gap:4px;
+      border-top:none;border-right:1px solid var(--line);padding:26px 14px;
+      background:var(--bg);backdrop-filter:none;-webkit-backdrop-filter:none;}
+    .side-brand{display:block;font-family:"Fraunces",serif;font-weight:500;font-size:23px;letter-spacing:.3px;color:var(--text);padding:4px 14px 24px;}
+    .side-brand span{color:var(--accent);}
+    #tabbar .tab{flex:none;flex-direction:row;justify-content:flex-start;gap:14px;width:100%;
+      padding:12px 14px;border-radius:12px;font-size:15px;font-weight:600;color:var(--muted);}
+    #tabbar .tab svg{width:21px;height:21px;}
+    #tabbar .tab.on{background:var(--surface2);color:var(--accent);}
+    /* content uses the full screen, capped & centered for readability */
+    .screen{height:100vh;max-height:100vh;padding:32px max(44px,calc((100% - 960px)/2)) 60px;}
+    .lg-title{font-size:30px;}
+    /* bottom sheets -> centered modal dialogs */
+    #sheet{top:50%;left:50%;right:auto;bottom:auto;width:min(520px,calc(100% - 80px));max-width:520px;
+      border-radius:22px;max-height:84vh;transform:translate(-50%,-46%);opacity:0;
+      transition:transform .25s cubic-bezier(.32,.72,0,1),opacity .25s ease;pointer-events:none;}
+    #sheet.show{transform:translate(-50%,-50%);opacity:1;pointer-events:auto;}
+    .grab{display:none;}
+    #cloud-status{top:16px;}
+    /* calendar uses the width + shows a metrics rail */
+    #screen-calendar{padding:32px 40px 60px;}
+    .cal-layout{display:flex;gap:26px;align-items:flex-start;}
+    .cal-main{flex:1;min-width:0;}
+    .cal-aside{display:block;width:300px;flex-shrink:0;}
+  }
+</style>
+</head>
+<body>
+<style>
+#home-screen{--ink:#20231d;--charcoal:#1b1d19;--moss:#8f9d68;--cream:#efe7d3;--paper:#f3ecda;--rust:#c2643f;--sage:#6b6a55;--bone:#f4f2ea;--serif:"Fraunces",Georgia,serif;--sans:"Inter",Helvetica,Arial,sans-serif;background:var(--cream);color:var(--ink);font-family:var(--sans);line-height:1.6;}
+#home-screen .wrap{max-width:1080px;margin:0 auto;padding:0 28px}
+#home-screen .wm{font-family:var(--serif);font-weight:500;letter-spacing:.5px}
+#home-screen .dot{color:var(--moss);background:transparent;width:auto;height:auto;border-radius:0;display:inline;flex-shrink:1}
+#home-screen .eyebrow{font-size:12px;letter-spacing:3px;text-transform:uppercase;color:var(--rust)}
+#home-screen .hpnav{display:flex;align-items:center;justify-content:space-between;padding:22px 28px;max-width:1080px;margin:0 auto}
+#home-screen .hpnav .brand{font-family:var(--serif);font-weight:500;font-size:24px}
+#home-screen .hpnav .links{display:flex;align-items:center;gap:26px;font-size:14px}
+#home-screen .hpnav .links a{color:var(--ink);text-decoration:none;cursor:pointer}
+#home-screen .btn{font-family:var(--sans);font-size:14px;font-weight:500;letter-spacing:1px;border-radius:24px;padding:11px 22px;border:1.5px solid var(--ink);cursor:pointer;text-decoration:none;display:inline-block;width:auto;background:transparent;color:var(--ink)}
+#home-screen .btn.ghost{background:transparent;color:var(--ink);border:1.5px solid var(--ink);padding:11px 22px}
+#home-screen .btn.solid{background:var(--ink);color:var(--cream)}
+#home-screen .btn.solid:hover{background:#2c3026}
+#home-screen .btn.navcta{background:var(--moss);color:#ffffff;border-color:var(--moss)}
+#home-screen .btn.navcta:hover{background:#7e8c59;border-color:#7e8c59}
+#home-screen .hero{text-align:center;padding:54px 0 64px;border-bottom:1.5px solid var(--ink)}
+#home-screen .lockup{display:flex;align-items:center;justify-content:center;gap:22px;margin-bottom:18px}
+#home-screen .stripes{display:flex;flex-direction:column;gap:7px}
+#home-screen .stripes i{display:block;height:5px;border-radius:3px}
+#home-screen .stripes i.a{width:54px;background:var(--moss)}
+#home-screen .stripes i.b{width:42px;background:var(--rust);align-self:flex-end}
+#home-screen .stripes i.c{width:54px;background:var(--moss)}
+#home-screen .stripes.r i.a,#home-screen .stripes.r i.c{align-self:flex-start}
+#home-screen .stripes.r i.b{align-self:flex-start}
+#home-screen .hero h1{font-family:var(--serif);font-weight:500;font-size:84px;line-height:.95;letter-spacing:1px}
+#home-screen .hero .tagline{margin-top:18px;font-size:13px;letter-spacing:4px;text-transform:uppercase;font-weight:500}
+#home-screen .hero .sub{max-width:560px;margin:20px auto 30px;font-size:18px;color:#3a3c33}
+#home-screen .hero .cta{display:flex;gap:14px;justify-content:center;flex-wrap:wrap}
+#home-screen .feat{padding:64px 0}
+#home-screen .feat .head{text-align:center;margin-bottom:40px}
+#home-screen .feat .head h2{font-family:var(--serif);font-weight:500;font-size:34px;margin:8px auto 0;max-width:20ch}
+#home-screen .grid{display:grid;grid-template-columns:repeat(3,1fr);gap:20px}
+#home-screen .card{background:var(--paper);border:1.5px solid var(--ink);border-radius:12px;padding:26px}
+#home-screen .card .bar{width:40px;height:5px;border-radius:3px;background:var(--moss);margin-bottom:16px}
+#home-screen .card h3{font-family:var(--serif);font-weight:500;font-size:21px;margin-bottom:8px}
+#home-screen .card p{font-size:15px;color:#3a3c33}
+#home-screen .money{background:var(--charcoal);color:var(--bone);padding:60px 0;text-align:center}
+#home-screen .money .eyebrow{color:var(--moss)}
+#home-screen .money h2{font-family:var(--serif);font-weight:500;font-size:36px;margin:10px 0 12px;color:var(--bone)}
+#home-screen .money p{max-width:560px;margin:0 auto;color:#cfd2c4;font-size:17px}
+#home-screen .money .num{font-family:var(--serif);font-size:56px;color:var(--moss);margin-top:24px;font-weight:500}
+#home-screen .money .numlabel{font-size:13px;letter-spacing:2px;text-transform:uppercase;color:#9aa089;margin-top:4px}
+#home-screen .quotes{padding:64px 0;border-top:1.5px solid var(--ink)}
+#home-screen .quotes .head{text-align:center;margin-bottom:40px}
+#home-screen .qgrid{display:grid;grid-template-columns:repeat(3,1fr);gap:20px}
+#home-screen .quote{background:var(--paper);border:1.5px solid var(--ink);border-radius:12px;padding:24px}
+#home-screen .quote .stars{color:var(--rust);letter-spacing:2px;font-size:13px;margin-bottom:10px}
+#home-screen .quote p{font-family:var(--serif);font-size:18px;line-height:1.5}
+#home-screen .quote .who{margin-top:16px;font-size:12px;color:var(--sage);letter-spacing:2px;text-transform:uppercase}
+#home-screen .pricing{padding:64px 0;background:var(--charcoal);color:var(--bone);text-align:center}
+#home-screen .pricing .eyebrow{color:var(--moss)}
+#home-screen .pricing h2{font-family:var(--serif);font-weight:500;color:var(--bone);font-size:34px;margin-top:8px}
+#home-screen .plan{max-width:360px;margin:32px auto 0;background:var(--cream);color:var(--ink);border-radius:16px;padding:32px;text-align:left;border:2px solid var(--ink)}
+#home-screen .plan-name{font-family:var(--serif);font-weight:500;font-size:22px}
+#home-screen .price{font-family:var(--serif);font-weight:500;font-size:56px;margin:4px 0 18px;line-height:1}
+#home-screen .price span{font-size:18px;color:var(--sage)}
+#home-screen .plan ul{list-style:none}
+#home-screen .plan li{padding:9px 0;border-bottom:1px solid rgba(32,35,29,.12);font-size:15px}
+#home-screen .plan li::before{content:"— ";color:var(--moss);font-weight:500}
+#home-screen .plan .btn{display:block;text-align:center;margin-top:22px}
+#home-screen .fine{margin-top:14px;font-size:13px;color:var(--sage);text-align:center}
+#home-screen .founder{margin-top:24px;font-size:15px;color:var(--moss);letter-spacing:1px}
+#home-screen .faq{padding:64px 0}
+#home-screen .faq .head{text-align:center;margin-bottom:36px}
+#home-screen .qa{max-width:760px;margin:0 auto}
+#home-screen .qa .item{border-top:1.5px solid var(--ink);padding:22px 4px}
+#home-screen .qa .item:last-child{border-bottom:1.5px solid var(--ink)}
+#home-screen .qa h4{font-family:var(--serif);font-weight:500;font-size:20px;margin-bottom:6px}
+#home-screen .qa p{font-size:15px;color:#3a3c33}
+#home-screen .endcta{text-align:center;padding:64px 0}
+#home-screen .endcta h2{font-family:var(--serif);font-weight:500;font-size:40px;margin-bottom:10px}
+#home-screen .endcta p{color:#3a3c33;margin-bottom:24px}
+#home-screen .hpfooter{border-top:1.5px solid var(--ink);padding:28px;display:flex;align-items:center;justify-content:space-between;max-width:1080px;margin:0 auto;font-size:12px;letter-spacing:1px}
+#home-screen .hpfooter .wm{font-size:18px}
+#home-screen .hpfooter .meta{color:var(--sage);text-transform:uppercase;letter-spacing:2px}
+@media(max-width:760px){#home-screen .hero h1{font-size:52px}#home-screen .grid,#home-screen .qgrid{grid-template-columns:1fr}#home-screen .hpnav .links a:not(.btn){display:none}}
+</style>
+<div id="home-screen">
+  <nav class="hpnav">
+    <div class="brand wm">Fitrm<span class="dot">.</span></div>
+    <div class="links">
+      <a onclick="hmScroll('hp-features')">Features</a>
+      <a onclick="hmScroll('hp-pricing')">Pricing</a>
+      <a onclick="showAuth('login')">Log in</a>
+      <a onclick="showAuth('signup')" class="btn navcta">START FREE</a>
+    </div>
+  </nav>
+
+  <header class="hero">
+    <div class="wrap">
+      <div class="lockup">
+        <div class="stripes"><i class="a"></i><i class="b"></i><i class="c"></i></div>
+        <h1 class="wm">Fitrm<span class="dot">.</span></h1>
+        <div class="stripes r"><i class="a"></i><i class="b"></i><i class="c"></i></div>
+      </div>
+      <div class="tagline">The back office for fitness</div>
+      <p class="sub">Fitness admin, simplified. Clients, sessions, payments, taxes — sorted.</p>
+      <div class="cta">
+        <a onclick="showAuth('signup')" class="btn solid">START FREE</a>
+        <a onclick="hmScroll('hp-features')" class="btn ghost">See how it works</a>
+      </div>
+    </div>
+  </header>
+
+  <section class="feat" id="hp-features">
+    <div class="wrap">
+      <div class="head"><h2>Fitrm makes business growth and client management easy.</h2></div>
+      <div class="grid">
+        <div class="card"><div class="bar"></div><h3>Clients &amp; packages</h3><p>Track every session seamlessly, never miss a renewal, and let taxes set themselves aside in the background.</p></div>
+        <div class="card"><div class="bar" style="background:var(--rust)"></div><h3>Card payments</h3><p>Charge a card and the money lands straight in your bank. Other platforms tack on an extra fee — we don't. Standard processing, not a penny more.</p></div>
+        <div class="card"><div class="bar"></div><h3>Taxes, handled</h3><p>Every sale automatically sets aside the right percentage based on your real tax liability. Say goodbye to April surprises.</p></div>
+      </div>
+    </div>
+  </section>
+
+  <section class="money">
+    <div class="wrap">
+      <div class="eyebrow">Know your money</div>
+      <h2>Know your numbers.</h2>
+      <p>Fitness pros aren't accountants. Fitrm does the math for you — federal, state, and the parts everyone forgets.</p>
+      <div style="font-family:var(--serif);font-size:22px;color:var(--moss);margin-top:18px">Preparation = separation.</div>
+      <div class="num">$244.59</div>
+      <div class="numlabel">set aside from a $750 package</div>
+    </div>
+  </section>
+
+  <section class="pricing" id="hp-pricing">
+    <div class="wrap">
+      <div class="eyebrow">Pricing</div>
+      <h2>One simple plan.</h2>
+      <div class="plan">
+        <div class="plan-name">Fitrm Pro</div>
+        <div class="price">$29<span>/mo</span></div>
+        <ul>
+          <li>Unlimited clients &amp; packages</li>
+          <li>Session &amp; package tracking</li>
+          <li>Card payments — no added fee</li>
+          <li>Automatic tax set-aside</li>
+          <li>Business &amp; growth dashboard</li>
+        </ul>
+        <a onclick="showAuth('signup')" class="btn solid">START FREE</a>
+        <div class="fine">Free during beta · or $290/year (2 months free)</div>
+      </div>
+      <div class="founder">Beta trainers lock in founder pricing — $19/mo for life.</div>
+    </div>
+  </section>
+
+  <section class="faq">
+    <div class="wrap">
+      <div class="head"><div class="eyebrow">Questions</div><h2 class="wm" style="font-size:34px;margin-top:8px">Good to know.</h2></div>
+      <div class="qa">
+        <div class="item"><h4>Is it really free right now?</h4><p>Yes. Fitrm is free during the beta. When it goes paid, you'll get plenty of notice — and beta trainers keep founder pricing for life.</p></div>
+        <div class="item"><h4>Do you take a cut of my payments?</h4><p>No. Unlike most platforms, Fitrm adds zero fees on top of payments. You just cover standard card processing — the same rate every business pays.</p></div>
+        <div class="item"><h4>How accurate are the tax numbers?</h4><p>We calculate federal and state set-asides for your filing status using current-year tax tables. It's a smart estimate to keep you ahead — not a replacement for your accountant at filing time.</p></div>
+        <div class="item"><h4>Do I need a website or any tech skills?</h4><p>None. Sign up, add your clients and packages, and you're running. It works right in your browser on your phone or computer.</p></div>
+        <div class="item"><h4>Can I cancel anytime?</h4><p>Anytime, no contracts. Your data is yours, and you can export it whenever you want.</p></div>
+      </div>
+    </div>
+  </section>
+
+  <section class="endcta">
+    <div class="wrap">
+      <h2 class="wm">Run it like a pro.</h2>
+      <p>Free while we're in beta. Set up in two minutes.</p>
+      <a onclick="showAuth('signup')" class="btn solid">START FREE</a>
+    </div>
+  </section>
+
+  <footer class="hpfooter">
+    <div class="wm">Fitrm<span class="dot">.</span></div>
+    <div class="meta">Est. 2026 · California</div>
+  </footer>
+</div>
+
+<div id="auth-screen" style="display:none">
+  <div id="auth-card">
+    <div id="auth-back" onclick="showHome()">← Back</div>
+    <div id="auth-logo" style="font-family:'Fraunces',serif">Fitrm<span>.</span></div>
+    <div id="auth-tagline">Run your training business — clients, schedule & taxes in one place.</div>
+    <div id="auth-error"></div>
+    <label class="auth-fld" id="name-fld" style="display:none"><span>Your name</span><input id="au-name" autocomplete="name" placeholder="Jordan Lee"/></label>
+    <label class="auth-fld"><span>Email</span><input id="au-email" type="email" autocomplete="email" inputmode="email" placeholder="you@example.com"/></label>
+    <label class="auth-fld"><span>Password</span><input id="au-pass" type="password" autocomplete="current-password" placeholder="••••••••"/></label>
+    <button class="btn" id="au-submit" onclick="authSubmit()">Log in</button>
+    <div id="auth-switch">New here? <a onclick="authToggle()">Create an account</a></div>
+    <div id="auth-msg"></div>
+  </div>
+</div>
+
+<div id="frame" style="display:none">
+  <div id="screen-home" class="screen"></div>
+  <div id="screen-calendar" class="screen hidden"></div>
+  <div id="screen-clients" class="screen hidden"></div>
+  <div id="screen-packages" class="screen hidden"></div>
+  <div id="screen-tax" class="screen hidden"></div>
+
+  <div id="tabbar">
+    <div class="side-brand">Fitrm<span>.</span></div>
+    <button class="tab on" data-tab="home">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 10.5 12 3l9 7.5"/><path d="M5 9.5V20h14V9.5"/></svg>Home</button>
+    <button class="tab" data-tab="calendar">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4.5" width="18" height="16" rx="3"/><path d="M3 9h18M8 3v3M16 3v3"/></svg>Calendar</button>
+    <button class="tab" data-tab="clients">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="9" cy="8" r="3.2"/><path d="M3.5 19c0-3 2.5-5 5.5-5s5.5 2 5.5 5"/><path d="M16 7.5a3 3 0 0 1 0 5.5M17.5 19c0-2.2-1-3.8-2.4-4.6"/></svg>Clients</button>
+    <button class="tab" data-tab="packages">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 3 4 7v10l8 4 8-4V7z"/><path d="M4 7l8 4 8-4M12 11v10"/></svg>Packages</button>
+    <button class="tab" data-tab="tax">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 20V10M10 20V4M16 20v-7M22 20H2"/></svg>Business</button>
+  </div>
+</div>
+
+<div id="scrim"></div>
+<div id="sheet"><div class="grab"></div><div id="sheet-body"></div></div>
+<input type="file" id="csv-input" accept=".csv,text/csv" style="display:none" onchange="handleCSVFile(event)">
+<div id="cloud-status"></div>
+
+<div id="onboard">
+  <div class="ob-head">
+    <div class="row between"><div class="ob-h-title">Add your clients</div><button class="btn ghost" onclick="closeOnboard()">Close</button></div>
+    <p class="ob-h-sub">Add as many as you like — only the name is required. Add a schedule and package and Fitrm sets up their sessions automatically.</p>
+  </div>
+  <div id="ob-list" class="ob-list"></div>
+  <div class="ob-foot">
+    <button class="btn sec" onclick="obAddCard()">＋ Add another client</button>
+    <button class="btn" style="margin-top:10px" onclick="obSave()">Save all</button>
+  </div>
+</div>
+
+<div id="tour"><div id="tour-scrim" onclick="endTour()"></div><div id="tour-card"></div></div>
+
+<script>
+/* ============================ STATE ============================ */
+let LS_KEY = "fitrm_poc_v1";
+const todayISO = () => new Date().toISOString().slice(0,10);
+
+const defaultState = () => ({
+  profile:{ state:"CA", filingStatus:"single", businessType:"sole_prop", annualIncome:78000, noShowBurns:false },
+  packageTypes:[
+    {id:"pt1", name:"10-Session Strength", sessions:10, price:750},
+    {id:"pt2", name:"20-Session Block", sessions:20, price:1400},
+    {id:"pt3", name:"Single Session", sessions:1, price:85},
+  ],
+  clients:[
+    {id:"c1", name:"Maya Chen", phone:"(415) 555-0142", email:"maya@example.com", status:"active"},
+    {id:"c2", name:"Devon Brooks", phone:"(510) 555-0199", email:"devon@example.com", status:"active"},
+    {id:"c3", name:"Priya Anand", phone:"(408) 555-0177", email:"priya@example.com", status:"active"},
+  ],
+  sales:[], sessions:[], expenses:[], taxPayments:[], recurringExpenses:[], recurringSessions:[]
+});
+
+function seedDynamic(s){
+  // create sales + sessions referencing default clients
+  const rate = effectiveRate(s.profile.annualIncome).rate;
+  function sell(clientId, ptId, daysAgo){
+    const pt = s.packageTypes.find(p=>p.id===ptId);
+    const id = "s"+(s.sales.length+1);
+    s.sales.push({id, clientId, packageTypeId:ptId, sessionsPurchased:pt.sessions,
+      pricePaid:pt.price, paymentMethod:"Venmo", paid:true,
+      soldAt:dateOffset(-daysAgo), taxSetAside:+(pt.price*rate).toFixed(2)});
+    return id;
+  }
+  const saleA = sell("c1","pt1",26);
+  const saleB = sell("c2","pt2",12);
+  const saleC = sell("c3","pt1",5);
+  // sessions: some completed, some upcoming
+  let n=0;
+  const mk=(clientId,saleId,dayOffset,hour,status,num)=>{
+    s.sessions.push({id:"se"+(++n), clientId, saleId, datetime:dateOffset(dayOffset)+"T"+String(hour).padStart(2,"0")+":00",
+      duration:60, type:"In-person", status, sessionNumber:num});
+  };
+  // Maya: 4 done, some upcoming
+  mk("c1",saleA,-20,7,"completed",1); mk("c1",saleA,-16,7,"completed",2);
+  mk("c1",saleA,-9,7,"completed",3); mk("c1",saleA,-2,7,"completed",4);
+  mk("c1",saleA,0,7,"scheduled",5); mk("c1",saleA,3,7,"scheduled",6);
+  // Devon: 17 done -> low balance, upcoming today
+  for(let i=0;i<17;i++) mk("c2",saleB,-(40-2*i),9,"completed",i+1);
+  mk("c2",saleB,0,9,"scheduled",18); mk("c2",saleB,2,9,"scheduled",19);
+  // Priya: 8 done -> 2 left, near out
+  for(let i=0;i<8;i++) mk("c3",saleC,-(5)+0,18,"completed",i+1);
+  mk("c3",saleC,0,18,"scheduled",9); mk("c3",saleC,1,18,"scheduled",10);
+  s.expenses.push({id:"e1", date:dateOffset(-40), category:"Equipment", amount:240, note:"Resistance bands & mat"});
+  s.expenses.push({id:"e2", date:dateOffset(-20), category:"Certifications", amount:399, note:"CPR recertification"});
+  s.expenses.push({id:"e3", date:dateOffset(-8), category:"Mileage", amount:85, note:"Client travel"});
+  s.recurringExpenses.push({id:"r1", dayOfMonth:1, category:"Rent / Space", amount:400, note:"Studio rent", startMonth:dateOffset(-70).slice(0,7), active:true});
+  s.recurringExpenses.push({id:"r2", dayOfMonth:15, category:"Phone / Internet", amount:75, note:"Cell phone", startMonth:dateOffset(-70).slice(0,7), active:true});
+}
+
+function dateOffset(days){ const d=new Date(); d.setDate(d.getDate()+days); return d.toISOString().slice(0,10); }
+
+let state;
+function load(){
+  let s=null;
+  try{ const r=localStorage.getItem(LS_KEY); if(r) s=migrate(JSON.parse(r)); }catch(e){}
+  if(!s){ s=defaultState(); seedDynamic(s); }
+  syncRecurring(s);
+  syncRecurringSessions(s);
+  save(s);
+  return s;
+}
+function migrate(s){
+  s.expenses=s.expenses||[];
+  s.taxPayments=s.taxPayments||[];
+  s.recurringExpenses=s.recurringExpenses||[];
+  s.recurringSessions=s.recurringSessions||[];
+  if(s.profile && s.profile.noShowBurns===undefined) s.profile.noShowBurns=false;
+  s.sales=(s.sales||[]).map(x=> x.paid===undefined ? {...x, paid:true} : x);
+  return s;
+}
+const HORIZON_WEEKS=6;
+function syncRecurringSessions(s){
+  s.recurringSessions=s.recurringSessions||[];
+  // prune orphan templates whose client was deleted, and orphan sessions
+  const liveIds=new Set((s.clients||[]).map(c=>c.id));
+  s.recurringSessions=s.recurringSessions.filter(t=>liveIds.has(t.clientId));
+  s.sessions=(s.sessions||[]).filter(x=>liveIds.has(x.clientId));
+  const now=new Date(), todayMid=new Date(now.toDateString()), horizonEnd=new Date(+now+HORIZON_WEEKS*7*DAY_MS);
+  s.recurringSessions.forEach(t=>{
+    if(t.active===false || !t.autoRenew || !t.days || !t.days.length) return;
+    const existing=new Set(s.sessions.filter(x=>x.clientId===t.clientId).map(x=>x.datetime));
+    let n=s.sessions.filter(x=>x.clientId===t.clientId).length;
+    const ws=weekStart(todayMid);
+    for(let w=0; w<=HORIZON_WEEKS; w++){
+      t.days.slice().sort((a,b)=>a-b).forEach(dow=>{
+        const d=new Date(+ws); d.setDate(d.getDate()+w*7+dow);
+        if(d<todayMid || d>horizonEnd) return;
+        const dt=ymd(d)+"T"+t.time;
+        if(existing.has(dt)) return;
+        existing.add(dt); n++;
+        s.sessions.push({id:"rs"+t.id+"_"+ymd(d), clientId:t.clientId, saleId:null, datetime:dt,
+          duration:60, type:t.type||"In-person", status:"scheduled", sessionNumber:n, notes:""});
+      });
+    }
+  });
+}
+function clientRecurring(cid){ return (state.recurringSessions||[]).find(t=>t.clientId===cid && t.active!==false); }
+function toggleAutoRenew(tid){
+  const t=state.recurringSessions.find(x=>x.id===tid); if(!t) return;
+  t.autoRenew=!t.autoRenew; if(t.autoRenew) syncRecurringSessions(state);
+  save(); render(); openClient(t.clientId);
+}
+function stopRecurringSeries(tid){
+  const t=state.recurringSessions.find(x=>x.id===tid); if(!t) return;
+  const cid=t.clientId; t.active=false; save(); render(); openClient(cid);
+}
+function daysInMonth(y,m){ return new Date(y,m,0).getDate(); }
+function syncRecurring(s){
+  s.expenses=s.expenses||[]; s.recurringExpenses=s.recurringExpenses||[];
+  const cur=todayISO().slice(0,7);
+  s.recurringExpenses.forEach(t=>{
+    if(t.active===false) return;
+    let [y,m]=t.startMonth.split("-").map(Number), guard=0;
+    while(guard++<360){
+      const mk=y+"-"+String(m).padStart(2,"0");
+      if(mk>cur) break;
+      const dom=Math.min(t.dayOfMonth||1, daysInMonth(y,m));
+      const date=mk+"-"+String(dom).padStart(2,"0");
+      if(!s.expenses.some(e=>e.recurId===t.id && e.date.slice(0,7)===mk))
+        s.expenses.push({id:"e"+t.id+"_"+mk, date, category:t.category, amount:t.amount, note:t.note, recurId:t.id});
+      m++; if(m>12){m=1;y++;}
+    }
+  });
+}
+function save(s){ try{ localStorage.setItem(LS_KEY, JSON.stringify(s||state)); }catch(e){} if(window.__cloudSave) window.__cloudSave(); }
+function emptyState(){ return { profile:{ state:"CA", filingStatus:"single", businessType:"sole_prop", annualIncome:0, noShowBurns:false },
+  packageTypes:[], clients:[], sales:[], sessions:[], expenses:[], taxPayments:[], recurringExpenses:[], recurringSessions:[] }; }
+
+/* ============================ TAX ENGINE (CA sole proprietor, est.) ============================ */
+const SS_WAGE_BASE=184500;
+// Verified June 2026 vs IRS Rev. Proc. 2025-32 (federal TY2026) and CA FTB 2025 Form 540 rate schedules.
+// b = [bracket lower bound, marginal rate]; std = standard deduction; amed = 0.9% additional-Medicare threshold.
+const FED_2026={
+  single:{b:[[0,.10],[12400,.12],[50400,.22],[105700,.24],[201775,.32],[256225,.35],[640600,.37]], std:16100, amed:200000},
+  mfj:   {b:[[0,.10],[24800,.12],[100800,.22],[211400,.24],[403550,.32],[512450,.35],[768700,.37]], std:32200, amed:250000},
+  hoh:   {b:[[0,.10],[17700,.12],[67450,.22],[105700,.24],[201750,.32],[256200,.35],[640600,.37]], std:24150, amed:200000},
+  mfs:   {b:[[0,.10],[12400,.12],[50400,.22],[105700,.24],[201775,.32],[256225,.35],[384350,.37]], std:16100, amed:125000},
+};
+const CA_2025={
+  single:{b:[[0,.01],[11079,.02],[26264,.04],[41452,.06],[57542,.08],[72724,.093],[371479,.103],[445771,.113],[742953,.123]], std:5706},
+  mfj:   {b:[[0,.01],[22158,.02],[52528,.04],[82904,.06],[115084,.08],[145448,.093],[742958,.103],[891542,.113],[1485906,.123]], std:11412},
+  hoh:   {b:[[0,.01],[22173,.02],[52530,.04],[67716,.06],[83805,.08],[98990,.093],[505208,.103],[606251,.113],[1010417,.123]], std:11412},
+  mfs:   {b:[[0,.01],[11079,.02],[26264,.04],[41452,.06],[57542,.08],[72724,.093],[371479,.103],[445771,.113],[742953,.123]], std:5706},
+};
+function filingKey(){ const f=(state.profile&&state.profile.filingStatus)||"single"; if(f==="married")return"mfj"; return ({single:1,mfj:1,hoh:1,mfs:1}[f]?f:"single"); }
+function filingLabel(f){ return {single:"Single",married:"Married filing jointly",mfj:"Married filing jointly",hoh:"Head of household",mfs:"Married filing separately"}[f]||"Single"; }
+
+function progressive(income, brackets){
+  let tax=0;
+  for(let i=0;i<brackets.length;i++){
+    const lo=brackets[i][0], rate=brackets[i][1];
+    const hi=i+1<brackets.length?brackets[i+1][0]:Infinity;
+    if(income>lo) tax += (Math.min(income,hi)-lo)*rate; else break;
+  }
+  return tax;
+}
+function effectiveRate(netProfit){
+  const P=Math.max(netProfit,0);
+  if(P===0) return {rate:0, seTax:0, fedTax:0, caTax:0, total:0};
+  const k=filingKey(), F=FED_2026[k], C=CA_2025[k];
+  const seBase=P*0.9235;
+  const ss=Math.min(seBase,SS_WAGE_BASE)*0.124;
+  const medicare=seBase*0.029;
+  const seTax=ss+medicare;
+  const halfSE=seTax/2;
+  const addlMed=Math.max(0,seBase-F.amed)*0.009;   // 0.9% additional Medicare (high earners), not deductible
+  const qbi=P*0.20;
+  const fedTI=Math.max(P-halfSE-F.std-qbi,0);
+  const fedTax=progressive(fedTI,F.b);
+  const caTI=Math.max(P-halfSE-C.std,0);
+  const caTax=progressive(caTI,C.b);
+  const total=seTax+addlMed+fedTax+caTax;
+  return {rate:total/P, seTax:seTax+addlMed, fedTax, caTax, total};
+}
+
+/* ============================ DERIVED ============================ */
+const money=n=>"$"+Math.round(n).toLocaleString();
+const money2=n=>"$"+n.toFixed(2);
+function clientSessionsRemaining(cid){
+  const purchased=state.sales.filter(s=>s.clientId===cid).reduce((a,s)=>a+s.sessionsPurchased,0);
+  const burns=state.profile.noShowBurns;
+  const used=state.sessions.filter(s=>s.clientId===cid &&
+    (s.status==="completed" || (burns && s.status==="no-show"))).length;
+  return purchased-used;
+}
+function clientLifetime(cid){ return state.sales.filter(s=>s.clientId===cid).reduce((a,s)=>a+s.pricePaid,0); }
+function clientTotalPurchased(cid){ return state.sales.filter(s=>s.clientId===cid).reduce((a,s)=>a+s.sessionsPurchased,0); }
+function remTag(cid){ const total=clientTotalPurchased(cid), rem=clientSessionsRemaining(cid);
+  return total>0 ? rem+"/"+total : "no pack"; }
+function initials(name){ return name.split(" ").map(w=>w[0]).join("").slice(0,2).toUpperCase(); }
+function incomeThisMonth(){
+  const m=todayISO().slice(0,7);
+  return state.sales.filter(s=>s.soldAt.slice(0,7)===m).reduce((a,s)=>a+s.pricePaid,0);
+}
+function reserveYTD(){
+  const y=todayISO().slice(0,4);
+  return state.sales.filter(s=>s.soldAt.slice(0,4)===y).reduce((a,s)=>a+s.taxSetAside,0);
+}
+function taxPaidYTD(){
+  const y=todayISO().slice(0,4);
+  return (state.taxPayments||[]).filter(p=>p.date.slice(0,4)===y).reduce((a,p)=>a+p.amount,0);
+}
+function reserveRemaining(){ return reserveYTD()-taxPaidYTD(); }
+function expensesYTD(){
+  const y=todayISO().slice(0,4);
+  return (state.expenses||[]).filter(e=>e.date.slice(0,4)===y).reduce((a,e)=>a+e.amount,0);
+}
+function incomeReport(){
+  const sales=state.sales, m=todayISO().slice(0,7), y=todayISO().slice(0,4);
+  const sum=arr=>arr.reduce((a,s)=>a+s.pricePaid,0);
+  const q=Math.floor(new Date().getMonth()/3);
+  const month=sum(sales.filter(s=>s.soldAt.slice(0,7)===m));
+  const year=sum(sales.filter(s=>s.soldAt.slice(0,4)===y));
+  const quarter=sum(sales.filter(s=>s.soldAt.slice(0,4)===y && Math.floor(new Date(s.soldAt).getMonth()/3)===q));
+  const unpaid=sum(sales.filter(s=>!s.paid));
+  const byClient={};
+  sales.forEach(s=>{ byClient[s.clientId]=(byClient[s.clientId]||0)+s.pricePaid; });
+  const top=Object.entries(byClient).map(([cid,v])=>({cid,v})).sort((a,b)=>b.v-a.v);
+  return {month,quarter,year,unpaid,top};
+}
+
+/* ---- Revenue projection engine ---- */
+function activeClients(){ return state.clients.filter(c=>c.status!=="inactive"); }
+function avgPackageRate(){
+  const pts=(state.packageTypes||[]).filter(p=>p.sessions>0 && p.price>0);
+  if(!pts.length) return 75;            // no packages defined yet — last-resort placeholder
+  const rates=pts.map(p=>p.price/p.sessions);
+  return rates.reduce((a,r)=>a+r,0)/rates.length;
+}
+function globalAvgSessionPrice(){
+  const sess=state.sales.reduce((a,s)=>a+s.sessionsPurchased,0);
+  const rev=state.sales.reduce((a,s)=>a+s.pricePaid,0);
+  return sess>0 ? rev/sess : avgPackageRate();   // fall back to avg package rate before any sales
+}
+function avgSessionPrice(cid){
+  const sales=state.sales.filter(s=>s.clientId===cid);
+  const sess=sales.reduce((a,s)=>a+s.sessionsPurchased,0);
+  const rev=sales.reduce((a,s)=>a+s.pricePaid,0);
+  return sess>0 ? rev/sess : globalAvgSessionPrice();
+}
+function weeklyFrequency(cid){
+  // sessions per week over the trailing 28 days (actual pace / burn rate)
+  const now=Date.now(), start=now-28*DAY_MS;
+  const n=state.sessions.filter(s=>{ const d=+new Date(s.datetime); return s.clientId===cid && d>=start && d<=now; }).length;
+  let f=n/4;
+  if(f===0){ // fall back to upcoming scheduled density (next 28 days)
+    const end=now+28*DAY_MS;
+    const up=state.sessions.filter(s=>{ const d=+new Date(s.datetime); return s.clientId===cid && d>now && d<=end && s.status==="scheduled"; }).length;
+    f=up/4;
+  }
+  return f;
+}
+function weeklyRunRate(){ return activeClients().reduce((a,c)=>a+weeklyFrequency(c.id)*avgSessionPrice(c.id),0); }
+function valueOfSessions(filterFn){ return state.sessions.filter(filterFn).reduce((a,s)=>a+avgSessionPrice(s.clientId),0); }
+function projectFor(period, includeFill){
+  const now=new Date(); let start,end;
+  if(period==="today"){ start=new Date(now.toDateString()); end=new Date(+start+DAY_MS-1); }
+  else if(period==="week"){ start=weekStart(now); end=new Date(+start+7*DAY_MS-1); }
+  else if(period==="month"){ start=new Date(now.getFullYear(),now.getMonth(),1); end=new Date(now.getFullYear(),now.getMonth()+1,0,23,59,59); }
+  else { start=new Date(now.getFullYear(),0,1); end=new Date(now.getFullYear(),11,31,23,59,59); }
+  const earned=valueOfSessions(s=>{ const d=+new Date(s.datetime); return s.status==="completed" && d>=+start && d<=+now; });
+  const booked=valueOfSessions(s=>{ const d=+new Date(s.datetime); return s.status==="scheduled" && d>+now && d<=+end; });
+  let fill=0;
+  if(includeFill){
+    const sched=state.sessions.filter(s=>{ const d=+new Date(s.datetime); return s.status==="scheduled" && d>+now && d<=+end; });
+    const lastBooked=sched.length ? Math.max(...sched.map(s=>+new Date(s.datetime))) : +now;
+    const from=Math.max(+now,lastBooked);
+    const remDays=Math.max(0,(+end-from)/DAY_MS);
+    fill=weeklyRunRate()/7*remDays;
+  }
+  return {earned, booked, fill, total:earned+booked+fill};
+}
+function typicalPackagePrice(cid){
+  const sales=state.sales.filter(s=>s.clientId===cid);
+  if(sales.length) return sales[sales.length-1].pricePaid;
+  return state.packageTypes.length ? state.packageTypes[0].price : globalAvgSessionPrice()*10;
+}
+function reupForecast(){
+  return activeClients().map(c=>{
+    const left=clientSessionsRemaining(c.id);
+    const f=weeklyFrequency(c.id);
+    const weeks=f>0 ? left/f : null;
+    const due=weeks!=null ? new Date(Date.now()+weeks*7*DAY_MS) : null;
+    return {c, left, f, weeks, due, pkgPrice:typicalPackagePrice(c.id)};
+  }).filter(x=>x.f>0 || x.left<=3)
+    .sort((a,b)=>(a.weeks==null?1e9:a.weeks)-(b.weeks==null?1e9:b.weeks));
+}
+
+/* ---- Business health metrics ---- */
+function bizMetrics(){
+  const now=Date.now(), m=todayISO().slice(0,7), clients=state.clients;
+  const sessOf=cid=>state.sessions.filter(s=>s.clientId===cid);
+  const lastAct=cid=>{ const ds=sessOf(cid).map(s=>+new Date(s.datetime)); return ds.length?Math.max(...ds):null; };
+  const future=cid=>state.sessions.some(s=>s.clientId===cid&&s.status==="scheduled"&&+new Date(s.datetime)>now);
+  const firstMonth=cid=>{ const d=[]; state.sales.filter(s=>s.clientId===cid).forEach(s=>d.push(s.soldAt.slice(0,7))); sessOf(cid).forEach(s=>d.push(s.datetime.slice(0,7))); return d.length?d.sort()[0]:null; };
+  const everActive=clients.filter(c=>sessOf(c.id).length||state.sales.some(s=>s.clientId===c.id));
+  const active=clients.filter(c=>c.status!=="inactive");
+  const engaged=c=>future(c.id)||((lastAct(c.id)||0)>=now-30*DAY_MS);
+  const retention=everActive.length?Math.round(everActive.filter(engaged).length/everActive.length*100):0;
+  const atRisk=active.filter(c=>state.sales.some(s=>s.clientId===c.id)&&!future(c.id)&&((lastAct(c.id)||0)<now-21*DAY_MS))
+    .map(c=>({c, days: lastAct(c.id)?Math.floor((now-lastAct(c.id))/DAY_MS):null}))
+    .sort((a,b)=>(b.days==null?1e9:b.days)-(a.days==null?1e9:a.days));
+  const withSales=clients.filter(c=>state.sales.some(s=>s.clientId===c.id));
+  const renewed=withSales.filter(c=>state.sales.filter(s=>s.clientId===c.id).length>=2);
+  const renewalRate=withSales.length?Math.round(renewed.length/withSales.length*100):0;
+  const arpc=withSales.length?state.sales.reduce((a,s)=>a+s.pricePaid,0)/withSales.length:0;
+  const since=now-120*DAY_MS;
+  const comp=state.sessions.filter(s=>s.status==="completed"&&+new Date(s.datetime)>=since).length;
+  const ns=state.sessions.filter(s=>s.status==="no-show"&&+new Date(s.datetime)>=since).length;
+  const noShowRate=(comp+ns)?Math.round(ns/(comp+ns)*100):0;
+  const cap=weeklyCapacityFromHours();
+  const wkStart=weekStart(new Date()), wkEnd=new Date(+wkStart+7*DAY_MS);
+  const wkSessions=state.sessions.filter(s=>{const d=+new Date(s.datetime);return d>=+wkStart&&d<+wkEnd;}).length;
+  const capacityPct=cap?Math.min(100,Math.round(wkSessions/cap*100)):0;
+  const newThisMonth=clients.filter(c=>firstMonth(c.id)===m).length;
+  const sources={}; clients.forEach(c=>{ const s=c.source||"Unknown"; sources[s]=(sources[s]||0)+1; });
+  const srcArr=Object.entries(sources).map(([k,v])=>({k,v})).sort((a,b)=>b.v-a.v);
+  return {activeCount:active.length,newThisMonth,retention,atRisk,renewalRate,arpc,noShowRate,cap,wkSessions,capacityPct,avgRate:globalAvgSessionPrice(),srcArr};
+}
+function scorecardHTML(m){
+  return `<div class="sec-title" style="margin-top:8px">Health scorecard</div>
+  <div class="kpi-grid">
+    <div class="stat"><div class="k">Active clients</div><div class="v">${m.activeCount}</div><div class="kpi-sub good">+${m.newThisMonth} this month</div></div>
+    <div class="stat"><div class="k">Retention</div><div class="v">${m.retention}%</div><div class="kpi-sub">still engaged</div></div>
+    <div class="stat"><div class="k">At risk</div><div class="v" style="${m.atRisk.length?'color:var(--warn)':''}">${m.atRisk.length}</div><div class="kpi-sub ${m.atRisk.length?'bad':''}">quiet 21+ days</div></div>
+    <div class="stat"><div class="k">Avg client value</div><div class="v">${money(m.arpc)}</div><div class="kpi-sub">lifetime</div></div>
+    <div class="stat"><div class="k">Renewal rate</div><div class="v">${m.renewalRate}%</div><div class="kpi-sub">buy a 2nd pack</div></div>
+    <div class="stat"><div class="k">No-show rate</div><div class="v">${m.noShowRate}%</div><div class="kpi-sub">last 120 days</div></div>
+    <div class="stat" onclick="openHours()" style="cursor:pointer"><div class="k">Capacity</div><div class="v green">${m.capacityPct}%</div><div class="kpi-sub">${m.wkSessions} of ${m.cap}/wk · hours</div></div>
+    <div class="stat"><div class="k">Avg session rate</div><div class="v">${money(m.avgRate)}</div><div class="kpi-sub">per session</div></div>
+  </div>`;
+}
+function needsAttentionHTML(m){
+  const total=m.srcArr.reduce((a,s)=>a+s.v,0)||1;
+  const atrisk = m.atRisk.length ? m.atRisk.slice(0,5).map(x=>`
+    <div class="row between list-item">
+      <div class="row"><div class="avatar">${initials(x.c.name)}</div>
+        <div><div class="name">${x.c.name}</div><div class="meta">${x.days!=null?('last seen '+x.days+'d ago'):'no sessions yet'}</div></div></div>
+      <button class="btn sec btn-sm" onclick="openClient('${x.c.id}')">Nudge</button>
+    </div>`).join("") : `<div class="empty" style="padding:20px">No one's slipping — nice work.</div>`;
+  const srcs = m.srcArr.length ? m.srcArr.map(s=>{ const pct=Math.round(s.v/total*100);
+    return `<div class="row between" style="font-size:13px;margin-top:8px"><span>${s.k}</span><span class="meta">${pct}%</span></div><div class="goal-bar" style="margin:6px 0 0"><i style="width:${pct}%"></i></div>`;}).join("") : `<div class="meta">Add clients with a source to see this.</div>`;
+  return `<div class="sec-title">Needs attention</div>
+  <div class="biz-two">
+    <div class="card"><div class="name" style="font-size:15px;margin-bottom:10px">Clients at risk</div>${atrisk}</div>
+    <div class="card"><div class="name" style="font-size:15px;margin-bottom:6px">Where clients come from</div>${srcs}</div>
+  </div>`;
+}
+function toMin(t){ const p=(t||"0:0").split(":"); return (+p[0]||0)*60+(+p[1]||0); }
+function defaultHours(){ const wh={}; for(let d=0;d<7;d++) wh[d]={on:d>=1&&d<=5, blocks:[{start:"06:00",end:"14:00"}]}; return wh; }
+function weeklyCapacityFromHours(){
+  const wh=state.profile.workingHours; if(!wh) return state.profile.weeklyCapacity||40;
+  const len=state.profile.sessionLength||60; let total=0;
+  for(let d=0;d<7;d++){ const dd=wh[d]; if(!dd||!dd.on) continue; (dd.blocks||[]).forEach(b=>{ const mn=toMin(b.end)-toMin(b.start); if(mn>0) total+=Math.floor(mn/len); }); }
+  return total;
+}
+function todayCapacity(){
+  const len=state.profile.sessionLength||60, d=new Date().getDay(), wh=state.profile.workingHours;
+  if(wh){ if(!wh[d]||!wh[d].on) return 0; let t=0; (wh[d].blocks||[]).forEach(b=>{const mn=toMin(b.end)-toMin(b.start); if(mn>0)t+=Math.floor(mn/len);}); return t; }
+  return (d>=1&&d<=5)?8:0;
+}
+function openHours(){
+  hoursDraft=JSON.parse(JSON.stringify(state.profile.workingHours||defaultHours()));
+  hoursLenDraft=state.profile.sessionLength||60;
+  hoursRender();
+}
+function hoursRender(){
+  const names=["Sunday","Monday","Tuesday","Wednesday","Thursday","Friday","Saturday"];
+  let cap=0; for(let d=0;d<7;d++){ const dd=hoursDraft[d]; if(dd&&dd.on)(dd.blocks||[]).forEach(b=>{const mn=toMin(b.end)-toMin(b.start); if(mn>0)cap+=Math.floor(mn/hoursLenDraft);}); }
+  let days="";
+  for(let d=0;d<7;d++){ const dd=hoursDraft[d]||{on:false,blocks:[]};
+    days+=`<div class="hr-day"><div class="row between"><b>${names[d]}</b><button class="toggle ${dd.on?'on':''}" onclick="hToggleDay(${d})"><span></span></button></div>
+      ${dd.on?(dd.blocks||[]).map((b,i)=>`<div class="row" style="gap:8px;margin-top:8px;align-items:center">
+        <input type="time" value="${b.start}" onchange="hSetTime(${d},${i},'start',this.value)" style="flex:1"/>
+        <span class="meta">to</span>
+        <input type="time" value="${b.end}" onchange="hSetTime(${d},${i},'end',this.value)" style="flex:1"/>
+        ${dd.blocks.length>1?`<button class="ob-x" onclick="hRemoveBlock(${d},${i})">✕</button>`:''}
+      </div>`).join("")+`<button class="btn sec btn-sm" style="margin-top:8px" onclick="hAddBlock(${d})">＋ Add a split shift</button>`:''}
+    </div>`;
+  }
+  openSheet(`<div class="sheet-title">Working hours</div>
+    <p class="muted" style="margin-top:2px">Set the days and hours you train — Fitrm uses this to show your true open slots.</p>
+    <label class="fld"><span>Session length</span><select onchange="hSetLen(this.value)">${[30,45,60,90].map(n=>`<option value="${n}" ${n===hoursLenDraft?'selected':''}>${n} min</option>`).join("")}</select></label>
+    <div class="card" style="background:var(--surface2);margin-top:12px"><div class="row between"><span class="meta">Weekly capacity</span><b class="big-num green">${cap} sessions</b></div></div>
+    <div style="margin-top:8px">${days}</div>
+    <button class="btn" style="margin-top:16px" onclick="saveHours()">Save working hours</button>`);
+}
+function hToggleDay(d){ if(!hoursDraft[d])hoursDraft[d]={on:false,blocks:[]}; hoursDraft[d].on=!hoursDraft[d].on; if(hoursDraft[d].on&&(!hoursDraft[d].blocks||!hoursDraft[d].blocks.length))hoursDraft[d].blocks=[{start:"06:00",end:"14:00"}]; hoursRender(); }
+function hSetTime(d,i,f,v){ hoursDraft[d].blocks[i][f]=v; hoursRender(); }
+function hAddBlock(d){ hoursDraft[d].blocks.push({start:"16:00",end:"20:00"}); hoursRender(); }
+function hRemoveBlock(d,i){ hoursDraft[d].blocks.splice(i,1); hoursRender(); }
+function hSetLen(v){ hoursLenDraft=+v; hoursRender(); }
+function saveHours(){ state.profile.workingHours=hoursDraft; state.profile.sessionLength=hoursLenDraft; save(); render(); closeSheet(); switchTab("tax"); }
+function sourceOptions(sel){ return ["","Referral","Instagram","Gym floor","Walk-in","Website","Other"].map(o=>`<option ${o===(sel||"")?"selected":""} value="${o}">${o||"—"}</option>`).join(""); }
+
+function openAddMenu(){
+  openSheet(`<div class="sheet-title">Add clients</div>
+    <button class="btn" onclick="closeSheet();openAddClient()">Add Client</button>
+    <button class="btn sec" style="margin-top:8px" onclick="closeSheet();openOnboard()">Add Multiple Clients</button>
+    <button class="btn sec" style="margin-top:8px" onclick="closeSheet();openImportMenu()">Import from a spreadsheet</button>
+    <button class="btn sec" style="margin-top:8px" onclick="closeSheet()">Cancel</button>`);
+}
+/* ---- Mass-add clients (onboarding) ---- */
+function openOnboard(){
+  const list=document.getElementById("ob-list"); list.innerHTML="";
+  for(let i=0;i<3;i++) list.insertAdjacentHTML("beforeend", obCardHTML());
+  document.getElementById("onboard").classList.add("show");
+}
+function closeOnboard(){ document.getElementById("onboard").classList.remove("show"); }
+function obAddCard(){ const list=document.getElementById("ob-list"); list.insertAdjacentHTML("beforeend", obCardHTML());
+  list.lastElementChild.scrollIntoView({behavior:"smooth",block:"center"}); list.lastElementChild.querySelector(".ob-name").focus(); }
+function obCardHTML(){
+  const pkgs=pkgOptionsHTML('<option value="">No package yet</option>');
+  return `<div class="ob-card">
+    <div class="row" style="gap:10px"><input class="ob-name" placeholder="Client name"/><button class="ob-x" onclick="this.closest('.ob-card').remove()" aria-label="remove">✕</button></div>
+    <div class="ob-grid2"><input class="ob-phone" inputmode="tel" placeholder="Phone (optional)"/><select class="ob-source">${sourceOptions("")}</select></div>
+    <div class="ob-sched">
+      <div class="seg ob-days">${["S","M","T","W","T","F","S"].map((d,i)=>`<button type="button" class="ob-day" data-dow="${i}" onclick="this.classList.toggle('on')">${d}</button>`).join("")}</div>
+      <input class="ob-time" type="time" value="07:00"/>
+    </div>
+    <select class="ob-pkg">${pkgs}</select>
+  </div>`;
+}
+function obSave(){
+  const cards=document.querySelectorAll("#ob-list .ob-card"); let added=0; const stamp=Date.now();
+  cards.forEach((card,idx)=>{
+    const name=card.querySelector(".ob-name").value.trim(); if(!name) return;
+    const phone=card.querySelector(".ob-phone").value.trim();
+    const source=card.querySelector(".ob-source").value;
+    const time=card.querySelector(".ob-time").value||"07:00";
+    const ptId=card.querySelector(".ob-pkg").value;
+    const days=Array.prototype.map.call(card.querySelectorAll(".ob-day.on"),b=>+b.dataset.dow).sort((a,b)=>a-b);
+    const cid="c"+stamp+"_"+idx;
+    state.clients.push({id:cid,name,phone,email:"",status:"active",source});
+    if(ptId){ const pt=state.packageTypes.find(p=>p.id===ptId); if(pt){ const rate=effectiveRate(state.profile.annualIncome).rate;
+      state.sales.push({id:"s"+stamp+"_"+idx,clientId:cid,packageTypeId:pt.id,sessionsPurchased:pt.sessions,pricePaid:pt.price,paymentMethod:"",paid:true,soldAt:todayISO(),taxSetAside:+(pt.price*rate).toFixed(2)}); } }
+    if(days.length){ state.recurringSessions.push({id:"rt"+stamp+"_"+idx,clientId:cid,days,time,type:"In-person",autoRenew:true,active:true}); }
+    added++;
+  });
+  if(added){ syncRecurringSessions(state); save(); render(); }
+  closeOnboard(); switchTab("clients");
+  if(added) openSheet(`<div class="sheet-title">Added ${added} client${added===1?"":"s"} ✓</div><p class="muted">Any standing schedules are already on your calendar.</p><button class="btn" onclick="closeSheet()">Done</button>`);
+}
+
+/* ---- First-run welcome ---- */
+let welcomeShown=false;
+function maybeWelcome(){
+  if(welcomeShown || (state.clients&&state.clients.length>0)) return;
+  welcomeShown=true;
+  openSheet(`<div class="sheet-title">Welcome to Fitrm 👋</div>
+    <p class="muted">Let's get your business in. Start by adding your clients — then your calendar, income, and taxes fill in automatically.</p>
+    <button class="btn" onclick="closeSheet();openOnboard()">Add my clients</button>
+    <button class="btn sec" style="margin-top:8px" onclick="closeSheet();startTour()">Take a 1-minute tour</button>
+    <button class="btn sec" style="margin-top:8px" onclick="closeSheet()">I'll explore on my own</button>`);
+}
+
+/* ---- Guided tour ---- */
+const tourSteps=[
+  {tab:"home",ic:"⌂",title:"Welcome to Fitrm",body:"Your whole training business in one place — clients, schedule, money, and taxes, all working together. Here's the 60-second tour."},
+  {tab:"home",ic:"⌂",title:"Home",body:"Your day at a glance: today's sessions, clients running low, income this month, and your money trend."},
+  {tab:"calendar",ic:"▦",title:"Calendar",body:"Book a standing schedule once — MWF at 7am, say — and sessions track themselves, counting down each client's package automatically."},
+  {tab:"clients",ic:"☺",title:"Clients",body:"Your roster. Sell a package and remaining sessions update on their own. Add clients one at a time, in bulk, or by import."},
+  {tab:"packages",ic:"▣",title:"Packages",body:"Define what you sell — how many sessions are in a pack and the price. These power the session countdown and your tax math."},
+  {tab:"tax",ic:"$",title:"Business",body:"The payoff: projected income, who's due to renew, your real tax set-aside, plus your growth health — retention, renewals, and where clients come from."}
+];
+let tourIdx=0;
+function startTour(){ tourIdx=0; document.getElementById("tour").classList.add("show"); tourRender(); }
+function endTour(){ document.getElementById("tour").classList.remove("show"); }
+function tourNext(){ if(tourIdx<tourSteps.length-1){ tourIdx++; tourRender(); } else endTour(); }
+function tourPrev(){ if(tourIdx>0){ tourIdx--; tourRender(); } }
+function tourRender(){
+  const s=tourSteps[tourIdx]; switchTab(s.tab);
+  const dots=tourSteps.map((_,i)=>`<span class="tour-dot ${i===tourIdx?'on':''}"></span>`).join("");
+  document.getElementById("tour-card").innerHTML=`
+    <div class="tour-ic">${s.ic}</div>
+    <div class="tour-title">${s.title}</div>
+    <div class="tour-body">${s.body}</div>
+    <div class="tour-dots">${dots}</div>
+    <div class="row between" style="margin-top:18px">
+      <button class="btn sec btn-sm" onclick="endTour()">Skip</button>
+      <div class="row" style="gap:8px">${tourIdx>0?`<button class="btn sec btn-sm" onclick="tourPrev()">Back</button>`:""}<button class="btn btn-sm" onclick="tourNext()">${tourIdx<tourSteps.length-1?"Next":"Done"}</button></div>
+    </div>`;
+}
+
+/* ---- Income vs expenses trend (last 12 months) ---- */
+function trendData(){
+  const arr=[], now=new Date();
+  for(let i=11;i>=0;i--){
+    const m=new Date(now.getFullYear(),now.getMonth()-i,1);
+    const ym=m.getFullYear()+"-"+String(m.getMonth()+1).padStart(2,"0");
+    const income=state.sales.filter(s=>s.soldAt&&s.soldAt.slice(0,7)===ym).reduce((a,s)=>a+s.pricePaid,0);
+    const expense=(state.expenses||[]).filter(e=>e.date&&e.date.slice(0,7)===ym).reduce((a,e)=>a+e.amount,0);
+    arr.push({ym, label:m.toLocaleDateString(undefined,{month:"short"}), full:m.toLocaleDateString(undefined,{month:"short",year:"numeric"}), income, expense});
+  }
+  return arr;
+}
+const TR={W:320,H:150,padL:10,padR:10,padT:12,padB:22};
+function trReadHTML(d){ const net=d.income-d.expense;
+  return `<span class="tr-m">${d.full}</span> &nbsp; <span class="tr-i">Income ${money(d.income)}</span> · <span class="tr-e">Exp ${money(d.expense)}</span> · <span style="color:${net>=0?'#8f9d68':'var(--danger)'};font-weight:800">Net ${money(net)}</span>`; }
+function trChartHTML(data, pfx){
+  pfx=pfx||"trend";
+  const {W,H,padL,padR,padT,padB}=TR, plotW=W-padL-padR, plotH=H-padT-padB, n=data.length;
+  const maxV=Math.max(100,...data.map(d=>Math.max(d.income,d.expense)));
+  const X=i=> padL+(n<=1?plotW/2:(i/(n-1))*plotW);
+  const Y=v=> padT+plotH-(v/maxV)*plotH;
+  const line=key=> data.map((d,i)=>(i?"L":"M")+X(i).toFixed(1)+" "+Y(d[key]).toFixed(1)).join(" ");
+  const area="M"+X(0).toFixed(1)+" "+(padT+plotH)+" "+data.map((d,i)=>"L"+X(i).toFixed(1)+" "+Y(d.income).toFixed(1)).join(" ")+" L"+X(n-1).toFixed(1)+" "+(padT+plotH)+" Z";
+  const xlabels=data.map((d,i)=> i%2===0?`<text x="${X(i).toFixed(1)}" y="${H-6}" text-anchor="middle" font-size="8" fill="#9a988e">${d.label}</text>`:"").join("");
+  const last=n-1;
+  return `<div class="tr-read" id="${pfx}-read">${trReadHTML(data[last])}</div>
+    <svg id="${pfx}-svg" data-pfx="${pfx}" viewBox="0 0 ${W} ${H}" width="100%" style="display:block;touch-action:none">
+      <defs><linearGradient id="${pfx}g" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#8f9d68" stop-opacity="0.26"/><stop offset="1" stop-color="#8f9d68" stop-opacity="0"/></linearGradient></defs>
+      <path d="${area}" fill="url(#${pfx}g)"/>
+      <path d="${line('income')}" fill="none" stroke="#8f9d68" stroke-width="2.2" stroke-linejoin="round" stroke-linecap="round"/>
+      <path d="${line('expense')}" fill="none" stroke="#9a988e" stroke-width="1.8" stroke-dasharray="4 3" stroke-linejoin="round" stroke-linecap="round"/>
+      <line id="${pfx}-cross" x1="${X(last).toFixed(1)}" y1="${padT}" x2="${X(last).toFixed(1)}" y2="${padT+plotH}" stroke="#3a3b3d" stroke-width="1"/>
+      <circle id="${pfx}-dot-i" r="3.5" fill="#8f9d68" cx="${X(last).toFixed(1)}" cy="${Y(data[last].income).toFixed(1)}"/>
+      <circle id="${pfx}-dot-e" r="3" fill="#9a988e" cx="${X(last).toFixed(1)}" cy="${Y(data[last].expense).toFixed(1)}"/>
+      ${xlabels}
+    </svg>
+    <div class="tr-legend"><span><i></i>Income</span><span class="e"><i></i>Expenses</span></div>`;
+}
+function trSetActive(pfx,i){
+  const data=window.__trend; if(!data||!data.length) return;
+  const {W,H,padL,padR,padT,padB}=TR, plotW=W-padL-padR, plotH=H-padT-padB, n=data.length;
+  const maxV=Math.max(100,...data.map(d=>Math.max(d.income,d.expense)));
+  i=Math.max(0,Math.min(n-1,i));
+  const X=padL+(n<=1?plotW/2:(i/(n-1))*plotW);
+  const Yi=padT+plotH-(data[i].income/maxV)*plotH, Ye=padT+plotH-(data[i].expense/maxV)*plotH;
+  const set=(id,a)=>{const el=document.getElementById(id); if(el)for(const k in a)el.setAttribute(k,a[k]);};
+  set(pfx+"-cross",{x1:X.toFixed(1),x2:X.toFixed(1)});
+  set(pfx+"-dot-i",{cx:X.toFixed(1),cy:Yi.toFixed(1)});
+  set(pfx+"-dot-e",{cx:X.toFixed(1),cy:Ye.toFixed(1)});
+  const r=document.getElementById(pfx+"-read"); if(r) r.innerHTML=trReadHTML(data[i]);
+}
+function initTrendChart(pfx){
+  pfx=pfx||"trend";
+  const svg=document.getElementById(pfx+"-svg"); if(!svg||!window.__trend) return;
+  const {W,padL,padR}=TR, plotW=W-padL-padR, n=window.__trend.length;
+  function idx(cx){ const r=svg.getBoundingClientRect(); const vx=(cx-r.left)/r.width*W; return Math.round(((vx-padL)/plotW)*(n-1)); }
+  function move(e){ const cx=e.touches?(e.touches[0]&&e.touches[0].clientX):e.clientX; if(cx==null) return; trSetActive(pfx,idx(cx)); if(e.touches&&e.cancelable) e.preventDefault(); }
+  svg.addEventListener("mousemove",move);
+  svg.addEventListener("touchstart",move,{passive:false});
+  svg.addEventListener("touchmove",move,{passive:false});
+}
+function fmtDate(iso){ const d=new Date(iso+ (iso.length===10?"T00:00":"")); return d.toLocaleDateString(undefined,{weekday:"short",month:"short",day:"numeric"}); }
+function fmtTime(dt){ const d=new Date(dt); return d.toLocaleTimeString(undefined,{hour:"numeric",minute:"2-digit"}); }
+function nextQuarterly(){
+  const y=new Date().getFullYear();
+  const dates=[[y,3,15],[y,5,15],[y,8,15],[y+1,0,15]];
+  const now=new Date();
+  for(const [yy,mm,dd] of dates){ const d=new Date(yy,mm,dd); if(d>=now) return d; }
+  return new Date(y+1,3,15);
+}
+
+/* ============================ RENDER ============================ */
+let activeTab="home";
+let calView="3day";
+let calAnchor=todayISO();
+let sellPaid=true;
+let expRecurring=false;
+let recurDays=[];
+let recurAutoRenew=false;
+let finOpen={trend:true};
+let growOpen=false;
+let hoursDraft=null, hoursLenDraft=60;
+const DAY_MS=86400000;
+function el(id){ return document.getElementById(id); }
+
+function render(){
+  renderHome(); renderCalendar(); renderClients(); renderPackages(); renderTax();
+}
+
+function growItems(){
+  const items=[], m=bizMetrics();
+  const low=state.clients.filter(c=>c.status==="active").map(c=>({c,r:clientSessionsRemaining(c.id)}))
+    .filter(x=>x.r<=2 && state.sales.some(s=>s.clientId===x.c.id));
+  if(low.length){ const val=low.reduce((a,x)=>a+typicalPackagePrice(x.c.id),0);
+    items.push({label:`${low.length} client${low.length===1?'':'s'} running low — sell renewals`, val, act:"switchTab('clients')"}); }
+  const unpaid=state.sales.filter(s=>!s.paid);
+  if(unpaid.length){ const val=unpaid.reduce((a,s)=>a+s.pricePaid,0); const n=new Set(unpaid.map(s=>s.clientId)).size;
+    items.push({label:`${money(val)} outstanding from ${n} client${n===1?'':'s'} — collect`, val:0, act:"openUnpaid()"}); }
+  if(m.atRisk.length){ items.push({label:`${m.atRisk.length} client${m.atRisk.length===1?'':'s'} haven't booked lately — reach out`, val:0, act:"switchTab('tax')"}); }
+  const open=Math.max(0, m.cap-m.wkSessions);
+  if(open>0){ const val=Math.round(open*globalAvgSessionPrice());
+    items.push({label:`${open} open slot${open===1?'':'s'} this week — fill them`, val, act:"switchTab('calendar')"}); }
+  return items;
+}
+function growSummary(){
+  const m=bizMetrics();
+  const lowClients=state.clients.filter(c=>c.status==="active").map(c=>({c,r:clientSessionsRemaining(c.id)})).filter(x=>x.r<=2 && state.sales.some(s=>s.clientId===x.c.id));
+  const renewVal=lowClients.reduce((a,x)=>a+typicalPackagePrice(x.c.id),0);
+  const unpaid=state.sales.filter(s=>!s.paid); const collectVal=unpaid.reduce((a,s)=>a+s.pricePaid,0);
+  const openSlots=Math.max(0,m.cap-m.wkSessions); const slotsVal=Math.round(openSlots*globalAvgSessionPrice());
+  return {renewVal,collectVal,slotsVal,total:renewVal+collectVal+slotsVal,atRisk:m.atRisk.length};
+}
+function growCardHTML(){
+  const s=growSummary();
+  if(s.total<=0 && s.atRisk===0) return `<div class="sec-title">Growth levers</div><div class="card empty">You're all caught up — nice work.</div>`;
+  const seg=(v,col)=> s.total>0&&v>0?`<i style="width:${(v/s.total*100).toFixed(1)}%;background:${col}"></i>`:"";
+  const legend=`<div class="grow-legend">
+    ${s.renewVal>0?`<span><i style="background:#8f9d68"></i>Renewals ${money(s.renewVal)}</span>`:""}
+    ${s.collectVal>0?`<span><i style="background:#c9a86a"></i>Collect ${money(s.collectVal)}</span>`:""}
+    ${s.slotsVal>0?`<span><i style="background:#7d8aa0"></i>Fill slots ${money(s.slotsVal)}</span>`:""}
+  </div>`;
+  const actions= growOpen ? `<div style="margin-top:14px;border-top:1px solid var(--line)">`+growItems().map(g=>`<div class="row between list-item" onclick="event.stopPropagation();${g.act}" style="cursor:pointer">
+      <div class="grow"><div class="name" style="font-size:14px">${g.label}</div></div>
+      ${g.val?`<div class="big-num green">~${money(g.val)}</div>`:`<span class="meta" style="font-size:20px">›</span>`}
+    </div>`).join("")+`</div>` : "";
+  return `<div class="sec-title">Growth levers</div>
+    <div class="card" onclick="toggleGrow()" style="cursor:pointer">
+      <div class="row between"><span class="meta">Within reach this week</span><span class="meta">${growOpen?"tap to collapse":"tap for actions"}</span></div>
+      <div class="big-num green" style="font-size:28px;margin:4px 0 12px">${money(s.total)}</div>
+      <div class="grow-bar">${seg(s.renewVal,"#8f9d68")}${seg(s.collectVal,"#c9a86a")}${seg(s.slotsVal,"#7d8aa0")}</div>
+      ${legend}${actions}
+    </div>`;
+}
+function toggleGrow(){ growOpen=!growOpen; renderHome(); }
+function openUnpaid(){
+  const unpaid=state.sales.filter(s=>!s.paid);
+  openSheet(`<div class="sheet-title">Outstanding payments</div>
+    ${unpaid.length?unpaid.map(s=>{const c=state.clients.find(x=>x.id===s.clientId); const pt=state.packageTypes.find(p=>p.id===s.packageTypeId);
+      return `<div class="card row between" style="margin-bottom:8px"><div><div class="name">${c?c.name:"(deleted)"}</div><div class="meta">${pt?pt.name:"Package"} · ${money(s.pricePaid)}</div></div><button class="btn sec btn-sm" onclick="markSalePaid('${s.id}');openUnpaid()">Mark paid</button></div>`;}).join(""):`<div class="card empty">No outstanding payments — nice.</div>`}
+    <button class="btn sec" style="margin-top:8px" onclick="closeSheet()">Close</button>`);
+}
+function openMonthGoal(){
+  const g=state.profile.monthlyGoal||"";
+  openSheet(`<div class="sheet-title">Monthly income goal</div>
+    <p class="muted" style="margin-top:2px">Your target for the month — Home tracks your income against it.</p>
+    <label class="fld"><span>Goal ($ per month)</span><input id="mg-amt" type="number" inputmode="decimal" value="${g}" placeholder="10000"/></label>
+    <div style="height:14px"></div>
+    <button class="btn" onclick="saveMonthGoal()">Save goal</button>`);
+}
+function saveMonthGoal(){ state.profile.monthlyGoal=+el("mg-amt").value||0; save(); render(); closeSheet(); }
+
+// Clients running low on sessions — prompt the trainer to re-sell before they lapse.
+function lowSessionsNudge(){
+  const low=state.clients
+    .filter(c=>c.status!=="inactive" && clientTotalPurchased(c.id)>0)
+    .map(c=>({c, rem:clientSessionsRemaining(c.id)}))
+    .filter(x=>x.rem<=2)
+    .sort((a,b)=>a.rem-b.rem);
+  if(!low.length) return "";
+  const rows=low.slice(0,5).map(x=>`
+    <div class="row between list-item">
+      <div class="row"><div class="avatar">${initials(x.c.name)}</div>
+        <div><div class="name">${x.c.name}</div>
+          <div class="meta">${x.rem<=0?'out of sessions':x.rem+' session'+(x.rem===1?'':'s')+' left'}</div></div></div>
+      <button class="btn btn-sm" onclick="openSellPackage('${x.c.id}')">Renew</button>
+    </div>`).join("");
+  return `<div class="sec-title">Time to renew</div>
+    <div class="card">${rows}</div>`;
+}
+function renderHome(){
+  const todays=state.sessions.filter(s=>s.datetime.slice(0,10)===todayISO())
+    .sort((a,b)=>a.datetime<b.datetime?-1:1);
+  const reserve=reserveRemaining(), income=incomeThisMonth();
+  const nq=nextQuarterly();
+  const mGoal=state.profile.monthlyGoal||Math.max(1000,Math.round(weeklyRunRate()*4.33/100)*100);
+  const mPct=mGoal>0?Math.min(100,Math.round(income/mGoal*100)):0;
+  const todayIncome=todays.reduce((a,s)=>a+avgSessionPrice(s.clientId),0);
+  const tCap=todayCapacity(), openToday=Math.max(0,tCap-todays.length), openVal=Math.round(openToday*globalAvgSessionPrice());
+  let h=`
+    <div class="row between">
+      <div class="grow"><div class="lg-title">Today</div></div>
+      <button class="btn ghost" style="font-size:22px;padding:6px 4px" onclick="openSettings()">⚙</button>
+    </div>
+    <div class="sub">${new Date().toLocaleDateString(undefined,{weekday:"long",month:"long",day:"numeric"})}</div>
+    <div class="stat-grid">
+      <div class="stat"><div class="k">Today's income</div><div class="v green">${money(todayIncome)}</div><div class="kpi-sub">${todays.length} session${todays.length===1?'':'s'} booked</div></div>
+      <div class="stat" onclick="openHours()" style="cursor:pointer"><div class="k">Open today</div><div class="v">${openToday}</div><div class="kpi-sub">${openVal>0?`~${money(openVal)} to fill`:(tCap?'fully booked':'set your hours')}</div></div>
+    </div>
+    <div class="card" onclick="openMonthGoal()" style="cursor:pointer">
+      <div class="row between"><span class="meta">This month's goal</span><span class="meta">${money(income)} of ${money(mGoal)}</span></div>
+      <div class="goal-bar"><i style="width:${mPct}%"></i></div>
+      <div class="row between"><span class="meta" style="color:var(--accent);font-weight:800">${mPct}%</span><span class="meta">tap to set goal</span></div>
+    </div>
+    ${growCardHTML()}
+    ${lowSessionsNudge()}
+    <div class="sec-title">Today's sessions</div>`;
+  if(todays.length){
+    h+=`<div class="card">`+todays.map((s,i)=>{
+      const c=state.clients.find(x=>x.id===s.clientId);
+      const done=s.status==="completed";
+      return `<div class="row list-item">
+        <div class="timeline-time">${fmtTime(s.datetime)}</div>
+        <div class="grow"><div class="name">${c?c.name:"(deleted client)"}</div>
+          <div class="meta">${remTag(s.clientId)} left · ${s.type}</div></div>
+        ${done?`<span class="pill ok">Done</span>`
+          :`<button class="btn sec btn-sm" onclick="completeSession('${s.id}')">Complete</button>`}
+      </div>`;
+    }).join("")+`</div>`;
+  } else { h+=`<div class="card empty">No sessions scheduled today 🎉</div>`; }
+
+  const trend=trendData(); window.__trend=trend;
+  h+=`<div class="sec-title">Income vs. expenses</div>
+    <div class="card">${trChartHTML(trend,"htrend")}</div>`;
+  h+=`<div class="sec-title">Taxes</div>
+    <div class="card row between" onclick="switchTab('tax')" style="cursor:pointer">
+      <div><div class="name">Next quarterly payment</div>
+        <div class="meta">${nq.toLocaleDateString(undefined,{month:"long",day:"numeric",year:"numeric"})}</div></div>
+      <div class="big-num green">${money(reserve)}</div>
+    </div>`;
+  el("screen-home").innerHTML=h;
+  initTrendChart("htrend");
+}
+
+function ymd(d){ const x=new Date(d); return x.getFullYear()+"-"+String(x.getMonth()+1).padStart(2,"0")+"-"+String(x.getDate()).padStart(2,"0"); }
+function parseYMD(s){ return new Date(s+"T00:00"); }
+function weekStart(d){ const x=new Date(d); x.setDate(x.getDate()-x.getDay()); x.setHours(0,0,0,0); return x; }
+function sessionsOn(dateStr){
+  return state.sessions.filter(s=>s.datetime.slice(0,10)===dateStr).sort((a,b)=>a.datetime<b.datetime?-1:1);
+}
+function sessionRow(s){
+  const c=state.clients.find(x=>x.id===s.clientId);
+  const name=c?c.name:"(deleted client)";
+  const right = s.status==="scheduled"
+    ? `<button class="btn sec btn-sm" onclick="completeSession('${s.id}')">Done</button>`
+    : `<span class="pill ${s.status==='completed'?'ok':'grey'}">${s.status==='completed'?'Done':s.status}</span>`;
+  return `<div class="row list-item">
+    <div class="timeline-time">${fmtTime(s.datetime)}</div>
+    <div class="grow"><div class="name">${name}</div>
+      <div class="meta">${remTag(s.clientId)} left · ${s.type}</div></div>
+    ${right}</div>`;
+}
+function calLabel(){
+  const a=parseYMD(calAnchor);
+  if(calView==="day") return a.toLocaleDateString(undefined,{weekday:"long",month:"long",day:"numeric"});
+  if(calView==="3day"){ const e=new Date(a.getTime()+2*DAY_MS);
+    return a.toLocaleDateString(undefined,{month:"short",day:"numeric"})+" – "+e.toLocaleDateString(undefined,{month:"short",day:"numeric"}); }
+  if(calView==="week"){ const s=weekStart(a), e=new Date(s.getTime()+6*DAY_MS);
+    return s.toLocaleDateString(undefined,{month:"short",day:"numeric"})+" – "+e.toLocaleDateString(undefined,{month:"short",day:"numeric"}); }
+  return a.toLocaleDateString(undefined,{month:"long",year:"numeric"});
+}
+function setCalView(v){ calView=v; renderCalendar(); }
+function calToday(){ calAnchor=todayISO(); renderCalendar(); }
+function calShift(dir){
+  const a=parseYMD(calAnchor);
+  if(calView==="day") a.setDate(a.getDate()+dir);
+  else if(calView==="3day") a.setDate(a.getDate()+3*dir);
+  else if(calView==="week") a.setDate(a.getDate()+7*dir);
+  else a.setMonth(a.getMonth()+dir);
+  calAnchor=ymd(a); renderCalendar();
+}
+function goDay(ds){ calAnchor=ds; calView="day"; renderCalendar(); }
+
+function renderCalendar(){
+  const labels={day:"Day","3day":"3 Days",week:"Week",month:"Month"};
+  let cal=`<div class="row between"><div class="lg-title">Schedule</div>
+    <button class="btn ghost" onclick="openAddSession()">＋ Add</button></div>
+    <div class="seg" style="margin-bottom:14px">
+      ${["day","3day","week","month"].map(v=>`<button class="${calView===v?'on':''}" onclick="setCalView('${v}')">${labels[v]}</button>`).join("")}
+    </div>
+    <div class="cal-nav">
+      <button class="cal-arrow" onclick="calShift(-1)">‹</button>
+      <div class="cal-label">${calLabel()}</div>
+      <button class="cal-arrow" onclick="calShift(1)">›</button>
+    </div>
+    <button class="btn sec btn-sm" style="margin:0 auto 12px;display:block" onclick="calToday()">Today</button>
+    ${calView!=="day" ? `<div class="cal-legend"><span><i class="lg-dot grey"></i>Upcoming</span><span><i class="lg-dot green"></i>Checked in</span></div>` : ""}`;
+
+  if(calView==="day"){
+    const ss=sessionsOn(calAnchor);
+    cal+= ss.length ? `<div class="card">`+ss.map(sessionRow).join("")+`</div>`
+                  : `<div class="card empty" style="padding:22px">No sessions this day</div>`;
+  } else if(calView==="month"){
+    cal+=renderMonth();
+  } else {
+    const a=parseYMD(calAnchor);
+    let days;
+    if(calView==="3day") days=[0,1,2].map(i=>ymd(new Date(a.getTime()+i*DAY_MS)));
+    else { const s=weekStart(a); days=[0,1,2,3,4,5,6].map(i=>ymd(new Date(s.getTime()+i*DAY_MS))); }
+    cal+=renderTimeGrid(days);
+  }
+  el("screen-calendar").innerHTML=`<div class="cal-layout"><div class="cal-main">${cal}</div>${calAside()}</div>`;
+}
+function calAside(){
+  const now=new Date(), wkStart=weekStart(now), wkEnd=new Date(+wkStart+7*DAY_MS);
+  const weekSessions=state.sessions.filter(s=>{const d=+new Date(s.datetime);return d>=+wkStart&&d<+wkEnd;});
+  const weekRev=weekSessions.reduce((a,s)=>a+avgSessionPrice(s.clientId),0);
+  const todayStr=todayISO();
+  const todaySessions=state.sessions.filter(s=>s.datetime.slice(0,10)===todayStr);
+  const todayRev=todaySessions.reduce((a,s)=>a+avgSessionPrice(s.clientId),0);
+  const last28=state.sessions.filter(s=>{const d=+new Date(s.datetime);return d>=Date.now()-28*DAY_MS&&d<=Date.now();}).length;
+  const avgWk=last28/4;
+  const goal=state.profile.weeklyGoal||Math.max(500,Math.round(weeklyRunRate()/50)*50);
+  const pct=goal>0?Math.min(100,Math.round(weekRev/goal*100)):0;
+  return `<aside class="cal-aside">
+    <div class="sec-title" style="margin-top:0">This week's goal</div>
+    <div class="card">
+      <div class="row between"><span class="meta">Booked revenue</span><b class="big-num green">${money(weekRev)}</b></div>
+      <div class="goal-bar"><i style="width:${pct}%"></i></div>
+      <div class="row between"><span class="meta">of ${money(goal)} goal</span><span class="meta" style="font-weight:800;color:var(--accent)">${pct}%</span></div>
+      <button class="btn sec btn-sm" style="width:100%;margin-top:14px" onclick="openGoal()">Set weekly goal</button>
+    </div>
+    <div class="sec-title">Today</div>
+    <div class="card">
+      <div class="row between"><span class="meta">${todaySessions.length} session${todaySessions.length===1?'':'s'} booked</span><b class="big-num">${money(todayRev)}</b></div>
+    </div>
+    <div class="sec-title">Your pace</div>
+    <div class="card">
+      <div class="row between"><span class="meta">Sessions this week</span><b class="big-num">${weekSessions.length}</b></div>
+      <div class="row between" style="margin-top:10px"><span class="meta">Weekly average</span><b class="meta" style="font-weight:800">${avgWk.toFixed(1)}</b></div>
+    </div>
+  </aside>`;
+}
+function openGoal(){
+  const g=state.profile.weeklyGoal||"";
+  openSheet(`<div class="sheet-title">Weekly revenue goal</div>
+    <p class="muted" style="margin-top:2px">Set a target for the week — the calendar tracks your booked revenue against it.</p>
+    <label class="fld"><span>Goal ($ per week)</span><input id="g-amt" type="number" inputmode="decimal" value="${g}" placeholder="2500"/></label>
+    <div style="height:14px"></div>
+    <button class="btn" onclick="saveGoal()">Save goal</button>`);
+}
+function saveGoal(){ state.profile.weeklyGoal=+el("g-amt").value||0; save(); render(); closeSheet(); switchTab("calendar"); }
+
+function fmtTimeShort(d){ let h=d.getHours(), m=d.getMinutes(); const ap=h<12?"a":"p"; h=h%12||12; return h+(m?":"+String(m).padStart(2,"0"):"")+ap; }
+function gridRange(days){
+  let startH=7, endH=20;
+  days.forEach(d=>sessionsOn(d).forEach(s=>{
+    const dt=new Date(s.datetime); const h=dt.getHours();
+    const eh=h+Math.ceil((dt.getMinutes()+s.duration)/60);
+    startH=Math.min(startH,h); endH=Math.max(endH,eh);
+  }));
+  return {startH:Math.max(0,startH), endH:Math.min(24,Math.max(endH,startH+1))};
+}
+function renderTimeGrid(days){
+  const {startH,endH}=gridRange(days), H=(endH-startH)*48;
+  let head=`<div class="tg-head"><div class="tg-gutter-h"></div>`+days.map(d=>{
+    const dt=parseYMD(d), today=d===todayISO();
+    return `<div class="tg-dayh ${today?'today':''}">
+      <div class="tg-dow">${dt.toLocaleDateString(undefined,{weekday:"short"})}</div>
+      <div class="tg-dnum">${dt.getDate()}</div></div>`;
+  }).join("")+`</div>`;
+  let gutter=`<div class="tg-gutter">`;
+  for(let hh=startH; hh<endH; hh++){
+    const lbl = hh===0?"12a": hh<12?hh+"a": hh===12?"12p":(hh-12)+"p";
+    gutter+=`<div class="tg-hour" style="height:48px"><span>${lbl}</span></div>`;
+  }
+  gutter+=`</div>`;
+  let cols=`<div class="tg-cols" style="height:${H}px">`;
+  days.forEach(d=>{
+    cols+=`<div class="tg-col" style="height:${H}px">`;
+    sessionsOn(d).forEach(s=>{
+      const dt=new Date(s.datetime);
+      const top=((dt.getHours()-startH)*60+dt.getMinutes())/60*48;
+      const ht=Math.max(s.duration/60*48-2, 16);
+      const c=state.clients.find(x=>x.id===s.clientId);
+      const cls=s.status==="completed"?"done":s.status==="scheduled"?"":"cancel";
+      cols+=`<div class="tg-event ${cls}" style="top:${top}px;height:${ht}px" onclick="openSessionSheet('${s.id}')">
+        <div class="tg-ev-t">${fmtTimeShort(dt)}</div>
+        <div class="tg-ev-n">${c?c.name.split(" ")[0]:"—"} · ${remTag(s.clientId)}</div></div>`;
+    });
+    cols+=`</div>`;
+  });
+  cols+=`</div>`;
+  return head+`<div class="tg-grid">`+gutter+cols+`</div>`;
+}
+
+function renderMonth(){
+  const a=parseYMD(calAnchor), year=a.getFullYear(), month=a.getMonth();
+  const startPad=new Date(year,month,1).getDay();
+  const daysInMonth=new Date(year,month+1,0).getDate();
+  const byDay={};
+  state.sessions.forEach(s=>{ const d=parseYMD(s.datetime.slice(0,10));
+    if(d.getMonth()===month && d.getFullYear()===year){ const k=s.datetime.slice(0,10); (byDay[k]=byDay[k]||[]).push(s); } });
+  Object.values(byDay).forEach(arr=>arr.sort((x,y)=>x.datetime<y.datetime?-1:1));
+  let g=`<div class="cal-grid">`;
+  ["S","M","T","W","T","F","S"].forEach(d=>g+=`<div class="cal-dow">${d}</div>`);
+  for(let i=0;i<startPad;i++) g+=`<div></div>`;
+  for(let day=1;day<=daysInMonth;day++){
+    const ds=`${year}-${String(month+1).padStart(2,"0")}-${String(day).padStart(2,"0")}`;
+    const isToday=ds===todayISO();
+    const evs=byDay[ds]||[];
+    let chips="";
+    evs.slice(0,2).forEach(s=>{ const c=state.clients.find(x=>x.id===s.clientId);
+      const cls=s.status==="completed"?"done":s.status==="scheduled"?"":"cancel";
+      chips+=`<span class="mchip ${cls}">${c?c.name.split(" ")[0]:"—"}</span>`; });
+    if(evs.length>2) chips+=`<span class="mmore">+${evs.length-2}</span>`;
+    g+=`<button class="mcell ${isToday?'today':''}" onclick="goDay('${ds}')">
+      <span class="mnum ${isToday?'t':''}">${day}</span>${chips}</button>`;
+  }
+  return g+`</div>`;
+}
+
+function openSessionSheet(id){
+  const s=state.sessions.find(x=>x.id===id); if(!s) return;
+  const c=state.clients.find(x=>x.id===s.clientId);
+  const dt=new Date(s.datetime);
+  openSheet(`<div class="sheet-title">${c?c.name:"(deleted client)"}</div>
+    <p class="muted" style="margin-top:2px">${dt.toLocaleDateString(undefined,{weekday:"long",month:"long",day:"numeric"})} · ${fmtTime(s.datetime)}</p>
+    <div class="card" style="background:var(--surface2)">
+      <div class="tax-line"><span>Session number</span><b>#${s.sessionNumber}</b></div>
+      <div class="tax-line"><span>Type</span><b>${s.type}</b></div>
+      <div class="tax-line"><span>Status</span><b class="${s.status==='completed'?'green':''}">${s.status}</b></div>
+    </div>
+    ${s.status==="scheduled" ? `<label class="fld"><span>Reschedule this session</span>
+      <div class="row" style="gap:8px"><input id="ss-date" type="date" value="${s.datetime.slice(0,10)}"/><input id="ss-time" type="time" value="${s.datetime.slice(11,16)}"/></div></label>
+      <button class="btn sec" style="margin-top:8px" onclick="rescheduleSession('${s.id}')">Save new time</button>` : ``}
+    <label class="fld"><span>Session notes</span>
+      <textarea id="ss-notes" rows="3" placeholder="What you worked on, PRs, injuries…">${s.notes||""}</textarea></label>
+    <button class="btn sec" style="margin-top:8px" onclick="saveSessionNotes('${s.id}',true)">Save notes</button>
+    ${s.status==="scheduled"
+      ? `<button class="btn" style="margin-top:8px" onclick="completeFromSheet('${s.id}')">Mark complete</button>
+         <button class="btn sec" style="margin-top:8px" onclick="noShowFromSheet('${s.id}')">Mark no-show</button>`
+      : ``}
+    <button class="btn sec" style="margin-top:8px" onclick="closeSheet()">Close</button>`);
+}
+function saveSessionNotes(id,toast){ const s=state.sessions.find(x=>x.id===id); const t=el("ss-notes");
+  if(s&&t){ s.notes=t.value; save(); render(); if(toast) closeSheet(); } }
+function rescheduleSession(id){ const s=state.sessions.find(x=>x.id===id); if(!s) return;
+  const d=el("ss-date").value, t=el("ss-time").value||"07:00"; if(!d) return;
+  s.notes=el("ss-notes")?el("ss-notes").value:s.notes; s.datetime=d+"T"+t; save(); render(); closeSheet(); switchTab("calendar"); }
+function completeFromSheet(id){ const t=el("ss-notes"); const s=state.sessions.find(x=>x.id===id); if(s&&t) s.notes=t.value; completeSession(id); }
+function noShowFromSheet(id){ const t=el("ss-notes"); const s=state.sessions.find(x=>x.id===id); if(s&&t) s.notes=t.value; markSession(id,"no-show"); }
+function markSession(id,status){ const s=state.sessions.find(x=>x.id===id); if(s){ s.status=status; save(); render(); } closeSheet(); }
+
+function renderClients(){
+  const list=state.clients.slice().sort((a,b)=>a.name<b.name?-1:1);
+  let h=`<div class="row between"><div class="lg-title">Clients</div>
+    <button class="btn ghost" onclick="openAddMenu()">＋ Add</button></div>
+    <div class="sub">${list.length} active</div>
+    <div style="height:14px"></div>
+    <div class="card">`;
+  h+=list.map(c=>{
+    const r=clientSessionsRemaining(c.id);
+    const cls=r<=0?"out":r<=2?"low":"ok";
+    return `<div class="row between list-item" onclick="openClient('${c.id}')" style="cursor:pointer">
+      <div class="row"><div class="avatar">${initials(c.name)}</div>
+        <div><div class="name">${c.name}</div><div class="meta">${money(clientLifetime(c.id))} lifetime</div></div></div>
+      <span class="pill ${cls}">${r} left</span>
+    </div>`;
+  }).join("")+`</div>`;
+  el("screen-clients").innerHTML=h;
+}
+
+function pkgGroupName(p){ return (p.group&&p.group.trim())||"Standard"; }
+function pkgGroupList(){ const s=new Set(["Standard","Grandfathered"]); state.packageTypes.forEach(p=>s.add(pkgGroupName(p))); return [...s]; }
+function pkgGroupOrder(keys){ return keys.slice().sort((a,b)=> a==="Standard"?-1 : b==="Standard"?1 : a.localeCompare(b)); }
+function pkgOptionsHTML(lead){
+  const groups={};
+  state.packageTypes.forEach(p=>{ const g=pkgGroupName(p); (groups[g]=groups[g]||[]).push(p); });
+  let o=lead||"";
+  pkgGroupOrder(Object.keys(groups)).forEach(g=>{ o+=`<optgroup label="${g}">`+groups[g].map(p=>`<option value="${p.id}">${p.name} — ${money(p.price)}</option>`).join("")+`</optgroup>`; });
+  return o;
+}
+function renderPackages(){
+  const rate=effectiveRate(state.profile.annualIncome).rate;
+  let h=`<div class="row between"><div class="lg-title">Packages</div>
+    <button class="btn ghost" onclick="openAddPackageType()">＋ Add</button></div>
+    <div class="sub">The package types you sell · organized into folders</div>`;
+  if(!state.packageTypes.length){
+    h+=`<div class="card empty">No package types yet.<br>Tap “＋ Add” to create your first one.</div>`;
+  } else {
+    const groups={};
+    state.packageTypes.forEach(p=>{ const g=pkgGroupName(p); (groups[g]=groups[g]||[]).push(p); });
+    const cardHTML=p=>{
+      const per=p.sessions? p.price/p.sessions : p.price;
+      const sold=state.sales.filter(s=>s.packageTypeId===p.id).length;
+      return `<div class="card">
+        <div class="row between">
+          <div class="grow"><div class="name">${p.name}</div>
+            <div class="meta">${p.sessions} session${p.sessions===1?'':'s'} · ${money(p.price)} · ${money(per)}/session</div></div>
+          <button class="btn sec btn-sm" onclick="openAddPackageType('${p.id}')">Edit</button>
+        </div>
+        <div class="row between" style="margin-top:12px">
+          <span class="meta">Set aside per sale: <b class="green">${money(p.price*rate)}</b></span>
+          <span class="pill grey">${sold} sold</span>
+        </div></div>`;
+    };
+    pkgGroupOrder(Object.keys(groups)).forEach(g=>{ h+=`<div class="sec-title">${g} · ${groups[g].length}</div>`+groups[g].map(cardHTML).join(""); });
+  }
+  el("screen-packages").innerHTML=h;
+}
+function openAddPackageType(id){
+  const p = id ? state.packageTypes.find(x=>x.id===id) : null;
+  openSheet(`<div class="sheet-title">${p?'Edit':'New'} package type</div>
+    <label class="fld"><span>Name</span><input id="pt-name" placeholder="10-Session Strength" value="${p?p.name:''}"/></label>
+    <label class="fld"><span>Number of sessions</span><input id="pt-sess" type="number" inputmode="numeric" placeholder="10" value="${p?p.sessions:''}"/></label>
+    <label class="fld"><span>Price ($)</span><input id="pt-price" type="number" inputmode="decimal" placeholder="750" value="${p?p.price:''}"/></label>
+    <label class="fld"><span>Folder</span><input id="pt-group" list="pt-grouplist" placeholder="Standard" value="${p?(p.group||'Standard'):'Standard'}"/></label>
+    <datalist id="pt-grouplist">${pkgGroupList().map(g=>`<option value="${g}"></option>`).join("")}</datalist>
+    <div id="pt-preview" class="banner" style="margin-top:16px"></div>
+    <button class="btn" onclick="savePackageType(${p?`'${p.id}'`:'null'})">${p?'Save changes':'Add package'}</button>
+    ${p?`<button class="btn sec" style="background:transparent;color:var(--danger);border:1px solid var(--line);margin-top:8px" onclick="confirmDeletePackageType('${p.id}')">Delete package type</button>`:''}`);
+  ["pt-sess","pt-price"].forEach(i=>el(i).addEventListener("input",previewPT));
+  previewPT();
+}
+function previewPT(){
+  const price=+el("pt-price").value||0, sess=parseInt(el("pt-sess").value)||0;
+  const rate=effectiveRate(state.profile.annualIncome).rate;
+  el("pt-preview").innerHTML=`<div class="meta" style="color:#dfe3d0">Package price</div>
+    <div class="amt">${money(price)}</div>
+    <div class="meta" style="color:#dfe3d0;margin-top:2px">${sess} session${sess===1?'':'s'} · ${sess?money(price/sess):'$0'}/session · set aside ${money(price*rate)} for taxes</div>`;
+}
+function savePackageType(id){
+  const name=el("pt-name").value.trim();
+  const sessions=Math.max(1, parseInt(el("pt-sess").value)||0);
+  const price=+el("pt-price").value||0;
+  if(!name){ el("pt-name").focus(); return; }
+  const group=((el("pt-group")&&el("pt-group").value)||"").trim()||"Standard";
+  if(id){ const p=state.packageTypes.find(x=>x.id===id); p.name=name; p.sessions=sessions; p.price=price; p.group=group; }
+  else { state.packageTypes.push({id:"pt"+Date.now(), name, sessions, price, group}); }
+  save(); render(); closeSheet(); switchTab("packages");
+}
+function confirmDeletePackageType(id){
+  const p=state.packageTypes.find(x=>x.id===id); if(!p) return;
+  const used=state.sales.filter(s=>s.packageTypeId===id).length;
+  openSheet(`<div class="sheet-title">Delete “${p.name}”?</div>
+    <p class="muted">${used?`This type was sold ${used} time${used===1?'':'s'}. Clients keep those purchased sessions — only the sellable type is removed.`:'This package type will be removed.'}</p>
+    <button class="btn" style="background:var(--danger);color:#fff" onclick="deletePackageType('${id}')">Delete</button>
+    <button class="btn sec" style="margin-top:8px" onclick="closeSheet()">Cancel</button>`);
+}
+function deletePackageType(id){
+  state.packageTypes=state.packageTypes.filter(p=>p.id!==id);
+  save(); render(); closeSheet(); switchTab("packages");
+}
+
+function renderTax(){
+  const p=state.profile, er=effectiveRate(p.annualIncome);
+  const setAside=reserveYTD(), paid=taxPaidYTD(), remaining=reserveRemaining(), exp=expensesYTD();
+  const nq=nextQuarterly();
+  const stateLabel={CA:"California",TX:"Texas",FL:"Florida",NY:"New York"}[p.state]||p.state;
+  const biz={sole_prop:"Sole proprietor",llc:"LLC",scorp:"S-corp"}[p.businessType]||p.businessType;
+  const runRate=weeklyRunRate();
+  const today=projectFor("today",false), week=projectFor("week",false);
+  const month=projectFor("month",true), year=projectFor("year",true);
+  const extra=globalAvgSessionPrice()*52;
+  const extraBasis=state.sales.length ? "your average sold session" : "your average package price";
+  const reups=reupForecast();
+  const due30=reups.filter(x=>x.due && (x.due-Date.now())<=30*DAY_MS && (x.due-Date.now())>=0);
+  const reupVal30=due30.reduce((a,x)=>a+x.pkgPrice,0);
+  const rep=incomeReport();
+  const trend=trendData(); window.__trend=trend;
+  const tLast=trend[trend.length-1], tNet=tLast?tLast.income-tLast.expense:0;
+  const trendBody=trChartHTML(trend,"ftrend");
+  const bizm=bizMetrics();
+  const projBody=`
+    <div class="stat-grid">
+      <div class="stat"><div class="k">Today</div><div class="v green">${money(today.total)}</div></div>
+      <div class="stat"><div class="k">This week</div><div class="v green">${money(week.total)}</div></div>
+      <div class="stat"><div class="k">This month</div><div class="v">${money(month.total)}</div></div>
+      <div class="stat"><div class="k">This year</div><div class="v">${money(year.total)}</div></div>
+    </div>
+    <div class="card">
+      <div class="tax-line"><span>Earned so far (this month)</span><b>${money(month.earned)}</b></div>
+      <div class="tax-line"><span>Booked on calendar (rest of month)</span><b>${money(month.booked)}</b></div>
+      <div class="tax-line"><span>Projected at current pace</span><b>${money(month.fill)}</b></div>
+      <div class="meta" style="margin-top:6px">${activeClients().length} active clients · ${money(runRate)}/week run-rate</div>
+    </div>
+    <div class="banner">
+      <div class="meta" style="color:#dfe3d0">Motivation check</div>
+      <div class="amt">${money(extra)}</div>
+      <div class="meta" style="color:#dfe3d0;margin-top:2px">One extra session per week is worth ~${money(extra)} a year — based on ${extraBasis}.</div>
+    </div>`;
+
+  const reupBody=`
+    ${reupVal30>0?`<div class="card row between"><div><div class="name">Renewals projected in 30 days</div>
+        <div class="meta">${due30.length} client${due30.length===1?'':'s'} likely due</div></div>
+        <div class="big-num green">${money(reupVal30)}</div></div>`:``}
+    ${reups.length?`<div class="card">`+reups.slice(0,8).map(x=>`
+      <div class="row between list-item">
+        <div class="grow"><div class="name" style="font-size:15px">${x.c.name}</div>
+          <div class="meta">${x.left} left${x.f?` · ${x.f.toFixed(1)}/wk pace`:` · no recent pace`}${x.due?` · due ~${x.due.toLocaleDateString(undefined,{month:'short',day:'numeric'})}`:``}</div></div>
+        <div class="big-num">${money(x.pkgPrice)}</div>
+      </div>`).join("")+`</div>`:`<div class="card empty">No active clients to forecast yet.</div>`}`;
+
+  const incomeBody=`
+    <div class="card">
+      <div class="tax-line"><span>This month</span><b>${money(rep.month)}</b></div>
+      <div class="tax-line"><span>This year</span><b>${money(rep.year)}</b></div>
+      <div class="tax-line"><span>Outstanding (unpaid)</span><b class="${rep.unpaid?'warn':''}">${money(rep.unpaid)}</b></div>
+    </div>
+    <button class="btn sec" onclick="openIncomeReport()">Full income report</button>`;
+
+  const taxBody=`
+    <div class="sub" style="margin:2px 0 10px">${stateLabel} · ${biz} · ${filingLabel(p.filingStatus)}</div>
+    <div class="banner">
+      <div class="meta" style="color:#dfe3d0">Still to set aside (this year)</div>
+      <div class="amt">${money(remaining)}</div>
+      <div class="meta" style="color:#dfe3d0;margin-top:4px">${money(setAside)} reserved · ${money(paid)} paid · ${(er.rate*100).toFixed(1)}% of every package</div>
+    </div>
+    <div class="sec-title">Your blended rate breakdown</div>
+    <div class="card">
+      <div class="tax-line"><span>Self-employment tax (15.3%)</span><b>${money(er.seTax)}</b></div>
+      <div class="tax-line"><span>Federal income tax (2026)</span><b>${money(er.fedTax)}</b></div>
+      <div class="tax-line"><span>${stateLabel} income tax</span><b>${money(er.caTax)}</b></div>
+      <div class="tax-line"><span><b>Effective set-aside rate</b></span><b class="green">${(er.rate*100).toFixed(1)}%</b></div>
+      <div class="meta" style="margin-top:8px">Based on ~${money(p.annualIncome)} estimated annual net profit</div>
+    </div>
+    <div class="sec-title">Deductions</div>
+    <div class="card row between" onclick="openExpenses()" style="cursor:pointer">
+      <div class="grow"><div class="name">Expenses logged (YTD)</div><div class="meta">Tap to add — lowers your taxable profit</div></div>
+      <div class="big-num">${money(exp)}</div>
+    </div>
+    <div class="sec-title">Quarterly estimates</div>
+    <div class="card">
+      <div class="row between"><div><div class="name">Next payment due</div>
+        <div class="meta">${nq.toLocaleDateString(undefined,{month:"long",day:"numeric",year:"numeric"})}</div></div>
+        <div class="big-num green">${money(Math.max(0,remaining))}</div></div>
+      <button class="btn sec btn-sm" style="margin-top:12px;width:100%" onclick="openLogPayment()">Log a tax payment</button>
+    </div>
+    <div class="sec-title">Reports</div>
+    <button class="btn sec" onclick="exportCSV()">Export CSV for accountant</button>
+    <button class="btn sec" style="margin-top:8px" onclick="openTaxProfile()">Edit tax profile</button>
+    <div class="disclaim">Educational estimates using 2026 federal parameters and 2025 California brackets — not tax advice. SE tax is 15.3% on 92.35% of net profit; the model applies the standard deduction, a 20% QBI deduction, and progressive federal + state brackets. Logged expenses are records to share with your CPA; update your net-profit estimate to reflect them. Confirm amounts with a tax professional and IRS Form 1040-ES.</div>`;
+
+  let h=`<div class="lg-title">Business</div>
+    <div class="sub">Your health, growth &amp; money</div>
+    ${scorecardHTML(bizm)}
+    ${needsAttentionHTML(bizm)}
+    <div class="sec-title" style="margin-top:26px">Money &amp; taxes</div>
+    ${finSection("proj","Projected revenue", `${money(month.total)} <span class="acc-sub">this month · ${money(year.total)} yr</span>`, projBody)}
+    ${finSection("reup","Package re-ups", reupVal30>0?`${money(reupVal30)} <span class="acc-sub">next 30 days</span>`:`${reups.length} <span class="acc-sub">client${reups.length===1?'':'s'} tracked</span>`, reupBody)}
+    ${finSection("income","Income (actual sales)", `${money(rep.month)} <span class="acc-sub">this month${rep.unpaid?` · ${money(rep.unpaid)} unpaid`:''}</span>`, incomeBody)}
+    ${finSection("trend","Income vs. expenses", `${money(tNet)} <span class="acc-sub">net this month</span>`, trendBody)}
+    ${finSection("tax","Taxes", `${money(remaining)} <span class="acc-sub">still to set aside</span>`, taxBody)}`;
+  el("screen-tax").innerHTML=h;
+  initTrendChart("ftrend");
+}
+function finSection(id,title,headline,body){
+  const open=!!finOpen[id];
+  return `<div class="acc${open?' open':''}">
+    <button class="acc-head" onclick="toggleFin('${id}')">
+      <div><div class="acc-title">${title}</div><div class="acc-headline">${headline}</div></div>
+      <svg class="acc-chev" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 9l6 6 6-6"/></svg>
+    </button>
+    ${open?`<div class="acc-body">${body}</div>`:``}
+  </div>`;
+}
+function toggleFin(id){ finOpen[id]=!finOpen[id]; renderTax(); }
+
+/* ============================ ACTIONS ============================ */
+function completeSession(id){
+  const s=state.sessions.find(x=>x.id===id); if(!s) return;
+  s.status="completed"; save(); render();
+  const c=state.clients.find(x=>x.id===s.clientId);
+  const r=clientSessionsRemaining(s.clientId);
+  if(r<=2){ toastRenew(c,r); }
+}
+function toastRenew(c,r){
+  openSheet(`<div class="sheet-title">Session logged ✓</div>
+    <p class="muted">${c.name} now has <b class="${r<=0?'danger':'warn'}">${r} session${r===1?'':'s'}</b> left.</p>
+    ${r<=2?`<div class="card" style="background:var(--surface2)">Good moment to offer a renewal package.</div>`:""}
+    <button class="btn" onclick="closeSheet()">Got it</button>`);
+}
+
+function openAddClient(){
+  openSheet(`<div class="sheet-title">New client</div>
+    <label class="fld"><span>Name</span><input id="f-name" placeholder="Jordan Lee"/></label>
+    <label class="fld"><span>Phone</span><input id="f-phone" inputmode="tel" placeholder="(555) 555-1234"/></label>
+    <label class="fld"><span>Email</span><input id="f-email" inputmode="email" placeholder="jordan@example.com"/></label>
+    <label class="fld"><span>How did they find you? (optional)</span><select id="f-source">${sourceOptions("")}</select></label>
+    <div style="height:16px"></div>
+    <button class="btn" onclick="saveClient()">Add client</button>`);
+}
+function saveClient(){
+  const name=el("f-name").value.trim(); if(!name){ el("f-name").focus(); return; }
+  state.clients.push({id:"c"+Date.now(), name, phone:el("f-phone").value, email:el("f-email").value, status:"active", source:el("f-source").value});
+  save(); render(); closeSheet(); switchTab("clients");
+}
+
+function openEditClient(cid){
+  const c=state.clients.find(x=>x.id===cid); if(!c) return;
+  const esc=v=>(v||"").replace(/"/g,"&quot;");
+  openSheet(`<div class="sheet-title">Edit client</div>
+    <label class="fld"><span>Name</span><input id="ec-name" value="${esc(c.name)}"/></label>
+    <label class="fld"><span>Phone</span><input id="ec-phone" inputmode="tel" value="${esc(c.phone)}"/></label>
+    <label class="fld"><span>Email</span><input id="ec-email" inputmode="email" value="${esc(c.email)}"/></label>
+    <label class="fld"><span>How did they find you?</span><select id="ec-source">${sourceOptions(c.source)}</select></label>
+    <div style="height:14px"></div>
+    <button class="btn" onclick="saveClientEdit('${cid}')">Save changes</button>
+    <button class="btn sec" style="margin-top:8px" onclick="openClient('${cid}')">Cancel</button>`);
+}
+function saveClientEdit(cid){
+  const c=state.clients.find(x=>x.id===cid); if(!c) return;
+  const name=el("ec-name").value.trim(); if(!name){ el("ec-name").focus(); return; }
+  c.name=name; c.phone=el("ec-phone").value.trim(); c.email=el("ec-email").value.trim(); c.source=el("ec-source").value;
+  save(); render(); openClient(cid);
+}
+function openClient(cid){
+  const c=state.clients.find(x=>x.id===cid);
+  const r=clientSessionsRemaining(cid);
+  const sales=state.sales.filter(s=>s.clientId===cid);
+  const hist=state.sessions.filter(s=>s.clientId===cid).sort((a,b)=>a.datetime<b.datetime?1:-1).slice(0,6);
+  openSheet(`
+    <div class="row"><div class="avatar" style="width:54px;height:54px;font-size:20px">${initials(c.name)}</div>
+      <div class="grow"><div class="sheet-title" style="margin:0">${c.name}</div>
+        <div class="meta">${c.phone||""}${c.email?" · "+c.email:""}</div></div>
+      <button class="btn sec btn-sm" onclick="openEditClient('${cid}')">Edit</button></div>
+    <div class="stat-grid" style="margin-top:14px">
+      <div class="stat"><div class="k">Sessions left</div><div class="v ${r<=2?'warn':'green'}">${r}</div></div>
+      <div class="stat"><div class="k">Lifetime spend</div><div class="v">${money(clientLifetime(cid))}</div></div>
+    </div>
+    <button class="btn" style="margin-top:14px" onclick="openSellPackage('${cid}')">Sell package</button>
+    ${(function(){ const t=clientRecurring(cid); if(!t) return ""; const L=["Su","M","Tu","W","Th","F","Sa"];
+      const dl=t.days.slice().sort((a,b)=>a-b).map(d=>L[d]).join(" ");
+      return `<div class="card" style="margin-top:12px"><div class="row between">
+        <div class="grow"><div class="name" style="font-size:15px">Recurring schedule</div>
+          <div class="meta">${dl} · ${t.time} · ${t.autoRenew?"auto-renew on":"until pack ends"}</div></div>
+        <button class="toggle ${t.autoRenew?'on':''}" onclick="toggleAutoRenew('${t.id}')"><span></span></button></div>
+        <button class="btn sec btn-sm" style="margin-top:10px;width:100%" onclick="stopRecurringSeries('${t.id}')">Stop recurring series</button>
+      </div>`; })()}
+    <div class="sec-title">Packages</div>
+    ${sales.length?sales.map(s=>{const pt=state.packageTypes.find(p=>p.id===s.packageTypeId); const nm=pt?pt.name:"Package";
+      return `<div class="card" style="margin-bottom:8px">
+        <div class="row between">
+          <div><div class="name">${nm}</div><div class="meta">${s.sessionsPurchased} sessions · ${fmtDate(s.soldAt)} · ${s.paymentMethod}</div></div>
+          <div style="text-align:right"><div class="big-num">${money(s.pricePaid)}</div>
+            <div class="meta">tax: ${money(s.taxSetAside)}</div></div>
+        </div>
+        ${s.paid?'':`<div class="row between" style="margin-top:10px"><span class="pill out">Unpaid</span>
+          <button class="btn sec btn-sm" onclick="markSalePaid('${s.id}')">Mark paid</button></div>`}
+      </div>`;}).join("")
+      :`<div class="card empty">No packages yet.</div>`}
+    <div class="sec-title">Recent sessions</div>
+    <div class="card">${hist.length?hist.map(s=>`<div class="row between list-item">
+        <div><div class="name" style="font-size:14px">Session ${s.sessionNumber}</div>
+          <div class="meta">${fmtDate(s.datetime.slice(0,10))} · ${fmtTime(s.datetime)}</div></div>
+        <span class="pill ${s.status==='completed'?'ok':'grey'}">${s.status}</span></div>`).join("")
+      :`<div class="empty">No sessions yet.</div>`}</div>
+    <button class="btn" style="background:transparent;color:var(--danger);border:1px solid var(--line);margin-top:20px"
+      onclick="confirmDeleteClient('${cid}')">Delete client</button>`);
+}
+
+function confirmDeleteClient(cid){
+  const c=state.clients.find(x=>x.id===cid); if(!c) return;
+  const nS=state.sessions.filter(s=>s.clientId===cid).length;
+  const nP=state.sales.filter(s=>s.clientId===cid).length;
+  openSheet(`<div class="sheet-title">Delete ${c.name}?</div>
+    <p class="muted">This permanently removes the client along with ${nS} session${nS===1?'':'s'} and ${nP} package record${nP===1?'':'s'}. This can't be undone.</p>
+    <button class="btn" style="background:var(--danger);color:#fff" onclick="deleteClient('${cid}')">Delete permanently</button>
+    <button class="btn sec" style="margin-top:8px" onclick="closeSheet()">Cancel</button>`);
+}
+function deleteClient(cid){
+  state.clients=state.clients.filter(c=>c.id!==cid);
+  state.sessions=state.sessions.filter(s=>s.clientId!==cid);
+  state.sales=state.sales.filter(s=>s.clientId!==cid);
+  state.recurringSessions=(state.recurringSessions||[]).filter(t=>t.clientId!==cid);
+  save(); render(); closeSheet(); switchTab("clients");
+}
+
+function openDataMenu(){
+  openSheet(`<div class="sheet-title">Demo data</div>
+    <p class="muted" style="margin-top:2px">Populate the app so you can see a realistic, busy schedule.</p>
+    <button class="btn" onclick="addDemoSchedule()">Add 7 clients + a busy 2 weeks</button>
+    <div class="fab-note" style="margin:8px 0 16px">Adds demo clients and ~5–7 sessions per day, on top of what's already here.</div>
+    <button class="btn sec" onclick="clearAll()">Start empty (clear all data)</button>
+    <button class="btn sec" style="margin-top:8px;background:transparent;color:var(--danger);border:1px solid var(--line)" onclick="resetAll()">Reset to demo sample</button>
+    <button class="btn sec" style="margin-top:8px" onclick="closeSheet()">Cancel</button>`);
+}
+function clearAll(){
+  const p=state.profile;
+  state={profile:p, packageTypes:[], clients:[], sales:[], sessions:[], expenses:[], taxPayments:[], recurringExpenses:[], recurringSessions:[]};
+  save(); render(); closeSheet(); switchTab("clients");
+}
+function addDemoSchedule(){
+  const names=["Alex Rivera","Sam Okafor","Jordan Kim","Taylor Nguyen","Casey Morgan","Riley Patel","Morgan Diaz"];
+  const rate=effectiveRate(state.profile.annualIncome).rate;
+  const pt=state.packageTypes.find(p=>p.id==="pt2")||state.packageTypes[0];
+  const base=Date.now(), ids=[];
+  names.forEach((n,i)=>{
+    const id="dc"+base+i;
+    state.clients.push({id, name:n, phone:"(415) 555-0"+(200+i), email:n.split(" ")[0].toLowerCase()+"@example.com", status:"active"});
+    state.sales.push({id:"ds"+base+i, clientId:id, packageTypeId:pt.id, sessionsPurchased:pt.sessions,
+      pricePaid:pt.price, paymentMethod:"Venmo", soldAt:dateOffset(-7), taxSetAside:+(pt.price*rate).toFixed(2)});
+    ids.push(id);
+  });
+  const counts={}; ids.forEach(id=>counts[id]=0);
+  const hourPool=[6,7,8,9,10,11,12,16,17,18,19];
+  const start=weekStart(new Date());
+  const todayMid=new Date(new Date().toDateString());
+  let seq=base;
+  for(let off=0; off<14; off++){
+    const day=new Date(start.getTime()+off*DAY_MS);
+    if(day.getDay()===0) continue; // skip Sundays
+    const ds=ymd(day);
+    const count=5+Math.floor(Math.random()*3); // 5–7
+    const hours=hourPool.slice().sort(()=>Math.random()-0.5).slice(0,count).sort((a,b)=>a-b);
+    hours.forEach((hr,k)=>{
+      const cid=ids[(off+k)%ids.length];
+      counts[cid]++;
+      const past=day<todayMid;
+      state.sessions.push({id:"de"+(seq++), clientId:cid, saleId:null,
+        datetime:ds+"T"+String(hr).padStart(2,"0")+":00", duration:60, type:"In-person",
+        status: past?"completed":"scheduled", sessionNumber:counts[cid]});
+    });
+  }
+  save(); render(); closeSheet(); switchTab("calendar");
+}
+function resetAll(){
+  try{ localStorage.removeItem(LS_KEY); }catch(e){}
+  state=defaultState(); seedDynamic(state); save(); render(); closeSheet(); switchTab("calendar");
+}
+
+/* ---- CSV import ---- */
+const CSV_TEMPLATE_HEADERS=["name","phone","email","package_name","package_sessions","package_price","paid","recur_days","session_time","start_date","sessions_remaining","auto_renew"];
+const CSV_TEMPLATE_ROWS=[
+  ["Alex Rivera","(415) 555-0201","alex@example.com","12-Session Strength","12","900","yes","MWF","07:00","2026-06-15","12","no"],
+  ["Sam Okafor","(510) 555-0202","sam@example.com","8-Session Block","8","640","no","Tue/Thu","18:00","2026-06-16","5","no"],
+  ["Jordan Kim","(408) 555-0203","jordan@example.com","10-Session Pack","10","800","yes","Sat","09:00","2026-06-13","10","yes"],
+];
+function csvTemplateString(){
+  const esc=x=>`"${String(x).replace(/"/g,'""')}"`;
+  return [CSV_TEMPLATE_HEADERS, ...CSV_TEMPLATE_ROWS].map(r=>r.map(esc).join(",")).join("\n");
+}
+function openImportMenu(){
+  openSheet(`<div class="sheet-title">Import clients from CSV</div>
+    <p class="muted" style="margin-top:2px">Bulk-add clients with their package, rate, and recurring schedule in one upload.</p>
+    <button class="btn" onclick="triggerCSVImport()">Choose CSV file</button>
+    <div class="fab-note" style="margin:10px 0 14px;text-align:left;line-height:1.5">Columns: name, phone, email, package_name, package_sessions (full pack size), package_price, paid (yes/no), recur_days (e.g. MWF or Tue/Thu), session_time (e.g. 7:00 or 6:30 PM), start_date (YYYY-MM-DD), sessions_remaining (books out until they run out), auto_renew (yes = keep the series going past the pack).</div>
+    <button class="btn sec" onclick="downloadTemplate()">Download CSV template</button>
+    <button class="btn sec" style="margin-top:8px" onclick="closeSheet()">Close</button>`);
+}
+function downloadTemplate(){
+  try{
+    const blob=new Blob([csvTemplateString()],{type:"text/csv"});
+    const url=URL.createObjectURL(blob); const a=document.createElement("a");
+    a.href=url; a.download="fitrm-client-import-template.csv"; document.body.appendChild(a); a.click(); a.remove(); URL.revokeObjectURL(url);
+  }catch(e){ alert("Download not supported in this preview."); }
+}
+function triggerCSVImport(){ el("csv-input").click(); }
+function handleCSVFile(e){
+  const file=e.target.files&&e.target.files[0]; if(!file) return;
+  const reader=new FileReader();
+  reader.onload=ev=>{
+    try{
+      const res=importCSV(ev.target.result);
+      openSheet(`<div class="sheet-title">Import complete ✓</div>
+        <p class="muted">Added <b>${res.clientsAdded}</b> client${res.clientsAdded===1?'':'s'}, <b>${res.salesAdded}</b> package${res.salesAdded===1?'':'s'}, and <b>${res.sessionsAdded}</b> session${res.sessionsAdded===1?'':'s'}.</p>
+        ${res.skipped?`<div class="card" style="background:var(--surface2)">${res.skipped} row(s) skipped (missing name).</div>`:''}
+        <button class="btn" onclick="closeSheet();switchTab('clients')">View clients</button>`);
+    }catch(err){ alert("Could not import CSV: "+err.message); }
+    e.target.value="";
+  };
+  reader.readAsText(file);
+}
+function parseCSV(text){
+  const lines=text.replace(/\r\n/g,"\n").replace(/\r/g,"\n").split("\n").filter(l=>l.trim().length);
+  if(!lines.length) return [];
+  const parseLine=line=>{ const out=[]; let cur="",q=false;
+    for(let i=0;i<line.length;i++){ const ch=line[i];
+      if(q){ if(ch==='"'){ if(line[i+1]==='"'){cur+='"';i++;} else q=false; } else cur+=ch; }
+      else { if(ch==='"') q=true; else if(ch===','){ out.push(cur); cur=""; } else cur+=ch; } }
+    out.push(cur); return out; };
+  const headers=parseLine(lines[0]).map(h=>h.trim().toLowerCase().replace(/\s+/g,"_"));
+  return lines.slice(1).map(l=>{ const cells=parseLine(l); const o={}; headers.forEach((h,i)=>o[h]=(cells[i]!==undefined?cells[i]:"").trim()); return o; });
+}
+function dowFromToken(tok){
+  tok=(tok||"").trim().toLowerCase();
+  const named={sun:0,su:0,sunday:0,mon:1,mo:1,monday:1,tue:2,tu:2,tues:2,tuesday:2,wed:3,we:3,weds:3,wednesday:3,
+    thu:4,th:4,thur:4,thurs:4,thursday:4,fri:5,fr:5,friday:5,sat:6,sa:6,saturday:6};
+  if(named[tok]!==undefined) return named[tok];
+  const single={m:1,t:2,w:3,r:4,f:5,s:6,u:0}; // single letters: T=Tue, R=Thu, S=Sat, U=Sun
+  if(tok.length===1 && single[tok]!==undefined) return single[tok];
+  return undefined;
+}
+function parseDays(str){
+  if(!str) return [];
+  str=str.trim();
+  if(/[,\/;| ]/.test(str)){ // separated tokens: "M,W"  "T,Th"  "m,w,f"  "M/thursday"
+    return [...new Set(str.split(/[,\/;| ]+/).map(dowFromToken).filter(v=>v!==undefined))].sort((a,b)=>a-b);
+  }
+  if(/^[mtwrfsu]+$/i.test(str)){ // compact letters: "MWF"
+    const compact={m:1,t:2,w:3,r:4,f:5,s:6,u:0};
+    return [...new Set(str.toLowerCase().split("").map(c=>compact[c]).filter(v=>v!==undefined))].sort((a,b)=>a-b);
+  }
+  const v=dowFromToken(str); return v!==undefined?[v]:[];
+}
+function parseTime(str){
+  if(!str) return null;
+  const m=str.trim().toLowerCase().match(/^(\d{1,2})(?::(\d{2}))?\s*(am|pm)?$/);
+  if(!m) return null;
+  let h=parseInt(m[1]); const min=m[2]?parseInt(m[2]):0, ap=m[3];
+  if(ap==="pm"&&h<12) h+=12; if(ap==="am"&&h===12) h=0; if(h>23) h%=24;
+  return String(h).padStart(2,"0")+":"+String(min).padStart(2,"0");
+}
+function importCSV(text){
+  const rows=parseCSV(text);
+  let clientsAdded=0, salesAdded=0, sessionsAdded=0, skipped=0;
+  const sessBefore=state.sessions.length;
+  const rate=effectiveRate(state.profile.annualIncome).rate;
+  rows.forEach((r,idx)=>{
+    const name=(r.name||"").trim();
+    if(!name){ skipped++; return; }
+    const cid="ic"+Date.now()+"_"+idx;
+    state.clients.push({id:cid, name, phone:(r.phone||"").trim(), email:(r.email||"").trim(), status:"active"});
+    clientsAdded++;
+    const startStr=(r.start_date||"").trim()||todayISO();
+    const remCol=(r.sessions_remaining!==undefined && String(r.sessions_remaining).trim()!=="") ? Math.max(0,parseInt(r.sessions_remaining)||0) : null;
+    let psess=parseInt(r.package_sessions)||0;
+    if(!psess) psess = remCol!=null ? remCol : 0;
+    const rem = remCol!=null ? remCol : psess;
+    const pprice=+String(r.package_price||"").replace(/[^0-9.]/g,"")||0;
+    if(psess>0){
+      const pname=(r.package_name||"Package").trim();
+      let pt=state.packageTypes.find(p=>p.name.toLowerCase()===pname.toLowerCase());
+      if(!pt){ pt={id:"ipt"+Date.now()+"_"+idx, name:pname, sessions:psess, price:pprice}; state.packageTypes.push(pt); }
+      const paid=/^(y|yes|true|paid|1|x)$/i.test((r.paid||"").trim());
+      state.sales.push({id:"is"+Date.now()+"_"+idx, clientId:cid, packageTypeId:pt.id, sessionsPurchased:psess,
+        pricePaid:pprice, paymentMethod:"Imported", paid, soldAt:startStr, taxSetAside:+(pprice*rate).toFixed(2)});
+      salesAdded++;
+    }
+    const days=parseDays(r.recur_days||"");
+    const time=parseTime(r.session_time||"")||"07:00";
+    const autoRenew=/^(y|yes|true|1|x)$/i.test((r.auto_renew||"").trim());
+    let counter=0;
+    if(days.length){
+      const sorted=days.slice().sort((a,b)=>a-b);
+      // (1) past completed sessions to reflect what's already been used from the pack (not for auto-renew clients)
+      const used=Math.max(0, psess - rem);
+      if(!autoRenew && used>0){
+        const back=[]; let d=parseYMD(startStr), g=0;
+        while(back.length<used && g++<used*20+90){ d=new Date(+d-DAY_MS); if(sorted.includes(d.getDay())) back.push(ymd(d)); }
+        back.reverse().forEach(ds=>{ counter++;
+          state.sessions.push({id:"ise"+Date.now()+"_"+idx+"_p"+counter, clientId:cid, saleId:null,
+            datetime:ds+"T"+time, duration:60, type:"In-person", status:"completed", sessionNumber:counter, notes:""});
+          sessionsAdded++; });
+      }
+      // (2) future: book out until sessions run out, or roll forward if auto-renew
+      if(autoRenew){
+        state.recurringSessions.push({id:"rt"+Date.now()+"_"+idx, clientId:cid, days:sorted, time, type:"In-person", autoRenew:true, active:true});
+      } else {
+        const start=parseYMD(startStr), ws=weekStart(start); let count=0, w=0;
+        while(count<rem && w<520){
+          for(const dow of sorted){ if(count>=rem) break;
+            const d=new Date(+ws); d.setDate(d.getDate()+w*7+dow);
+            if(d>=start){ counter++; count++;
+              state.sessions.push({id:"ise"+Date.now()+"_"+idx+"_f"+counter, clientId:cid, saleId:null,
+                datetime:ymd(d)+"T"+time, duration:60, type:"In-person", status:"scheduled", sessionNumber:counter, notes:""});
+              sessionsAdded++; } }
+          w++;
+        }
+        state.recurringSessions.push({id:"rt"+Date.now()+"_"+idx, clientId:cid, days:sorted, time, type:"In-person", autoRenew:false, active:true});
+      }
+    }
+  });
+  syncRecurringSessions(state);
+  sessionsAdded=state.sessions.length-sessBefore;
+  save(); render();
+  return {clientsAdded, salesAdded, sessionsAdded, skipped};
+}
+
+/* Stripe Connect (take payments) */
+async function connectStripe(){
+  try{
+    const r=await fetch("/api/connect-start",{method:"POST",headers:{"Content-Type":"application/json"},
+      body:JSON.stringify({ email:(window.currentUser&&window.currentUser.email)||"", accountId:state.profile.stripeAccountId||null, returnUrl:location.origin })});
+    const d=await r.json();
+    if(d.error){ alert("Stripe error: "+d.error); return; }
+    if(d.accountId){ state.profile.stripeAccountId=d.accountId; save(); }
+    if(d.url){ location.href=d.url; }
+  }catch(e){ alert("Couldn't reach the payments server — make sure the /api functions are deployed."); }
+}
+async function checkStripeReturn(){
+  const p=new URLSearchParams(location.search);
+  if(p.get("stripe")==="return" && state.profile.stripeAccountId){
+    try{ const r=await fetch("/api/connect-status",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({accountId:state.profile.stripeAccountId})});
+      const d=await r.json(); state.profile.stripeConnected=!!d.charges_enabled; save(); render();
+    }catch(e){}
+  }
+  if(p.get("stripe")) history.replaceState({},"",location.pathname);
+}
+
+/* Settings */
+function openSettings(){
+  const burns=state.profile.noShowBurns;
+  openSheet(`<div class="sheet-title">Settings</div>
+    <div class="card" style="background:var(--surface2)">
+      <div class="row between"><div class="grow"><div class="name" style="font-size:15px">No-shows burn a session</div>
+        <div class="meta">When on, a no-show counts against the client's package.</div></div>
+        <button class="toggle ${burns?'on':''}" onclick="toggleNoShow()"><span></span></button></div>
+    </div>
+    ${state.profile.stripeConnected
+      ? `<div class="card" style="background:var(--surface2)"><div class="row between"><div class="name" style="font-size:15px">Payments</div><span class="pill ok">Stripe connected</span></div></div>`
+      : `<button class="btn sec" onclick="connectStripe()">Connect Stripe — take payments</button>`}
+    <button class="btn sec" style="margin-top:8px" onclick="closeSheet();startTour()">Take the tour</button>
+    <button class="btn sec" style="margin-top:8px" onclick="openHours()">Working hours</button>
+    <button class="btn sec" style="margin-top:8px" onclick="openTaxProfile()">Tax profile</button>
+    <button class="btn sec" style="margin-top:8px" onclick="openDataMenu()">Demo / reset data</button>
+    ${window.currentUser?`<div class="meta" style="margin:14px 2px 6px">Signed in as ${window.currentUser.email}</div>
+      <button class="btn sec" style="color:var(--danger)" onclick="doLogout()">Log out</button>`:''}
+    <button class="btn sec" style="margin-top:8px" onclick="closeSheet()">Close</button>`);
+}
+function toggleNoShow(){ state.profile.noShowBurns=!state.profile.noShowBurns; save(); render(); openSettings(); }
+
+/* Expenses */
+function openExpenses(){
+  const recs=(state.recurringExpenses||[]).filter(t=>t.active!==false);
+  const exps=(state.expenses||[]).slice().sort((a,b)=>a.date<b.date?1:-1);
+  openSheet(`<div class="sheet-title">Expenses & deductions</div>
+    <p class="muted" style="margin-top:2px">${money(expensesYTD())} logged this year · lowers your taxable profit</p>
+    <button class="btn" onclick="openAddExpense()">＋ Add expense</button>
+    ${recs.length?`<div class="sec-title">Recurring — auto-added monthly</div>`+recs.map(t=>`<div class="card row between" style="margin-bottom:8px">
+        <div class="grow"><div class="name" style="font-size:15px">${t.note||t.category} <span class="pill ok" style="margin-left:4px">monthly</span></div>
+          <div class="meta">${t.category} · day ${t.dayOfMonth} each month</div></div>
+        <div class="row" style="gap:12px"><div class="big-num">${money(t.amount)}</div>
+          <button class="btn ghost" style="color:var(--danger);padding:0 2px" onclick="stopRecurring('${t.id}')">Stop</button></div>
+      </div>`).join(""):``}
+    <div class="sec-title">Charges</div>
+    ${exps.length?exps.map(e=>`<div class="card row between" style="margin-bottom:8px">
+        <div class="grow"><div class="name" style="font-size:15px">${e.note||e.category}${e.recurId?` <span class="pill grey" style="margin-left:4px">auto</span>`:``}</div>
+          <div class="meta">${e.category} · ${fmtDate(e.date)}</div></div>
+        <div class="row" style="gap:12px"><div class="big-num">${money(e.amount)}</div>
+          <button class="btn ghost" style="color:var(--danger);padding:0 2px" onclick="deleteExpense('${e.id}')">✕</button></div>
+      </div>`).join(""):`<div class="card empty">No expenses yet.</div>`}
+    <button class="btn sec" style="margin-top:10px" onclick="closeSheet()">Close</button>`);
+}
+function openAddExpense(){
+  const cats=["Equipment","Certifications","Mileage","Rent / Space","Phone / Internet","Software","Marketing","Continuing ed","Other"];
+  expRecurring=false;
+  openSheet(`<div class="sheet-title">New expense</div>
+    <label class="fld"><span>What is it?</span><input id="ex-note" placeholder="Studio rent"/></label>
+    <label class="fld"><span>Category</span><select id="ex-cat">${cats.map(c=>`<option>${c}</option>`).join("")}</select></label>
+    <label class="fld"><span>Amount ($)</span><input id="ex-amt" type="number" inputmode="decimal" placeholder="120"/></label>
+    <label class="fld"><span>Date charged</span><input id="ex-date" type="date" value="${todayISO()}"/></label>
+    <div class="card" style="background:var(--surface2);margin-top:14px">
+      <div class="row between"><div class="grow"><div class="name" style="font-size:15px">Recurring monthly</div>
+        <div class="meta">Auto-adds on this day every month — set it and forget it.</div></div>
+        <button id="ex-recur" class="toggle" onclick="toggleExpRecur()"><span></span></button></div>
+    </div>
+    <div style="height:14px"></div>
+    <button class="btn" onclick="saveExpense()">Add expense</button>`);
+}
+function toggleExpRecur(){ expRecurring=!expRecurring; el("ex-recur").classList.toggle("on",expRecurring); }
+function saveExpense(){
+  const amount=+el("ex-amt").value||0; if(amount<=0){ el("ex-amt").focus(); return; }
+  const date=el("ex-date").value||todayISO(), category=el("ex-cat").value, note=el("ex-note").value.trim();
+  if(expRecurring){
+    const id="r"+Date.now(), dom=parseInt(date.slice(8,10))||1;
+    state.recurringExpenses.push({id, dayOfMonth:dom, category, amount, note, startMonth:date.slice(0,7), active:true});
+    syncRecurring(state);
+  } else {
+    state.expenses.push({id:"e"+Date.now(), date, category, amount, note});
+  }
+  save(); render(); openExpenses();
+}
+function deleteExpense(id){ state.expenses=state.expenses.filter(e=>e.id!==id); save(); render(); openExpenses(); }
+function stopRecurring(id){ state.recurringExpenses=state.recurringExpenses.filter(t=>t.id!==id); save(); render(); openExpenses(); }
+
+/* Tax payments */
+function openLogPayment(){
+  openSheet(`<div class="sheet-title">Log a tax payment</div>
+    <p class="muted" style="margin-top:2px">Record an estimated payment you sent. Reduces "still to set aside".</p>
+    <label class="fld"><span>Amount ($)</span><input id="tp-amt" type="number" inputmode="decimal" placeholder="${Math.max(0,Math.round(reserveRemaining()))}"/></label>
+    <label class="fld"><span>Date</span><input id="tp-date" type="date" value="${todayISO()}"/></label>
+    <label class="fld"><span>Label</span><input id="tp-label" placeholder="Q2 estimated tax"/></label>
+    <div style="height:14px"></div>
+    <button class="btn" onclick="saveTaxPayment()">Log payment</button>`);
+}
+function saveTaxPayment(){
+  const amount=+el("tp-amt").value||0; if(amount<=0){ el("tp-amt").focus(); return; }
+  state.taxPayments.push({id:"tp"+Date.now(), amount, date:el("tp-date").value||todayISO(),
+    label:el("tp-label").value.trim()||"Estimated tax"});
+  save(); render(); closeSheet(); switchTab("tax");
+}
+
+/* Income report */
+function openIncomeReport(){
+  const r=incomeReport();
+  openSheet(`<div class="sheet-title">Income report</div>
+    <div class="stat-grid" style="margin-top:10px">
+      <div class="stat"><div class="k">This month</div><div class="v green">${money(r.month)}</div></div>
+      <div class="stat"><div class="k">This quarter</div><div class="v">${money(r.quarter)}</div></div>
+      <div class="stat"><div class="k">This year</div><div class="v">${money(r.year)}</div></div>
+      <div class="stat"><div class="k">Outstanding</div><div class="v ${r.unpaid?'warn':''}">${money(r.unpaid)}</div></div>
+    </div>
+    <div class="sec-title">Revenue by client</div>
+    ${r.top.length?`<div class="card">`+r.top.slice(0,8).map(t=>{const c=state.clients.find(x=>x.id===t.cid);
+      return `<div class="row between list-item"><div class="name" style="font-size:15px">${c?c.name:"(deleted)"}</div><div class="big-num">${money(t.v)}</div></div>`;}).join("")+`</div>`:`<div class="card empty">No sales yet.</div>`}
+    <button class="btn sec" style="margin-top:10px" onclick="exportCSV()">Export CSV for accountant</button>
+    <button class="btn sec" style="margin-top:8px" onclick="closeSheet()">Close</button>`);
+}
+
+/* CSV export */
+function exportCSV(){
+  const rows=[["Type","Date","Client","Detail","Amount","Paid"]];
+  state.sales.forEach(s=>{ const c=state.clients.find(x=>x.id===s.clientId); const pt=state.packageTypes.find(p=>p.id===s.packageTypeId);
+    rows.push(["Income", s.soldAt, c?c.name:"(deleted)", (pt?pt.name:"Package")+" ("+s.sessionsPurchased+" sessions)", s.pricePaid, s.paid?"Yes":"No"]); });
+  (state.expenses||[]).forEach(e=>{ rows.push(["Expense", e.date, "", e.category+(e.note?" - "+e.note:""), -e.amount, ""]); });
+  (state.taxPayments||[]).forEach(p=>{ rows.push(["Tax payment", p.date, "", p.label||"Estimated tax", -p.amount, ""]); });
+  const csv=rows.map(r=>r.map(x=>`"${String(x).replace(/"/g,'""')}"`).join(",")).join("\n");
+  try{
+    const blob=new Blob([csv],{type:"text/csv"});
+    const url=URL.createObjectURL(blob); const a=document.createElement("a");
+    a.href=url; a.download="fitrm-export-"+todayISO()+".csv"; document.body.appendChild(a); a.click();
+    a.remove(); URL.revokeObjectURL(url);
+  }catch(e){ alert("Export not supported in this preview."); }
+}
+
+function openSellPackage(cid){
+  const opts=pkgOptionsHTML();
+  openSheet(`<div class="sheet-title">Sell package</div>
+    <p class="muted" style="margin-top:2px">to ${state.clients.find(c=>c.id===cid).name}</p>
+    <label class="fld"><span>Package</span><select id="f-pt" onchange="previewTax()">${opts}</select></label>
+    <label class="fld"><span>Payment method</span>
+      <select id="f-pay"><option>Venmo</option><option>Zelle</option><option>Cash</option><option>Card</option><option>Check</option></select></label>
+    <label class="fld"><span>Payment status</span>
+      <div class="seg"><button id="pay-yes" class="on" onclick="setPaid(true)">Paid</button>
+        <button id="pay-no" onclick="setPaid(false)">Owed</button></div></label>
+    <div class="banner" id="tax-preview" style="margin-top:16px"></div>
+    ${state.profile.stripeConnected?`<button class="btn" onclick="chargeCard('${cid}')">Charge Card</button>`:''}
+    <button class="btn sec" style="margin-top:8px" onclick="saveSale('${cid}')">Record sale</button>`);
+  sellPaid=true; previewTax();
+}
+function setPaid(v){ sellPaid=v; el("pay-yes").classList.toggle("on",v); el("pay-no").classList.toggle("on",!v); }
+function previewTax(){
+  const pt=state.packageTypes.find(p=>p.id===el("f-pt").value);
+  const rate=effectiveRate(state.profile.annualIncome).rate;
+  const setAside=pt.price*rate;
+  el("tax-preview").innerHTML=`<div class="meta" style="color:#dfe3d0">Set aside for taxes</div>
+    <div class="amt">${money2(setAside)}</div>
+    <div class="meta" style="color:#dfe3d0;margin-top:2px">${(rate*100).toFixed(1)}% of ${money(pt.price)} · adds ${pt.sessions} session${pt.sessions===1?'':'s'}</div>`;
+}
+function saveSale(cid){
+  const pt=state.packageTypes.find(p=>p.id===el("f-pt").value);
+  const rate=effectiveRate(state.profile.annualIncome).rate;
+  const used=state.sessions.filter(s=>s.clientId===cid).length;
+  state.sales.push({id:"s"+Date.now(), clientId:cid, packageTypeId:pt.id,
+    sessionsPurchased:pt.sessions, pricePaid:pt.price, paymentMethod:el("f-pay").value, paid:sellPaid,
+    soldAt:todayISO(), taxSetAside:+(pt.price*rate).toFixed(2)});
+  save(); render(); closeSheet(); switchTab("clients");
+}
+function markSalePaid(id){ const s=state.sales.find(x=>x.id===id); if(s){ s.paid=true; save(); render(); openClient(s.clientId); } }
+async function chargeCard(cid){
+  const pt=state.packageTypes.find(p=>p.id===el("f-pt").value); if(!pt) return;
+  const client=state.clients.find(c=>c.id===cid);
+  const rate=effectiveRate(state.profile.annualIncome).rate;
+  const saleId="s"+Date.now();
+  // Record the sale as pending; the webhook + reconcile will flip it to paid.
+  state.sales.push({id:saleId, clientId:cid, packageTypeId:pt.id,
+    sessionsPurchased:pt.sessions, pricePaid:pt.price, paymentMethod:"Card", paid:false,
+    soldAt:todayISO(), taxSetAside:+(pt.price*rate).toFixed(2)});
+  save();
+  try{
+    const r=await fetch("/api/create-checkout",{method:"POST",headers:{"Content-Type":"application/json"},
+      body:JSON.stringify({ accountId:state.profile.stripeAccountId, amount:pt.price, saleId,
+        trainerUid:(window.currentUser&&window.currentUser.id)||"", clientName:client?client.name:"",
+        description:pt.name, returnUrl:location.origin })});
+    const d=await r.json();
+    if(d.error){ alert("Stripe error: "+d.error); return; }
+    if(d.url){ location.href=d.url; }
+  }catch(e){ alert("Couldn't reach the payments server."); }
+}
+
+function openAddSession(){
+  const copts=state.clients.map(c=>`<option value="${c.id}">${c.name}</option>`).join("");
+  recurDays=[]; recurAutoRenew=false;
+  openSheet(`<div class="sheet-title">New session</div>
+    <label class="fld"><span>Client</span><select id="f-client">${copts}</select></label>
+    <label class="fld"><span>Start date</span><input id="f-date" type="date" value="${todayISO()}" onchange="onRepeatChange()"/></label>
+    <label class="fld"><span>Time</span><input id="f-time" type="time" value="07:00"/></label>
+    <label class="fld"><span>Type</span><select id="f-type"><option>In-person</option><option>Virtual</option></select></label>
+    <label class="fld"><span>Repeat</span><select id="f-repeat" onchange="onRepeatChange()">
+      <option value="none">Does not repeat</option>
+      <option value="weekly">Weekly on selected days</option></select></label>
+    <div class="fld" id="dow-fld" style="display:none"><span>On these days</span>
+      <div class="seg" id="dow-row">${["S","M","T","W","T","F","S"].map((d,i)=>`<button type="button" data-dow="${i}" onclick="toggleDow(${i})">${d}</button>`).join("")}</div></div>
+    <div class="card" id="renew-fld" style="display:none;background:var(--surface2);margin-top:10px">
+      <div class="row between"><div class="grow"><div class="name" style="font-size:15px">Auto-renew series</div>
+        <div class="meta">Keep booking future weeks even after the pack runs out (assumes they'll renew).</div></div>
+        <button id="renew-tg" class="toggle" onclick="toggleRecurRenew()"><span></span></button></div>
+    </div>
+    <label class="fld" id="weeks-fld" style="display:none"><span>For how many weeks (if not auto-renewing)</span>
+      <input id="f-weeks" type="number" inputmode="numeric" value="8"/></label>
+    <div class="fab-note">A Google Calendar invite would auto-send to each client in the full app.</div>
+    <div style="height:14px"></div>
+    <button class="btn" onclick="saveSession()">Schedule session</button>`);
+}
+function onRepeatChange(){
+  const weekly = el("f-repeat").value==="weekly";
+  el("dow-fld").style.display = weekly ? "block" : "none";
+  el("renew-fld").style.display = weekly ? "block" : "none";
+  el("weeks-fld").style.display = (weekly && !recurAutoRenew) ? "block" : "none";
+  if(weekly && recurDays.length===0){ recurDays=[parseYMD(el("f-date").value).getDay()]; }
+  paintDow();
+}
+function toggleRecurRenew(){
+  recurAutoRenew=!recurAutoRenew;
+  el("renew-tg").classList.toggle("on",recurAutoRenew);
+  el("weeks-fld").style.display = recurAutoRenew ? "none" : "block";
+}
+function toggleDow(i){
+  recurDays = recurDays.includes(i) ? recurDays.filter(x=>x!==i) : recurDays.concat(i);
+  paintDow();
+}
+function paintDow(){
+  (document.querySelectorAll("#dow-row [data-dow]")||[]).forEach(b=>
+    b.classList.toggle("on", recurDays.includes(+b.dataset.dow)));
+}
+function saveSession(){
+  const cid=el("f-client").value;
+  const repeat=el("f-repeat").value;
+  const baseDate=el("f-date").value, time=el("f-time").value, type=el("f-type").value;
+  const start=parseYMD(baseDate);
+  if(repeat==="weekly"){
+    const days=(recurDays.length?recurDays:[start.getDay()]).slice().sort((a,b)=>a-b);
+    if(recurAutoRenew){
+      state.recurringSessions.push({id:"rt"+Date.now(), clientId:cid, days, time, type, autoRenew:true, active:true});
+      syncRecurringSessions(state);
+    } else {
+      const weeks=Math.max(1, parseInt(el("f-weeks").value)||1), ws=weekStart(start); let dates=[];
+      for(let w=0; w<weeks; w++){ days.forEach(dow=>{ const d=new Date(+ws); d.setDate(d.getDate()+w*7+dow); if(d>=start) dates.push(ymd(d)); }); }
+      dates.sort();
+      let used=state.sessions.filter(s=>s.clientId===cid).length; const stamp=Date.now();
+      dates.forEach((ds,i)=>{ used++; state.sessions.push({id:"se"+stamp+"_"+i, clientId:cid, saleId:null,
+        datetime:ds+"T"+time, duration:60, type, status:"scheduled", sessionNumber:used, notes:""}); });
+      state.recurringSessions.push({id:"rt"+Date.now(), clientId:cid, days, time, type, autoRenew:false, active:true});
+    }
+  } else {
+    const used=state.sessions.filter(s=>s.clientId===cid).length;
+    state.sessions.push({id:"se"+Date.now(), clientId:cid, saleId:null, datetime:baseDate+"T"+time,
+      duration:60, type, status:"scheduled", sessionNumber:used+1, notes:""});
+  }
+  save(); render(); closeSheet(); switchTab("calendar");
+}
+
+function openTaxProfile(){
+  const p=state.profile;
+  openSheet(`<div class="sheet-title">Tax profile</div>
+    <label class="fld"><span>State</span><select id="f-state"><option value="CA">California</option>
+      <option value="TX">Texas (no income tax)</option><option value="FL">Florida (no income tax)</option>
+      <option value="NY">New York</option></select></label>
+    <label class="fld"><span>Filing status</span><select id="f-filing">
+      <option value="single">Single</option><option value="married">Married filing jointly</option><option value="hoh">Head of household</option><option value="mfs">Married filing separately</option></select></label>
+    <label class="fld"><span>Business type</span><select id="f-biz">
+      <option value="sole_prop">Sole proprietor</option><option value="llc">Single-member LLC</option><option value="scorp">S-corp</option></select></label>
+    <label class="fld"><span>Estimated annual net profit</span><input id="f-income" type="number" value="${p.annualIncome}"/></label>
+    <div class="disclaim">Only California is fully modeled in this prototype. Other states are illustrative — the full app carries a complete per-state rate table.</div>
+    <div style="height:8px"></div>
+    <button class="btn" onclick="saveProfile()">Save profile</button>`);
+  el("f-state").value=p.state; el("f-filing").value=p.filingStatus; el("f-biz").value=p.businessType||"sole_prop";
+}
+function saveProfile(){
+  state.profile.state=el("f-state").value;
+  state.profile.filingStatus=el("f-filing").value;
+  state.profile.businessType=el("f-biz").value;
+  state.profile.annualIncome=+el("f-income").value||0;
+  save(); render(); closeSheet();
+}
+
+/* ============================ NAV + SHEET ============================ */
+function switchTab(tab){
+  activeTab=tab;
+  ["home","calendar","clients","packages","tax"].forEach(t=>{
+    el("screen-"+t).classList.toggle("hidden", t!==tab);
+  });
+  document.querySelectorAll(".tab").forEach(b=>b.classList.toggle("on", b.dataset.tab===tab));
+  el("screen-"+tab).scrollTop=0;
+}
+document.querySelectorAll(".tab").forEach(b=>b.addEventListener("click",()=>switchTab(b.dataset.tab)));
+
+function openSheet(html){ el("sheet-body").innerHTML=html; el("sheet").classList.add("show"); el("scrim").classList.add("show"); }
+function closeSheet(){ el("sheet").classList.remove("show"); el("scrim").classList.remove("show"); }
+el("scrim").addEventListener("click", closeSheet);
+
+// Started after the trainer logs in (see auth script below). Namespaces data per account.
+function startApp(uid){ if(uid) LS_KEY = "fitrm_poc_" + uid; state = load(); render(); }
+</script>
+
+<script>
+/* ===================== SUPABASE AUTH ===================== */
+const SB_URL  = "https://ykjcflkffletanpbwidj.supabase.co";
+const SB_ANON = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InlramNmbGtmZmxldGFucGJ3aWRqIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODExMTU4NTUsImV4cCI6MjA5NjY5MTg1NX0.sc1T8VxaT9fzevDjRf8qo2Ls6QvlHv5Gcy3Fb0C85As";
+const sb = window.supabase.createClient(SB_URL, SB_ANON);
+let authMode = "login";
+const aEl = id => document.getElementById(id);
+
+function setAuthMode(m){
+  authMode = m;
+  aEl("name-fld").style.display = m==="signup" ? "block" : "none";
+  aEl("au-submit").textContent  = m==="signup" ? "Create account" : "Log in";
+  aEl("auth-switch").innerHTML  = m==="signup"
+    ? 'Already have an account? <a onclick="authToggle()">Log in</a>'
+    : 'New here? <a onclick="authToggle()">Create an account</a>';
+  authErr(""); authMsg("");
+}
+function authToggle(){ setAuthMode(authMode==="login" ? "signup" : "login"); }
+function showAuth(m){ aEl("home-screen").style.display="none"; aEl("auth-screen").style.display="flex"; setAuthMode(m||"signup"); aEl("au-email").focus(); }
+function showHome(){ aEl("auth-screen").style.display="none"; aEl("home-screen").style.display="block"; }
+function hmScroll(id){ const e=aEl(id); if(e) e.scrollIntoView({ behavior:"smooth" }); }
+function authErr(m){ const e=aEl("auth-error"); e.textContent=m; e.style.display=m?"block":"none"; }
+function authMsg(m){ const e=aEl("auth-msg"); e.innerHTML=m; e.style.display=m?"block":"none"; }
+
+async function authSubmit(){
+  const email=aEl("au-email").value.trim(), pass=aEl("au-pass").value;
+  if(!email || !pass){ authErr("Enter your email and password."); return; }
+  aEl("au-submit").disabled=true; authErr(""); authMsg("");
+  try{
+    if(authMode==="signup"){
+      const name=aEl("au-name").value.trim();
+      const { data, error } = await sb.auth.signUp({ email, password:pass, options:{ data:{ name } } });
+      if(error) authErr(error.message);
+      else if(data.session) enterApp(data.user);                 // email confirmation off
+      else { authMsg("Check your email to confirm your account, then log in."); authMode="signup"; authToggle(); }
+    } else {
+      const { data, error } = await sb.auth.signInWithPassword({ email, password:pass });
+      if(error) authErr(error.message); else enterApp(data.user);
+    }
+  }catch(e){ authErr("Couldn't reach the server. Double-check the connection keys."); }
+  aEl("au-submit").disabled=false;
+}
+async function doLogout(){ try{ await sb.auth.signOut(); }catch(e){} location.reload(); }
+
+async function enterApp(user){
+  window.currentUser = user;
+  aEl("home-screen").style.display = "none";
+  aEl("auth-screen").style.display = "none";
+  aEl("frame").style.display = "flex";
+  LS_KEY = "fitrm_poc_" + user.id;            // per-account local cache
+  state = await loadStateForUser(user.id);
+  render();
+  maybeWelcome();
+  checkStripeReturn();
+  reconcilePayments();
+  const pp=new URLSearchParams(location.search);
+  if(pp.get("paid")==="success"){ setTimeout(reconcilePayments,2500); setTimeout(reconcilePayments,6000); }
+  if(pp.get("paid")) history.replaceState({},"",location.pathname);
+}
+
+// Ask the server to check Stripe for any pending payments, then flip matching local sales to paid.
+async function reconcilePayments(){
+  if(!window.currentUser) return;
+  try{
+    // First, have the server confirm pending payments straight from Stripe (no webhook needed).
+    if(state.profile && state.profile.stripeAccountId){
+      try{
+        await fetch("/api/refresh-payments",{method:"POST",headers:{"Content-Type":"application/json"},
+          body:JSON.stringify({ trainerUid:window.currentUser.id, accountId:state.profile.stripeAccountId })});
+      }catch(e){}
+    }
+    const { data } = await sb.from("payments").select("sale_id,status").eq("trainer_id", window.currentUser.id).eq("status","paid");
+    if(data && data.length){
+      const paid=new Set(data.map(p=>p.sale_id)); let changed=false;
+      (state.sales||[]).forEach(s=>{ if(paid.has(s.id) && !s.paid){ s.paid=true; changed=true; } });
+      if(changed){ save(); render(); }
+    }
+  }catch(e){}
+}
+
+// Load this trainer's data: cloud first, then local cache, else empty. Migrate local->cloud on first run.
+async function loadStateForUser(uid){
+  let cloud = null;
+  try{
+    const { data } = await sb.from("app_state").select("data").eq("trainer_id", uid).maybeSingle();
+    if(data && data.data) cloud = data.data;
+  }catch(e){ /* offline — fall back to local cache */ }
+
+  if(cloud){
+    const s = migrate(cloud);
+    try{ localStorage.setItem(LS_KEY, JSON.stringify(s)); }catch(e){}
+    syncRecurring(s); syncRecurringSessions(s);
+    return s;
+  }
+
+  // No cloud record yet: use local cache if present (e.g. data from before sync), else start empty.
+  let local = null;
+  try{ const r = localStorage.getItem(LS_KEY); if(r) local = migrate(JSON.parse(r)); }catch(e){}
+  const s = local || emptyState();
+  syncRecurring(s); syncRecurringSessions(s);
+  try{ await sb.from("app_state").upsert({ trainer_id: uid, data: s, updated_at: new Date().toISOString() }); }catch(e){}
+  return s;
+}
+
+// Debounced cloud save (hooked into the app's save())
+let cloudTimer = null;
+function cloudSaveDebounced(){
+  if(!window.currentUser) return;
+  clearTimeout(cloudTimer);
+  setSyncStatus("saving");
+  cloudTimer = setTimeout(cloudPush, 700);
+}
+async function cloudPush(){
+  if(!window.currentUser) return;
+  try{
+    const { error } = await sb.from("app_state").upsert({
+      trainer_id: window.currentUser.id, data: state, updated_at: new Date().toISOString()
+    });
+    setSyncStatus(error ? "offline" : "saved");
+  }catch(e){ setSyncStatus("offline"); }
+}
+window.__cloudSave = cloudSaveDebounced;
+
+function setSyncStatus(s){
+  const e = aEl("cloud-status"); if(!e) return;
+  clearTimeout(e._t);
+  if(s==="saving"){ e.textContent="Syncing…"; e.className="show"; }
+  else if(s==="saved"){ e.textContent="Saved ✓"; e.className="show"; e._t=setTimeout(()=>e.className="",1100); }
+  else { e.textContent="Offline · saved on this device"; e.className="show warn"; e._t=setTimeout(()=>e.className="",2600); }
+}
+
+(async function(){
+  try{
+    const { data:{ session } } = await sb.auth.getSession();
+    if(session) enterApp(session.user);
+  }catch(e){ authErr("Couldn't reach the server. Check the connection keys."); }
+})();
+
+document.addEventListener("keydown", e=>{
+  if(e.key==="Enter" && aEl("auth-screen") && aEl("auth-screen").style.display!=="none") authSubmit();
+});
+</script>
+
+<script>
+/* ===================== HOMEPAGE INTERACTIONS (scoped, fh-) ===================== */
+(function(){
+  var $=function(id){return document.getElementById(id);};
+  // rotating word
+  var rw=$("fh-rotw");
+  if(rw){var words=["back office","numbers","schedule","renewals","tax math"],wi=0;
+    setInterval(function(){wi=(wi+1)%words.length;rw.style.opacity=0;setTimeout(function(){rw.textContent=words[wi];rw.style.opacity=1;},250);},2000);}
+  // earnings projector + tax
+  var FED=[[0,.10],[12400,.12],[50400,.22],[105700,.24],[201775,.32],[256225,.35],[640600,.37]];
+  var CA=[[0,.01],[10756,.02],[25499,.04],[40245,.06],[55866,.08],[70606,.093],[360659,.103],[432787,.113],[721314,.123]];
+  function prog(i,b){var t=0;for(var k=0;k<b.length;k++){var lo=b[k][0],r=b[k][1],hi=k+1<b.length?b[k+1][0]:Infinity;if(i>lo)t+=(Math.min(i,hi)-lo)*r;else break;}return t;}
+  function rate(P){if(P<=0)return 0;var sb=P*0.9235,se=Math.min(sb,184500)*0.124+sb*0.029,h=se/2,q=P*0.2;var fed=prog(Math.max(P-h-16100-q,0),FED);var st=prog(Math.max(P-h-5706,0),CA);return (se+fed+st)/P;}
+  var spw=25,rt=85,shownYear=106250;
+  function tw(target){var start=shownYear,t0=performance.now();function step(t){var p=Math.min((t-t0)/450,1);var e=1-Math.pow(1-p,3);shownYear=start+(target-start)*e;var el=$("fh-year");if(el)el.textContent='$'+Math.round(shownYear).toLocaleString();if(p<1)requestAnimationFrame(step);}requestAnimationFrame(step);}
+  function upd(){var a=$("fh-spwV");if(a)a.textContent=spw;var b=$("fh-rateV");if(b)b.textContent='$'+rt;var year=spw*rt*50;tw(year);var t=$("fh-tax");if(t)t.textContent='$'+Math.round(year*rate(year)).toLocaleString();var d=$("fh-delta");if(d)d.textContent='+$'+Math.round(rt*50).toLocaleString();}
+  var sp=$("fh-spw"),rtEl=$("fh-rt");
+  if(sp)sp.addEventListener("input",function(e){spw=+e.target.value;upd();});
+  if(rtEl)rtEl.addEventListener("input",function(e){rt=+e.target.value;upd();});
+  if(sp)upd();
+  // session demo
+  var left=7,purchased=10;
+  function rd(){var l=$("fh-left");if(l)l.textContent=left;var f=$("fh-fill");if(f)f.style.width=(left/purchased*100)+'%';var rn=$("fh-renew");if(rn)rn.textContent=left<=2?(left<=0?'Out of sessions — sell a renewal':'Running low — time to renew'):'';}
+  var ci=$("fh-checkin");if(ci)ci.addEventListener("click",function(){if(left>0){left--;rd();}});
+  var rsb=$("fh-reset");if(rsb)rsb.addEventListener("click",function(){left=7;rd();});
+  rd();
+  // faq
+  Array.prototype.forEach.call(document.querySelectorAll(".fh-q>button"),function(btn){btn.addEventListener("click",function(){var q=btn.parentElement,a=q.querySelector(".ans"),o=q.classList.contains("open");Array.prototype.forEach.call(document.querySelectorAll(".fh-q"),function(x){x.classList.remove("open");x.querySelector(".ans").style.maxHeight=null;});if(!o){q.classList.add("open");a.style.maxHeight=a.scrollHeight+"px";}});});
+  // reveal
+  if("IntersectionObserver" in window){var io=new IntersectionObserver(function(es){es.forEach(function(e){if(e.isIntersecting){e.target.classList.add("in");io.unobserve(e.target);}});},{threshold:.15});Array.prototype.forEach.call(document.querySelectorAll(".fh-reveal"),function(el){io.observe(el);});}
+})();
+</script>
+</body>
+</html>
