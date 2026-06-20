@@ -1999,7 +1999,7 @@ function handleCSVFile(e){
     try{
       const res=importCSV(ev.target.result);
       openSheet(`<div class="sheet-title">Import complete ✓</div>
-        <p class="muted">Added <b>${res.clientsAdded}</b> client${res.clientsAdded===1?'':'s'}, <b>${res.salesAdded}</b> package${res.salesAdded===1?'':'s'}, and <b>${res.sessionsAdded}</b> session${res.sessionsAdded===1?'':'s'}.</p>
+        <p class="muted">Added <b>${res.clientsAdded}</b> new client${res.clientsAdded===1?'':'s'}${res.clientsMatched?`, updated <b>${res.clientsMatched}</b> existing`:''}, <b>${res.salesAdded}</b> package${res.salesAdded===1?'':'s'}, and <b>${res.sessionsAdded}</b> session${res.sessionsAdded===1?'':'s'}.</p>
         ${res.skipped?`<div class="card" style="background:var(--surface2)">${res.skipped} row(s) skipped (missing name).</div>`:''}
         <button class="btn" onclick="closeSheet();switchTab('clients')">View clients</button>`);
     }catch(err){ alert("Could not import CSV: "+err.message); }
@@ -2059,15 +2059,27 @@ function parseUsedDates(str){
 }
 function importCSV(text){
   const rows=parseCSV(text);
-  let clientsAdded=0, salesAdded=0, sessionsAdded=0, skipped=0;
+  let clientsAdded=0, clientsMatched=0, salesAdded=0, sessionsAdded=0, skipped=0;
   const sessBefore=state.sessions.length;
   const rate=effectiveRate(state.profile.annualIncome).rate;
   rows.forEach((r,idx)=>{
     const name=(r.name||"").trim();
     if(!name){ skipped++; return; }
-    const cid="ic"+Date.now()+"_"+idx;
-    state.clients.push({id:cid, name, phone:(r.phone||"").trim(), email:(r.email||"").trim(), status:"active"});
-    clientsAdded++;
+    const email=(r.email||"").trim().toLowerCase();
+    // Match an existing client (email first, then name) so we don't duplicate the roster.
+    let existing=null;
+    if(email) existing=state.clients.find(c=>(c.email||"").trim().toLowerCase()===email);
+    if(!existing) existing=state.clients.find(c=>(c.name||"").trim().toLowerCase()===name.toLowerCase());
+    let cid;
+    if(existing){
+      cid=existing.id; clientsMatched++;
+      if(!existing.phone && (r.phone||"").trim()) existing.phone=(r.phone||"").trim();
+      if(!existing.email && (r.email||"").trim()) existing.email=(r.email||"").trim();
+    } else {
+      cid="ic"+Date.now()+"_"+idx;
+      state.clients.push({id:cid, name, phone:(r.phone||"").trim(), email:(r.email||"").trim(), status:"active"});
+      clientsAdded++;
+    }
     const startStr=(r.start_date||"").trim()||todayISO();
     const remCol=(r.sessions_remaining!==undefined && String(r.sessions_remaining).trim()!=="") ? Math.max(0,parseInt(r.sessions_remaining)||0) : null;
     let psess=parseInt(r.package_sessions)||0;
@@ -2132,7 +2144,7 @@ function importCSV(text){
   syncRecurringSessions(state);
   sessionsAdded=state.sessions.length-sessBefore;
   save(); render();
-  return {clientsAdded, salesAdded, sessionsAdded, skipped};
+  return {clientsAdded, clientsMatched, salesAdded, sessionsAdded, skipped};
 }
 
 /* Stripe Connect (take payments) */
