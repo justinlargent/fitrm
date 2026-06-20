@@ -2100,7 +2100,10 @@ function importCSV(text){
     const autoRenew=/^(y|yes|true|1|x)$/i.test((r.auto_renew||"").trim());
     let counter=0;
     // Exact past session dates (if provided) — builds real history and sets remaining precisely.
-    const usedDates=parseUsedDates(r.used_dates);
+    // Used-session dates: accept one "used_dates" cell (semicolon list) AND/OR per-date columns used_1, used_2, …
+    let usedRaw=[r.used_dates||""];
+    Object.keys(r).forEach(k=>{ if(/^used[_ ]?\d+$/i.test(k)) usedRaw.push(r[k]); });
+    const usedDates=parseUsedDates(usedRaw.join(";"));
     let effRem=rem;
     if(usedDates.length){
       effRem=Math.max(0, psess - usedDates.length);
