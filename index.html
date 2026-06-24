@@ -845,7 +845,14 @@ function effectiveRate(netProfit){
 /* ============================ DERIVED ============================ */
 const money=n=>"$"+Math.round(n).toLocaleString();
 const money2=n=>"$"+n.toFixed(2);
+function sharedPacksFor(cid){ return state.sales.filter(s=>Array.isArray(s.members)&&s.members.length>1&&s.members.includes(cid)); }
+function poolUsed(members){ const burns=state.profile.noShowBurns;
+  return state.sessions.filter(s=>members.includes(s.clientId) && (s.status==="completed"||(burns&&s.status==="no-show"))).length; }
 function clientSessionsRemaining(cid){
+  const shared=sharedPacksFor(cid);
+  if(shared.length){   // family/shared pack: sessions drawn from a pool across all members
+    return shared.reduce((t,s)=> t + (s.sessionsPurchased - (s.priorUsed||0) - poolUsed(s.members)), 0);
+  }
   const sales=state.sales.filter(s=>s.clientId===cid);
   const purchased=sales.reduce((a,s)=>a+s.sessionsPurchased,0);
   const prior=sales.reduce((a,s)=>a+(s.priorUsed||0),0);   // sessions already used before logging an in-progress pack
@@ -855,7 +862,11 @@ function clientSessionsRemaining(cid){
   return purchased-prior-used;
 }
 function clientLifetime(cid){ return state.sales.filter(s=>s.clientId===cid).reduce((a,s)=>a+s.pricePaid,0); }
-function clientTotalPurchased(cid){ return state.sales.filter(s=>s.clientId===cid).reduce((a,s)=>a+s.sessionsPurchased,0); }
+function clientTotalPurchased(cid){
+  const shared=sharedPacksFor(cid);
+  if(shared.length) return shared.reduce((a,s)=>a+s.sessionsPurchased,0);
+  return state.sales.filter(s=>s.clientId===cid).reduce((a,s)=>a+s.sessionsPurchased,0);
+}
 function remTag(cid){ const total=clientTotalPurchased(cid), rem=clientSessionsRemaining(cid);
   return total>0 ? rem+"/"+total : "no pack"; }
 function initials(name){ return name.split(" ").map(w=>w[0]).join("").slice(0,2).toUpperCase(); }
@@ -1877,7 +1888,7 @@ function openClient(cid){
     ${sales.length?sales.map(s=>{const pt=state.packageTypes.find(p=>p.id===s.packageTypeId); const nm=pt?pt.name:"Package";
       return `<div class="card" style="margin-bottom:8px">
         <div class="row between">
-          <div><div class="name">${nm}</div><div class="meta">${s.sessionsPurchased} sessions · ${fmtDate(s.soldAt)} · ${s.paymentMethod}${s.priorUsed?` · logged with ${s.priorUsed} used`:''}</div></div>
+          <div><div class="name">${nm}${s.members&&s.members.length>1?` <span class="pill grey" style="font-size:11px">shared</span>`:''}</div><div class="meta">${s.sessionsPurchased} sessions · ${fmtDate(s.soldAt)} · ${s.paymentMethod}${s.priorUsed?` · logged with ${s.priorUsed} used`:''}${s.members&&s.members.length>1?` · shared with ${s.members.filter(m=>m!==cid).map(m=>{const cc=state.clients.find(x=>x.id===m);return cc?cc.name.split(" ")[0]:"?";}).join(", ")}`:''}</div></div>
           <div style="text-align:right"><div class="big-num">${money(s.pricePaid)}</div>
             <div class="meta">tax: ${money(s.taxSetAside)}</div></div>
         </div>
@@ -1885,12 +1896,20 @@ function openClient(cid){
           <button class="btn sec btn-sm" onclick="markSalePaid('${s.id}')">Mark paid</button></div>`}
       </div>`;}).join("")
       :`<div class="card empty">No packages yet.</div>`}
-    <div class="sec-title">Recent sessions</div>
-    <div class="card">${hist.length?hist.map(s=>`<div class="row between list-item">
+    ${(function(){
+      const now=Date.now();
+      const all=state.sessions.filter(s=>s.clientId===cid);
+      const upcoming=all.filter(s=>s.status==="scheduled" && +new Date(s.datetime)>=now).sort((a,b)=>a.datetime<b.datetime?-1:1).slice(0,5);
+      const past=all.filter(s=>s.status!=="scheduled" || +new Date(s.datetime)<now).sort((a,b)=>a.datetime<b.datetime?1:-1).slice(0,10);
+      const rowHTML=s=>`<div class="row between list-item" onclick="openSessionSheet('${s.id}')" style="cursor:pointer">
         <div><div class="name" style="font-size:14px">Session ${s.sessionNumber}</div>
           <div class="meta">${fmtDate(s.datetime.slice(0,10))} · ${fmtTime(s.datetime)}</div></div>
-        <span class="pill ${s.status==='completed'?'ok':'grey'}">${s.status}</span></div>`).join("")
-      :`<div class="empty">No sessions yet.</div>`}</div>
+        <span class="pill ${s.status==='completed'?'ok':s.status==='no-show'?'out':'grey'}">${s.status}</span></div>`;
+      return `<div class="sec-title">Upcoming sessions</div>
+        <div class="card">${upcoming.length?upcoming.map(rowHTML).join(""):`<div class="empty">Nothing scheduled.</div>`}</div>
+        <div class="sec-title">Past sessions</div>
+        <div class="card">${past.length?past.map(rowHTML).join(""):`<div class="empty">No past sessions yet.</div>`}</div>`;
+    })()}
     <button class="btn" style="background:transparent;color:var(--danger);border:1px solid var(--line);margin-top:20px"
       onclick="confirmDeleteClient('${cid}')">Delete client</button>`);
 }
@@ -2350,6 +2369,10 @@ function openSellPackage(cid){
     <label class="fld"><span>Payment status</span>
       <div class="seg"><button id="pay-yes" class="on" onclick="setPaid(true)">Paid</button>
         <button id="pay-no" onclick="setPaid(false)">Owed</button></div></label>
+    <label class="fld" style="margin-bottom:6px"><span>Share with (optional — makes it a family pack)</span></label>
+    <div class="card" style="max-height:150px;overflow-y:auto;padding:6px 12px;margin-bottom:6px">
+      ${state.clients.filter(c=>c.id!==cid).map(c=>`<label class="row between" style="padding:6px 0;cursor:pointer"><span>${c.name}</span><input type="checkbox" class="share-mem" value="${c.id}"></label>`).join("")||'<div class="meta" style="padding:6px 0">No other clients to share with yet.</div>'}
+    </div>
     <div class="banner" id="tax-preview" style="margin-top:16px"></div>
     ${state.profile.stripeConnected?`<button class="btn" onclick="chargeCard('${cid}')">Charge Card</button>`:''}
     <button class="btn sec" style="margin-top:8px" onclick="saveSale('${cid}')">Record sale</button>`);
@@ -2367,11 +2390,13 @@ function previewTax(){
 function saveSale(cid){
   const pt=state.packageTypes.find(p=>p.id===el("f-pt").value);
   const rate=effectiveRate(state.profile.annualIncome).rate;
-  const used=state.sessions.filter(s=>s.clientId===cid).length;
-  state.sales.push({id:"s"+Date.now(), clientId:cid, packageTypeId:pt.id,
+  const members=[...document.querySelectorAll(".share-mem:checked")].map(x=>x.value);
+  const sale={id:"s"+Date.now(), clientId:cid, packageTypeId:pt.id,
     sessionsPurchased:pt.sessions, pricePaid:pt.price, paymentMethod:el("f-pay").value, paid:sellPaid,
-    soldAt:todayISO(), taxSetAside:+(pt.price*rate).toFixed(2)});
-  save(); render(); closeSheet(); switchTab("clients");
+    soldAt:todayISO(), taxSetAside:+(pt.price*rate).toFixed(2)};
+  if(members.length) sale.members=[cid,...members];   // family/shared pack
+  state.sales.push(sale);
+  save(); render(); closeSheet(); openClient(cid);
 }
 function markSalePaid(id){ const s=state.sales.find(x=>x.id===id); if(s){ s.paid=true; save(); render(); openClient(s.clientId); } }
 async function chargeCard(cid){
