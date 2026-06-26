@@ -1520,16 +1520,16 @@ function renderTimeGrid(days){
     gutter+=`<div class="tg-hour" style="height:48px"><span>${lbl}</span></div>`;
   }
   gutter+=`</div>`;
-  let cols=`<div class="tg-cols" style="height:${H}px">`;
+  let cols=`<div class="tg-cols" data-start="${startH}" style="height:${H}px">`;
   days.forEach(d=>{
-    cols+=`<div class="tg-col" style="height:${H}px">`;
+    cols+=`<div class="tg-col" data-day="${d}" style="height:${H}px">`;
     sessionsOn(d).forEach(s=>{
       const dt=new Date(s.datetime);
       const top=((dt.getHours()-startH)*60+dt.getMinutes())/60*48;
       const ht=Math.max(s.duration/60*48-2, 16);
       const c=state.clients.find(x=>x.id===s.clientId);
       const cls=s.status==="completed"?"done":s.status==="scheduled"?"":"cancel";
-      cols+=`<div class="tg-event ${cls}" style="top:${top}px;height:${ht}px" onclick="openSessionSheet('${s.id}')">
+      cols+=`<div class="tg-event ${cls}" data-sid="${s.id}" style="top:${top}px;height:${ht}px;touch-action:none">
         <div class="tg-ev-t">${fmtTimeShort(dt)}</div>
         <div class="tg-ev-n">${c?c.name.split(" ")[0]:"—"} · ${remTag(s.clientId)}</div></div>`;
     });
@@ -1538,6 +1538,47 @@ function renderTimeGrid(days){
   cols+=`</div>`;
   return head+`<div class="tg-grid">`+gutter+cols+`</div>`;
 }
+
+/* Drag-and-drop reschedule on the week/day timeline (mouse + touch). Tap (no drag) opens the session. */
+(function(){
+  let drag=null; const PXMIN=48/60;
+  document.addEventListener("pointerdown",function(e){
+    const ev=e.target.closest && e.target.closest(".tg-event"); if(!ev) return;
+    const sid=ev.getAttribute("data-sid"); if(!sid) return;
+    const r=ev.getBoundingClientRect();
+    drag={sid,ev,sx:e.clientX,sy:e.clientY,grab:e.clientY-r.top,moved:false};
+    try{ ev.setPointerCapture(e.pointerId); }catch(_){}
+  });
+  document.addEventListener("pointermove",function(e){
+    if(!drag) return;
+    const dx=e.clientX-drag.sx, dy=e.clientY-drag.sy;
+    if(!drag.moved && Math.hypot(dx,dy)<6) return;
+    drag.moved=true;
+    drag.ev.style.opacity="0.75"; drag.ev.style.zIndex="60";
+    drag.ev.style.transform="translate("+dx+"px,"+dy+"px)";
+  });
+  document.addEventListener("pointerup",function(e){
+    if(!drag) return; const d=drag; drag=null;
+    d.ev.style.transform=""; d.ev.style.opacity=""; d.ev.style.zIndex="";
+    if(!d.moved){ openSessionSheet(d.sid); return; }
+    const wrap=document.querySelector(".tg-cols"); if(!wrap){ render(); return; }
+    const startH=+wrap.getAttribute("data-start")||0;
+    let col=null, best=1e9;
+    [].slice.call(wrap.querySelectorAll(".tg-col")).forEach(function(c){
+      const r=c.getBoundingClientRect();
+      if(e.clientX>=r.left && e.clientX<=r.right){ col=c; best=-1; }
+      else if(best>=0){ const dist=Math.abs(e.clientX-(r.left+r.right)/2); if(dist<best){ best=dist; col=c; } }
+    });
+    if(!col){ render(); return; }
+    const r=col.getBoundingClientRect();
+    let mins=startH*60 + ((e.clientY-d.grab)-r.top)/PXMIN;
+    mins=Math.max(0, Math.min(24*60-15, Math.round(mins/15)*15));
+    const hh=String(Math.floor(mins/60)).padStart(2,"0"), mm=String(mins%60).padStart(2,"0");
+    const sess=state.sessions.find(s=>s.id===d.sid); if(!sess){ render(); return; }
+    sess.datetime=col.getAttribute("data-day")+"T"+hh+":"+mm;
+    save(); render();
+  });
+})();
 
 function renderMonth(){
   const a=parseYMD(calAnchor), year=a.getFullYear(), month=a.getMonth();
