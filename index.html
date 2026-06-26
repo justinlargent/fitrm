@@ -1541,7 +1541,7 @@ function renderTimeGrid(days){
 
 /* Drag-and-drop reschedule on the week/day timeline (mouse + touch). Tap (no drag) opens the session. */
 (function(){
-  let drag=null; const PXMIN=48/60;
+  let drag=null,lastDrag=0; const PXMIN=48/60;
   document.addEventListener("pointerdown",function(e){
     const ev=e.target.closest && e.target.closest(".tg-event"); if(!ev) return;
     const sid=ev.getAttribute("data-sid"); if(!sid) return;
@@ -1576,7 +1576,21 @@ function renderTimeGrid(days){
     const hh=String(Math.floor(mins/60)).padStart(2,"0"), mm=String(mins%60).padStart(2,"0");
     const sess=state.sessions.find(s=>s.id===d.sid); if(!sess){ render(); return; }
     sess.datetime=col.getAttribute("data-day")+"T"+hh+":"+mm;
+    lastDrag=Date.now();
     save(); render();
+  });
+  // Click an empty slot on the timeline -> open the full New session sheet, pre-filled with that day + time.
+  document.addEventListener("click",function(e){
+    if(Date.now()-lastDrag<350) return;
+    if(e.target.closest(".tg-event")) return;
+    const col=e.target.closest(".tg-col"); if(!col) return;
+    const wrap=col.closest(".tg-cols"); if(!wrap) return;
+    const startH=+wrap.getAttribute("data-start")||0;
+    const r=col.getBoundingClientRect();
+    let mins=startH*60 + (e.clientY-r.top)/PXMIN;
+    mins=Math.max(0, Math.min(24*60-30, Math.round(mins/30)*30));
+    const hh=String(Math.floor(mins/60)).padStart(2,"0"), mm=String(mins%60).padStart(2,"0");
+    openAddSession(col.getAttribute("data-day"), hh+":"+mm);
   });
 })();
 
@@ -2464,13 +2478,13 @@ async function chargeCard(cid){
   }catch(e){ alert("Couldn't reach the payments server."); }
 }
 
-function openAddSession(){
+function openAddSession(prefDate,prefTime){
   const copts=state.clients.map(c=>`<option value="${c.id}">${c.name}</option>`).join("");
   recurDays=[]; recurAutoRenew=false;
   openSheet(`<div class="sheet-title">New session</div>
     <label class="fld"><span>Client</span><select id="f-client">${copts}</select></label>
-    <label class="fld"><span>Start date</span><input id="f-date" type="date" value="${todayISO()}" onchange="onRepeatChange()"/></label>
-    <label class="fld"><span>Time</span><input id="f-time" type="time" value="07:00"/></label>
+    <label class="fld"><span>Start date</span><input id="f-date" type="date" value="${prefDate||todayISO()}" onchange="onRepeatChange()"/></label>
+    <label class="fld"><span>Time</span><input id="f-time" type="time" value="${prefTime||'07:00'}"/></label>
     <label class="fld"><span>Type</span><select id="f-type"><option>In-person</option><option>Virtual</option></select></label>
     <label class="fld"><span>Repeat</span><select id="f-repeat" onchange="onRepeatChange()">
       <option value="none">Does not repeat</option>
