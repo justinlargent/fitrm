@@ -2026,11 +2026,14 @@ function resetAll(){
 }
 
 /* ---- CSV import ---- */
-const CSV_TEMPLATE_HEADERS=["name","phone","email","package_name","package_sessions","package_price","paid","recur_days","session_time","start_date","sessions_remaining","used_dates","auto_renew"];
+const CSV_TEMPLATE_HEADERS=["name","email","package_name","package_sessions","package_price","paid",
+  "used_1","used_2","used_3","used_4","used_5","used_6","used_7","used_8","used_9","used_10",
+  "used_11","used_12","used_13","used_14","used_15","used_16","used_17","used_18","used_19","used_20"];
+function padUsed(base,dates){ const row=base.slice(); for(let i=0;i<20;i++) row.push(dates[i]||""); return row; }
 const CSV_TEMPLATE_ROWS=[
-  ["Alex Rivera","(415) 555-0201","alex@example.com","12-Session Strength","12","900","yes","MWF","07:00","2026-06-15","12","no"],
-  ["Sam Okafor","(510) 555-0202","sam@example.com","8-Session Block","8","640","no","Tue/Thu","18:00","2026-06-16","5","no"],
-  ["Jordan Kim","(408) 555-0203","jordan@example.com","10-Session Pack","10","800","yes","Sat","09:00","2026-06-13","10","yes"],
+  padUsed(["Maya Chen","maya@example.com","10-Session Strength","10","750","yes"],["2026-04-02","2026-04-07","2026-04-09","2026-04-14","2026-04-16","2026-04-21"]),
+  padUsed(["Alex Rivera","alex@example.com","12-Session Block","12","900","yes"],["2026-05-01","2026-05-05","2026-05-08"]),
+  padUsed(["Jordan Lee","jordan@example.com","Single Session","1","90","no"],[]),
 ];
 function csvTemplateString(){
   const esc=x=>`"${String(x).replace(/"/g,'""')}"`;
@@ -2038,9 +2041,9 @@ function csvTemplateString(){
 }
 function openImportMenu(){
   openSheet(`<div class="sheet-title">Import clients from CSV</div>
-    <p class="muted" style="margin-top:2px">Bulk-add clients with their package, rate, and recurring schedule in one upload.</p>
+    <p class="muted" style="margin-top:2px">Bulk-add clients with their package and the sessions they've already used. Existing clients are matched by email or name — no duplicates.</p>
     <button class="btn" onclick="triggerCSVImport()">Choose CSV file</button>
-    <div class="fab-note" style="margin:10px 0 14px;text-align:left;line-height:1.5">Columns: name, phone, email, package_name, package_sessions (full pack size), package_price, paid (yes/no), recur_days (e.g. MWF or Tue/Thu), session_time (e.g. 7:00 or 6:30 PM), start_date (YYYY-MM-DD), sessions_remaining (books out until they run out), used_dates (optional — exact past session dates separated by semicolons, e.g. 2026-01-05;2026-01-12 — builds real history and overrides sessions_remaining), auto_renew (yes = keep the series going past the pack).</div>
+    <div class="fab-note" style="margin:10px 0 14px;text-align:left;line-height:1.5">Columns: <b>name</b>, <b>email</b>, <b>package_name</b>, <b>package_sessions</b> (full pack size), <b>package_price</b>, <b>paid</b> (yes/no), then <b>used_1, used_2 … used_20</b> — put one past session date (YYYY-MM-DD) in each, one per session already used. The app counts how many you filled in to set their remaining sessions; leave the rest blank.<br><span style="opacity:.8">Advanced (optional): you can also add recur_days, session_time, start_date, or auto_renew columns to auto-book future sessions.</span></div>
     <button class="btn sec" onclick="downloadTemplate()">Download CSV template</button>
     <button class="btn sec" style="margin-top:8px" onclick="closeSheet()">Close</button>`);
 }
