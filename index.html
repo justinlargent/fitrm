@@ -753,9 +753,11 @@ function syncRecurringSessions(s){
     for(let w=0; w<=HORIZON_WEEKS; w++){
       t.days.slice().sort((a,b)=>a-b).forEach(dow=>{
         const d=new Date(+ws); d.setDate(d.getDate()+w*7+dow);
-        if(d<todayMid || d>horizonEnd) return;
+        if(d>horizonEnd) return;
+        if(t.start && ymd(d)<t.start) return;   // don't book before the series start date
         const dt=ymd(d)+"T"+t.time;
         if(existing.has(dt)) return;
+        if(t.skip && t.skip.includes(dt)) return;   // a manually-canceled slot — don't rebook
         existing.add(dt); n++;
         s.sessions.push({id:"rs"+t.id+"_"+ymd(d), clientId:t.clientId, saleId:null, datetime:dt,
           duration:60, type:t.type||"In-person", status:"scheduled", sessionNumber:n, notes:""});
@@ -1626,6 +1628,10 @@ function openSessionSheet(id){
   const dt=new Date(s.datetime);
   openSheet(`<div class="sheet-title">${c?c.name:"(deleted client)"}</div>
     <p class="muted" style="margin-top:2px">${dt.toLocaleDateString(undefined,{weekday:"long",month:"long",day:"numeric"})} · ${fmtTime(s.datetime)}</p>
+    ${c?`<div class="card" style="text-align:center;padding:14px;margin-top:4px">
+      <div class="meta" style="text-transform:uppercase;letter-spacing:1px">Sessions remaining</div>
+      <div style="font-family:'Fraunces',serif;font-size:34px;font-weight:500;color:var(--accent);line-height:1.15">${clientSessionsRemaining(s.clientId)}</div>
+      <div class="meta">${remTag(s.clientId)}</div></div>`:''}
     <div class="card" style="background:var(--surface2)">
       <div class="tax-line"><span>Session number</span><b>#${s.sessionNumber}</b></div>
       <div class="tax-line"><span>Type</span><b>${s.type}</b></div>
@@ -1640,8 +1646,20 @@ function openSessionSheet(id){
     ${s.status==="scheduled"
       ? `<button class="btn" style="margin-top:8px" onclick="completeFromSheet('${s.id}')">Mark complete</button>
          <button class="btn sec" style="margin-top:8px" onclick="noShowFromSheet('${s.id}')">Mark no-show</button>`
-      : ``}
+      : `<button class="btn sec" style="margin-top:8px" onclick="reopenSession('${s.id}')">↩ Set back to scheduled</button>`}
+    <button class="btn sec" style="margin-top:8px;background:transparent;color:var(--danger);border:1px solid var(--line)" onclick="deleteSession('${s.id}')">Cancel this session</button>
     <button class="btn sec" style="margin-top:8px" onclick="closeSheet()">Close</button>`);
+}
+function reopenSession(id){
+  const s=state.sessions.find(x=>x.id===id);
+  if(s){ s.status="scheduled"; save(); render(); openSessionSheet(id); }
+}
+function deleteSession(id){
+  const s=state.sessions.find(x=>x.id===id); if(!s){ closeSheet(); return; }
+  // if it came from an auto-renew series, skip this slot so it doesn't get rebooked
+  (state.recurringSessions||[]).forEach(t=>{ if(t.clientId===s.clientId && t.autoRenew){ t.skip=t.skip||[]; if(!t.skip.includes(s.datetime)) t.skip.push(s.datetime); } });
+  state.sessions=state.sessions.filter(x=>x.id!==id);
+  save(); render(); closeSheet(); switchTab("calendar");
 }
 function saveSessionNotes(id,toast){ const s=state.sessions.find(x=>x.id===id); const t=el("ss-notes");
   if(s&&t){ s.notes=t.value; save(); render(); if(toast) closeSheet(); } }
@@ -2205,7 +2223,7 @@ function importCSV(text){
       }
       // (2) future: book out the remaining sessions, or roll forward if auto-renew
       if(autoRenew){
-        state.recurringSessions.push({id:"rt"+Date.now()+"_"+idx, clientId:cid, days:sorted, time, type:"In-person", autoRenew:true, active:true});
+        state.recurringSessions.push({id:"rt"+Date.now()+"_"+idx, clientId:cid, days:sorted, time, type:"In-person", autoRenew:true, active:true, start:startStr});
       } else {
         const start=parseYMD(startStr), ws=weekStart(start); let count=0, w=0;
         while(count<effRem && w<520){
@@ -2531,7 +2549,7 @@ function saveSession(){
   if(repeat==="weekly"){
     const days=(recurDays.length?recurDays:[start.getDay()]).slice().sort((a,b)=>a-b);
     if(recurAutoRenew){
-      state.recurringSessions.push({id:"rt"+Date.now(), clientId:cid, days, time, type, autoRenew:true, active:true});
+      state.recurringSessions.push({id:"rt"+Date.now(), clientId:cid, days, time, type, autoRenew:true, active:true, start:baseDate});
       syncRecurringSessions(state);
     } else {
       const weeks=Math.max(1, parseInt(el("f-weeks").value)||1), ws=weekStart(start); let dates=[];
