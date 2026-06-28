@@ -733,6 +733,7 @@ function migrate(s){
   s.taxPayments=s.taxPayments||[];
   s.recurringExpenses=s.recurringExpenses||[];
   s.recurringSessions=s.recurringSessions||[];
+  s.events=s.events||[];
   if(s.profile && s.profile.noShowBurns===undefined) s.profile.noShowBurns=false;
   s.sales=(s.sales||[]).map(x=> x.paid===undefined ? {...x, paid:true} : x);
   return s;
@@ -1431,7 +1432,7 @@ function goDay(ds){ calAnchor=ds; calView="day"; renderCalendar(); }
 function renderCalendar(){
   const labels={day:"Day","3day":"3 Days",week:"Week",month:"Month"};
   let cal=`<div class="row between"><div class="lg-title">Schedule</div>
-    <button class="btn ghost" onclick="openAddSession()">＋ Add</button></div>
+    <button class="btn ghost" onclick="openCalAddMenu()">＋ Add</button></div>
     <div class="seg" style="margin-bottom:14px">
       ${["day","3day","week","month"].map(v=>`<button class="${calView===v?'on':''}" onclick="setCalView('${v}')">${labels[v]}</button>`).join("")}
     </div>
@@ -1447,6 +1448,8 @@ function renderCalendar(){
     const ss=sessionsOn(calAnchor);
     cal+= ss.length ? `<div class="card">`+ss.map(sessionRow).join("")+`</div>`
                   : `<div class="card empty" style="padding:22px">No sessions this day</div>`;
+    const evs=(state.events||[]).filter(e=>e.date===calAnchor).sort((a,b)=>a.time<b.time?-1:1);
+    if(evs.length){ cal+=`<div class="sec-title">Events</div><div class="card">`+evs.map(e=>`<div class="row list-item" onclick="openEventSheet('${e.id}')" style="cursor:pointer"><div class="timeline-time">${e.time}</div><div class="grow"><div class="name">${e.title}</div><div class="meta">Event</div></div></div>`).join("")+`</div>`; }
   } else if(calView==="month"){
     cal+=renderMonth();
   } else {
@@ -1506,6 +1509,11 @@ function gridRange(days){
     const eh=h+Math.ceil((dt.getMinutes()+s.duration)/60);
     startH=Math.min(startH,h); endH=Math.max(endH,eh);
   }));
+  days.forEach(d=>(state.events||[]).filter(e=>e.date===d).forEach(e=>{
+    const p=(e.time||"12:00").split(":").map(Number), h=p[0]||0;
+    const eh=h+Math.ceil(((p[1]||0)+(e.duration||60))/60);
+    startH=Math.min(startH,h); endH=Math.max(endH,eh);
+  }));
   return {startH:Math.max(0,startH), endH:Math.min(24,Math.max(endH,startH+1))};
 }
 function renderTimeGrid(days){
@@ -1534,6 +1542,14 @@ function renderTimeGrid(days){
       cols+=`<div class="tg-event ${cls}" data-sid="${s.id}" style="top:${top}px;height:${ht}px;touch-action:none">
         <div class="tg-ev-t">${fmtTimeShort(dt)}</div>
         <div class="tg-ev-n">${c?c.name.split(" ")[0]:"—"} · ${remTag(s.clientId)}</div></div>`;
+    });
+    (state.events||[]).filter(e=>e.date===d).forEach(e=>{
+      const p=(e.time||"12:00").split(":").map(Number);
+      const top=(((p[0]||0)-startH)*60+(p[1]||0))/60*48;
+      const ht=Math.max((e.duration||60)/60*48-2,16);
+      cols+=`<div class="tg-event evt" style="top:${top}px;height:${ht}px;touch-action:none;background:var(--surface2);border-left:3px solid var(--rust)" onclick="openEventSheet('${e.id}')">
+        <div class="tg-ev-t">${e.time||""}</div>
+        <div class="tg-ev-n">${e.title}</div></div>`;
     });
     cols+=`</div>`;
   });
@@ -1615,6 +1631,7 @@ function renderMonth(){
     evs.slice(0,2).forEach(s=>{ const c=state.clients.find(x=>x.id===s.clientId);
       const cls=s.status==="completed"?"done":s.status==="scheduled"?"":"cancel";
       chips+=`<span class="mchip ${cls}">${c?c.name.split(" ")[0]:"—"}</span>`; });
+    (state.events||[]).filter(e=>e.date===ds).slice(0,1).forEach(e=>{ chips+=`<span class="mchip" style="background:var(--surface2);color:var(--text)">${(e.title||"").split(" ")[0]}</span>`; });
     if(evs.length>2) chips+=`<span class="mmore">+${evs.length-2}</span>`;
     g+=`<button class="mcell ${isToday?'today':''}" onclick="goDay('${ds}')">
       <span class="mnum ${isToday?'t':''}">${day}</span>${chips}</button>`;
@@ -2496,6 +2513,50 @@ async function chargeCard(cid){
   }catch(e){ alert("Couldn't reach the payments server."); }
 }
 
+function openCalAddMenu(prefDate,prefTime){
+  const dq=prefDate?`'${prefDate}'`:'', tq=prefTime?`,'${prefTime}'`:'';
+  openSheet(`<div class="sheet-title">Add to calendar</div>
+    <p class="muted" style="margin-top:2px">What would you like to add?</p>
+    <button class="btn" onclick="openAddSession(${dq}${tq})">Client session</button>
+    <button class="btn sec" style="margin-top:8px" onclick="openAddEvent(${dq}${tq})">Event or meeting</button>
+    <button class="btn sec" style="margin-top:8px" onclick="closeSheet()">Cancel</button>`);
+}
+function openAddEvent(prefDate,prefTime){
+  openSheet(`<div class="sheet-title">New event</div>
+    <p class="muted" style="margin-top:2px">A meeting, appointment, or anything that isn't a client session.</p>
+    <label class="fld"><span>Title</span><input id="ev-title" placeholder="Team meeting, dentist, errand…"/></label>
+    <label class="fld"><span>Date</span><input id="ev-date" type="date" value="${prefDate||todayISO()}"/></label>
+    <label class="fld"><span>Time</span><input id="ev-time" type="time" value="${prefTime||'12:00'}"/></label>
+    <label class="fld"><span>Length</span><select id="ev-dur"><option value="30">30 min</option><option value="60" selected>1 hour</option><option value="90">1.5 hours</option><option value="120">2 hours</option></select></label>
+    <label class="fld"><span>Notes (optional)</span><textarea id="ev-notes" rows="2"></textarea></label>
+    <div style="height:8px"></div>
+    <button class="btn" onclick="saveEvent()">Add event</button>`);
+}
+function saveEvent(){
+  state.events=state.events||[];
+  state.events.push({id:"ev"+Date.now(), title:(el("ev-title").value||"").trim()||"Event", date:el("ev-date").value||todayISO(), time:el("ev-time").value||"12:00", duration:+el("ev-dur").value||60, notes:(el("ev-notes").value||"").trim()});
+  save(); render(); closeSheet(); switchTab("calendar");
+}
+function openEventSheet(id){
+  const e=(state.events||[]).find(x=>x.id===id); if(!e) return;
+  const durOpts=[30,60,90,120].map(d=>`<option value="${d}" ${e.duration===d?'selected':''}>${d>=60?(d/60)+' hour'+(d>60?'s':''):d+' min'}</option>`).join("");
+  openSheet(`<div class="sheet-title">${e.title}</div>
+    <p class="muted" style="margin-top:2px">Event · ${fmtDate(e.date)} · ${e.time}</p>
+    <label class="fld"><span>Title</span><input id="ev-title" value="${(e.title||"").replace(/"/g,'&quot;')}"/></label>
+    <label class="fld"><span>Date</span><input id="ev-date" type="date" value="${e.date}"/></label>
+    <label class="fld"><span>Time</span><input id="ev-time" type="time" value="${e.time}"/></label>
+    <label class="fld"><span>Length</span><select id="ev-dur">${durOpts}</select></label>
+    <label class="fld"><span>Notes</span><textarea id="ev-notes" rows="2">${e.notes||""}</textarea></label>
+    <button class="btn" style="margin-top:8px" onclick="updateEvent('${id}')">Save changes</button>
+    <button class="btn sec" style="margin-top:8px;background:transparent;color:var(--danger);border:1px solid var(--line)" onclick="deleteEvent('${id}')">Delete event</button>
+    <button class="btn sec" style="margin-top:8px" onclick="closeSheet()">Close</button>`);
+}
+function updateEvent(id){
+  const e=(state.events||[]).find(x=>x.id===id); if(!e) return;
+  e.title=(el("ev-title").value||"").trim()||"Event"; e.date=el("ev-date").value||e.date; e.time=el("ev-time").value||e.time; e.duration=+el("ev-dur").value||e.duration; e.notes=(el("ev-notes").value||"").trim();
+  save(); render(); closeSheet(); switchTab("calendar");
+}
+function deleteEvent(id){ state.events=(state.events||[]).filter(x=>x.id!==id); save(); render(); closeSheet(); switchTab("calendar"); }
 function openAddSession(prefDate,prefTime){
   const copts=state.clients.map(c=>`<option value="${c.id}">${c.name}</option>`).join("");
   recurDays=[]; recurAutoRenew=false;
