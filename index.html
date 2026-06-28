@@ -1593,7 +1593,9 @@ function renderTimeGrid(days){
     mins=Math.max(0, Math.min(24*60-15, Math.round(mins/15)*15));
     const hh=String(Math.floor(mins/60)).padStart(2,"0"), mm=String(mins%60).padStart(2,"0");
     const sess=state.sessions.find(s=>s.id===d.sid); if(!sess){ render(); return; }
+    const oldDt=sess.datetime;
     sess.datetime=col.getAttribute("data-day")+"T"+hh+":"+mm;
+    if(oldDt!==sess.datetime) skipRecurringSlot(sess.clientId, oldDt);
     lastDrag=Date.now();
     save(); render();
   });
@@ -1680,9 +1682,15 @@ function deleteSession(id){
 }
 function saveSessionNotes(id,toast){ const s=state.sessions.find(x=>x.id===id); const t=el("ss-notes");
   if(s&&t){ s.notes=t.value; save(); render(); if(toast) closeSheet(); } }
+function skipRecurringSlot(clientId, datetime){
+  (state.recurringSessions||[]).forEach(t=>{ if(t.clientId===clientId && t.autoRenew){ t.skip=t.skip||[]; if(!t.skip.includes(datetime)) t.skip.push(datetime); } });
+}
 function rescheduleSession(id){ const s=state.sessions.find(x=>x.id===id); if(!s) return;
   const d=el("ss-date").value, t=el("ss-time").value||"07:00"; if(!d) return;
-  s.notes=el("ss-notes")?el("ss-notes").value:s.notes; s.datetime=d+"T"+t; save(); render(); closeSheet(); switchTab("calendar"); }
+  const oldDt=s.datetime;
+  s.notes=el("ss-notes")?el("ss-notes").value:s.notes; s.datetime=d+"T"+t;
+  if(oldDt!==s.datetime) skipRecurringSlot(s.clientId, oldDt);
+  save(); render(); closeSheet(); switchTab("calendar"); }
 function completeFromSheet(id){ const t=el("ss-notes"); const s=state.sessions.find(x=>x.id===id); if(s&&t) s.notes=t.value; completeSession(id); }
 function noShowFromSheet(id){ const t=el("ss-notes"); const s=state.sessions.find(x=>x.id===id); if(s&&t) s.notes=t.value; markSession(id,"no-show"); }
 function markSession(id,status){ const s=state.sessions.find(x=>x.id===id); if(s){ s.status=status; save(); render(); } closeSheet(); }
@@ -2794,6 +2802,11 @@ async function cloudPush(){
   }catch(e){ setSyncStatus("offline"); }
 }
 window.__cloudSave = cloudSaveDebounced;
+// Live sync across tabs in the same browser: when another tab saves, mirror it here instantly.
+window.addEventListener("storage", function(e){
+  if(!window.currentUser || e.key!==LS_KEY || !e.newValue) return;
+  try{ state=migrate(JSON.parse(e.newValue)); syncRecurring(state); syncRecurringSessions(state); render(); }catch(_){}
+});
 
 function setSyncStatus(s){
   const e = aEl("cloud-status"); if(!e) return;
