@@ -781,6 +781,50 @@ function stopRecurringSeries(tid){
   const t=state.recurringSessions.find(x=>x.id===tid); if(!t) return;
   const cid=t.clientId; t.active=false; save(); render(); openClient(cid);
 }
+function toggleSeriesRenew(){ recurAutoRenew=!recurAutoRenew; const e=el("es-renew-tg"); if(e) e.classList.toggle("on",recurAutoRenew); }
+function openEditSeries(tid){
+  const t=state.recurringSessions.find(x=>x.id===tid); if(!t) return;
+  recurDays=(t.days||[]).slice(); recurAutoRenew=!!t.autoRenew;
+  const c=state.clients.find(x=>x.id===t.clientId);
+  openSheet(`<div class="sheet-title">Edit recurring series</div>
+    <p class="muted" style="margin-top:2px">${c?c.name:""}'s standing schedule — changes apply to upcoming sessions.</p>
+    <label class="fld"><span>On these days</span>
+      <div class="seg" id="dow-row">${["S","M","T","W","T","F","S"].map((d,i)=>`<button type="button" data-dow="${i}" class="${(t.days||[]).includes(i)?'on':''}" onclick="toggleDow(${i})">${d}</button>`).join("")}</div></label>
+    <label class="fld"><span>Time</span><input id="es-time" type="time" value="${t.time}"/></label>
+    <label class="fld"><span>Type</span><select id="es-type"><option ${t.type==="Virtual"?"":"selected"}>In-person</option><option ${t.type==="Virtual"?"selected":""}>Virtual</option></select></label>
+    <div class="card" style="background:var(--surface2);margin-top:10px"><div class="row between"><div class="grow"><div class="name" style="font-size:15px">Auto-renew series</div><div class="meta">Keep booking future weeks indefinitely.</div></div>
+      <button id="es-renew-tg" class="toggle ${t.autoRenew?'on':''}" onclick="toggleSeriesRenew()"><span></span></button></div></div>
+    <div style="height:12px"></div>
+    <button class="btn" onclick="saveSeries('${tid}')">Save series</button>
+    <button class="btn sec" style="margin-top:8px;background:transparent;color:var(--danger);border:1px solid var(--line)" onclick="stopRecurringSeries('${tid}')">Stop recurring series</button>
+    <button class="btn sec" style="margin-top:8px" onclick="closeSheet()">Cancel</button>`);
+}
+function rebookSeries(t){
+  const ws=weekStart(new Date()), today=new Date(new Date().toDateString());
+  const existing=new Set(state.sessions.filter(x=>x.clientId===t.clientId).map(x=>x.datetime));
+  let n=state.sessions.filter(x=>x.clientId===t.clientId).length;
+  for(let w=0; w<=HORIZON_WEEKS; w++){
+    (t.days||[]).slice().sort((a,b)=>a-b).forEach(dow=>{
+      const d=new Date(+ws); d.setDate(d.getDate()+w*7+dow);
+      if(d<today) return;
+      const dt=ymd(d)+"T"+t.time;
+      if(existing.has(dt)) return;
+      existing.add(dt); n++;
+      state.sessions.push({id:"rs"+t.id+"_"+ymd(d), clientId:t.clientId, saleId:null, datetime:dt, duration:60, type:t.type||"In-person", status:"scheduled", sessionNumber:n, notes:""});
+    });
+  }
+}
+function saveSeries(tid){
+  const t=state.recurringSessions.find(x=>x.id===tid); if(!t) return;
+  const days=(recurDays.length?recurDays:(t.days||[])).slice().sort((a,b)=>a-b);
+  t.days=days; t.time=el("es-time").value||t.time; t.type=el("es-type").value||t.type; t.autoRenew=!!recurAutoRenew; t.active=true; t.skip=[];
+  const cid=t.clientId, today=new Date(new Date().toDateString());
+  // clear upcoming scheduled sessions for this client, then re-book from the new pattern
+  state.sessions=state.sessions.filter(s=> !(s.clientId===cid && s.status==="scheduled" && new Date(s.datetime)>=today));
+  rebookSeries(t);
+  if(t.autoRenew) syncRecurringSessions(state);
+  save(); render(); closeSheet(); switchTab("calendar");
+}
 function daysInMonth(y,m){ return new Date(y,m,0).getDate(); }
 function syncRecurring(s){
   s.expenses=s.expenses||[]; s.recurringExpenses=s.recurringExpenses||[];
@@ -875,7 +919,8 @@ function clientTotalPurchased(cid){
   if(shared.length) return shared.reduce((a,s)=>a+s.sessionsPurchased,0);
   return state.sales.filter(s=>s.clientId===cid).reduce((a,s)=>a+s.sessionsPurchased,0);
 }
-function remTag(cid){ const total=clientTotalPurchased(cid), rem=clientSessionsRemaining(cid);
+function remTag(cid){ const c=state.clients.find(x=>x.id===cid); if(c&&c.payg) return "pay-as-you-go";
+  const total=clientTotalPurchased(cid), rem=clientSessionsRemaining(cid);
   return total>0 ? rem+"/"+total : "no pack"; }
 function initials(name){ return name.split(" ").map(w=>w[0]).join("").slice(0,2).toUpperCase(); }
 function incomeThisMonth(){
@@ -1326,7 +1371,7 @@ function saveMonthGoal(){ state.profile.monthlyGoal=+el("mg-amt").value||0; save
 // Clients running low on sessions — prompt the trainer to re-sell before they lapse.
 function lowSessionsNudge(){
   const low=state.clients
-    .filter(c=>c.status!=="inactive" && clientTotalPurchased(c.id)>0)
+    .filter(c=>c.status!=="inactive" && !c.payg && clientTotalPurchased(c.id)>0)
     .map(c=>({c, rem:clientSessionsRemaining(c.id)}))
     .filter(x=>x.rem<=2)
     .sort((a,b)=>a.rem-b.rem);
@@ -1667,6 +1712,7 @@ function openSessionSheet(id){
     <label class="fld"><span>Session notes</span>
       <textarea id="ss-notes" rows="3" placeholder="What you worked on, PRs, injuries…">${s.notes||""}</textarea></label>
     <button class="btn sec" style="margin-top:8px" onclick="saveSessionNotes('${s.id}',true)">Save notes</button>
+    ${(function(){ const _t=clientRecurring(s.clientId); return _t?`<button class="btn sec" style="margin-top:8px" onclick="openEditSeries('${_t.id}')">Edit recurring series</button>`:''; })()}
     ${s.status==="scheduled"
       ? `<button class="btn" style="margin-top:8px" onclick="completeFromSheet('${s.id}')">Mark complete</button>
          <button class="btn sec" style="margin-top:8px" onclick="noShowFromSheet('${s.id}')">Mark no-show</button>`
@@ -1676,12 +1722,13 @@ function openSessionSheet(id){
 }
 function reopenSession(id){
   const s=state.sessions.find(x=>x.id===id);
-  if(s){ s.status="scheduled"; save(); render(); openSessionSheet(id); }
+  if(s){ s.status="scheduled"; state.sales=state.sales.filter(x=>x.sessionId!==id); save(); render(); openSessionSheet(id); }
 }
 function deleteSession(id){
   const s=state.sessions.find(x=>x.id===id); if(!s){ closeSheet(); return; }
   // if it came from an auto-renew series, skip this slot so it doesn't get rebooked
   (state.recurringSessions||[]).forEach(t=>{ if(t.clientId===s.clientId && t.autoRenew){ t.skip=t.skip||[]; if(!t.skip.includes(s.datetime)) t.skip.push(s.datetime); } });
+  state.sales=state.sales.filter(x=>x.sessionId!==id);   // drop any pay-as-you-go charge for this session
   state.sessions=state.sessions.filter(x=>x.id!==id);
   save(); render(); closeSheet(); switchTab("calendar");
 }
@@ -1698,7 +1745,7 @@ function rescheduleSession(id){ const s=state.sessions.find(x=>x.id===id); if(!s
   save(); render(); closeSheet(); switchTab("calendar"); }
 function completeFromSheet(id){ const t=el("ss-notes"); const s=state.sessions.find(x=>x.id===id); if(s&&t) s.notes=t.value; completeSession(id); }
 function noShowFromSheet(id){ const t=el("ss-notes"); const s=state.sessions.find(x=>x.id===id); if(s&&t) s.notes=t.value; markSession(id,"no-show"); }
-function markSession(id,status){ const s=state.sessions.find(x=>x.id===id); if(s){ s.status=status; save(); render(); } closeSheet(); }
+function markSession(id,status){ const s=state.sessions.find(x=>x.id===id); if(s){ s.status=status; if(status!=="completed") state.sales=state.sales.filter(x=>x.sessionId!==id); save(); render(); } closeSheet(); }
 
 function renderClients(){
   const list=state.clients.slice().sort((a,b)=>a.name<b.name?-1:1);
@@ -1709,11 +1756,11 @@ function renderClients(){
     <div class="card">`;
   h+=list.map(c=>{
     const r=clientSessionsRemaining(c.id);
-    const cls=r<=0?"out":r<=2?"low":"ok";
+    const cls=c.payg?"grey":(r<=0?"out":r<=2?"low":"ok");
     return `<div class="row between list-item" onclick="openClient('${c.id}')" style="cursor:pointer">
       <div class="row"><div class="avatar">${initials(c.name)}</div>
         <div><div class="name">${c.name}</div><div class="meta">${money(clientLifetime(c.id))} lifetime</div></div></div>
-      <span class="pill ${cls}">${r} left</span>
+      <span class="pill ${cls}">${c.payg?"PAYG":r+" left"}</span>
     </div>`;
   }).join("")+`</div>`;
   el("screen-clients").innerHTML=h;
@@ -1918,10 +1965,19 @@ function toggleFin(id){ finOpen[id]=!finOpen[id]; renderTax(); }
 /* ============================ ACTIONS ============================ */
 function completeSession(id){
   const s=state.sessions.find(x=>x.id===id); if(!s) return;
-  s.status="completed"; save(); render();
+  s.status="completed";
   const c=state.clients.find(x=>x.id===s.clientId);
+  if(c && c.payg){
+    // pay-as-you-go: auto-record this session's payment once
+    if(!state.sales.some(x=>x.sessionId===id)){
+      const rate=+c.paygRate||0, tr=effectiveRate(state.profile.annualIncome).rate;
+      state.sales.push({id:"s"+Date.now(), clientId:s.clientId, packageTypeId:null, sessionsPurchased:1, pricePaid:rate, paymentMethod:"Pay-as-you-go", paid:true, soldAt:s.datetime.slice(0,10), taxSetAside:+(rate*tr).toFixed(2), sessionId:id, payg:true});
+    }
+    save(); render(); return;
+  }
+  save(); render();
   const r=clientSessionsRemaining(s.clientId);
-  if(r<=2){ toastRenew(c,r); }
+  if(c && r<=2){ toastRenew(c,r); }
 }
 function toastRenew(c,r){
   openSheet(`<div class="sheet-title">Session logged ✓</div>
@@ -1930,29 +1986,44 @@ function toastRenew(c,r){
     <button class="btn" onclick="closeSheet()">Got it</button>`);
 }
 
+let paygOn=false;
+function setPayg(v){ paygOn=v;
+  ["ec-payg-on","f-payg-on"].forEach(id=>{const e=el(id); if(e) e.classList.toggle("on",v);});
+  ["ec-payg-off","f-payg-off"].forEach(id=>{const e=el(id); if(e) e.classList.toggle("on",!v);});
+}
 function openAddClient(){
+  paygOn=false;
   openSheet(`<div class="sheet-title">New client</div>
     <label class="fld"><span>Name</span><input id="f-name" placeholder="Jordan Lee"/></label>
     <label class="fld"><span>Phone</span><input id="f-phone" inputmode="tel" placeholder="(555) 555-1234"/></label>
     <label class="fld"><span>Email</span><input id="f-email" inputmode="email" placeholder="jordan@example.com"/></label>
     <label class="fld"><span>How did they find you? (optional)</span><select id="f-source">${sourceOptions("")}</select></label>
+    <label class="fld"><span>Pay-as-you-go (charge per session)</span>
+      <div class="seg"><button type="button" id="f-payg-off" class="on" onclick="setPayg(false)">Off</button>
+        <button type="button" id="f-payg-on" onclick="setPayg(true)">On</button></div></label>
+    <label class="fld"><span>Per-session rate ($)</span><input id="f-rate" type="number" inputmode="decimal" placeholder="85"/></label>
     <div style="height:16px"></div>
     <button class="btn" onclick="saveClient()">Add client</button>`);
 }
 function saveClient(){
   const name=el("f-name").value.trim(); if(!name){ el("f-name").focus(); return; }
-  state.clients.push({id:"c"+Date.now(), name, phone:el("f-phone").value, email:el("f-email").value, status:"active", source:el("f-source").value});
+  state.clients.push({id:"c"+Date.now(), name, phone:el("f-phone").value, email:el("f-email").value, status:"active", source:el("f-source").value, payg:paygOn, paygRate:+el("f-rate").value||0});
   save(); render(); closeSheet(); switchTab("clients");
 }
 
 function openEditClient(cid){
   const c=state.clients.find(x=>x.id===cid); if(!c) return;
   const esc=v=>(v||"").replace(/"/g,"&quot;");
+  paygOn=!!c.payg;
   openSheet(`<div class="sheet-title">Edit client</div>
     <label class="fld"><span>Name</span><input id="ec-name" value="${esc(c.name)}"/></label>
     <label class="fld"><span>Phone</span><input id="ec-phone" inputmode="tel" value="${esc(c.phone)}"/></label>
     <label class="fld"><span>Email</span><input id="ec-email" inputmode="email" value="${esc(c.email)}"/></label>
     <label class="fld"><span>How did they find you?</span><select id="ec-source">${sourceOptions(c.source)}</select></label>
+    <label class="fld"><span>Pay-as-you-go (charge per session)</span>
+      <div class="seg"><button type="button" id="ec-payg-off" class="${c.payg?'':'on'}" onclick="setPayg(false)">Off</button>
+        <button type="button" id="ec-payg-on" class="${c.payg?'on':''}" onclick="setPayg(true)">On</button></div></label>
+    <label class="fld"><span>Per-session rate ($)</span><input id="ec-rate" type="number" inputmode="decimal" value="${c.paygRate||''}" placeholder="85"/></label>
     <div style="height:14px"></div>
     <button class="btn" onclick="saveClientEdit('${cid}')">Save changes</button>
     <button class="btn sec" style="margin-top:8px" onclick="openClient('${cid}')">Cancel</button>`);
@@ -1960,7 +2031,7 @@ function openEditClient(cid){
 function saveClientEdit(cid){
   const c=state.clients.find(x=>x.id===cid); if(!c) return;
   const name=el("ec-name").value.trim(); if(!name){ el("ec-name").focus(); return; }
-  c.name=name; c.phone=el("ec-phone").value.trim(); c.email=el("ec-email").value.trim(); c.source=el("ec-source").value;
+  c.name=name; c.phone=el("ec-phone").value.trim(); c.email=el("ec-email").value.trim(); c.source=el("ec-source").value; c.payg=paygOn; c.paygRate=+el("ec-rate").value||0;
   save(); render(); openClient(cid);
 }
 function openClient(cid){
@@ -1974,7 +2045,9 @@ function openClient(cid){
         <div class="meta">${c.phone||""}${c.email?" · "+c.email:""}</div></div>
       <button class="btn sec btn-sm" onclick="openEditClient('${cid}')">Edit</button></div>
     <div class="stat-grid" style="margin-top:14px">
-      <div class="stat"><div class="k">Sessions left</div><div class="v ${r<=2?'warn':'green'}">${r}</div></div>
+      ${c.payg
+        ? `<div class="stat"><div class="k">Billing</div><div class="v" style="font-size:17px">Pay-as-you-go</div><div class="kpi-sub">${money(c.paygRate||0)}/session</div></div>`
+        : `<div class="stat"><div class="k">Sessions left</div><div class="v ${r<=2?'warn':'green'}">${r}</div></div>`}
       <div class="stat"><div class="k">Lifetime spend</div><div class="v">${money(clientLifetime(cid))}</div></div>
     </div>
     <button class="btn" style="margin-top:14px" onclick="openSellPackage('${cid}')">Sell package</button>
