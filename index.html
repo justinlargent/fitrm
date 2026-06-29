@@ -745,10 +745,13 @@ function syncRecurringSessions(s){
   const liveIds=new Set((s.clients||[]).map(c=>c.id));
   s.recurringSessions=s.recurringSessions.filter(t=>liveIds.has(t.clientId));
   s.sessions=(s.sessions||[]).filter(x=>liveIds.has(x.clientId));
+  // Remove any duplicate-id sessions left over from older move/regeneration bugs.
+  { const seenIds=new Set(); s.sessions=s.sessions.filter(x=>{ if(x.id&&seenIds.has(x.id)) return false; if(x.id) seenIds.add(x.id); return true; }); }
   const now=new Date(), todayMid=new Date(now.toDateString()), horizonEnd=new Date(+now+HORIZON_WEEKS*7*DAY_MS);
   s.recurringSessions.forEach(t=>{
     if(t.active===false || !t.autoRenew || !t.days || !t.days.length) return;
     const existing=new Set(s.sessions.filter(x=>x.clientId===t.clientId).map(x=>x.datetime));
+    const existingIds=new Set(s.sessions.map(x=>x.id));
     let n=s.sessions.filter(x=>x.clientId===t.clientId).length;
     const ws=weekStart(todayMid);
     for(let w=0; w<=HORIZON_WEEKS; w++){
@@ -759,8 +762,10 @@ function syncRecurringSessions(s){
         const dt=ymd(d)+"T"+t.time;
         if(existing.has(dt)) return;
         if(t.skip && t.skip.includes(dt)) return;   // a manually-canceled slot — don't rebook
-        existing.add(dt); n++;
-        s.sessions.push({id:"rs"+t.id+"_"+ymd(d), clientId:t.clientId, saleId:null, datetime:dt,
+        const sid2="rs"+t.id+"_"+ymd(d);
+        if(existingIds.has(sid2)) return;            // never create a duplicate id
+        existing.add(dt); existingIds.add(sid2); n++;
+        s.sessions.push({id:sid2, clientId:t.clientId, saleId:null, datetime:dt,
           duration:60, type:t.type||"In-person", status:"scheduled", sessionNumber:n, notes:""});
       });
     }
