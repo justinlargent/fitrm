@@ -1748,7 +1748,7 @@ function noShowFromSheet(id){ const t=el("ss-notes"); const s=state.sessions.fin
 function markSession(id,status){ const s=state.sessions.find(x=>x.id===id); if(s){ s.status=status; if(status!=="completed") state.sales=state.sales.filter(x=>x.sessionId!==id); save(); render(); } closeSheet(); }
 
 function renderClients(){
-  const list=state.clients.slice().sort((a,b)=>a.name<b.name?-1:1);
+  const list=state.clients.slice().sort((a,b)=>(a.name||"").localeCompare(b.name||"", undefined, {sensitivity:"base"}));
   let h=`<div class="row between"><div class="lg-title">Clients</div>
     <button class="btn ghost" onclick="openAddMenu()">＋ Add</button></div>
     <div class="sub">${list.length} active</div>
