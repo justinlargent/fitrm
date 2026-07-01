@@ -2550,7 +2550,7 @@ function openSellPackage(cid){
         <button id="pay-no" onclick="setPaid(false)">Owed</button></div></label>
     <label class="fld" style="margin-bottom:6px"><span>Share with (optional — makes it a family pack)</span></label>
     <div class="card" style="max-height:150px;overflow-y:auto;padding:6px 12px;margin-bottom:6px">
-      ${state.clients.filter(c=>c.id!==cid).map(c=>`<label class="row between" style="padding:6px 0;cursor:pointer"><span>${c.name}</span><input type="checkbox" class="share-mem" value="${c.id}"></label>`).join("")||'<div class="meta" style="padding:6px 0">No other clients to share with yet.</div>'}
+      ${state.clients.filter(c=>c.id!==cid).sort((a,b)=>(a.name||"").localeCompare(b.name||"",undefined,{sensitivity:"base"})).map(c=>`<label class="row between" style="padding:6px 0;cursor:pointer"><span>${c.name}</span><input type="checkbox" class="share-mem" value="${c.id}"></label>`).join("")||'<div class="meta" style="padding:6px 0">No other clients to share with yet.</div>'}
     </div>
     <div class="banner" id="tax-preview" style="margin-top:16px"></div>
     ${state.profile.stripeConnected?`<button class="btn" onclick="chargeCard('${cid}')">Charge Card</button>`:''}
@@ -2644,7 +2644,7 @@ function updateEvent(id){
 }
 function deleteEvent(id){ state.events=(state.events||[]).filter(x=>x.id!==id); save(); render(); closeSheet(); switchTab("calendar"); }
 function openAddSession(prefDate,prefTime){
-  const copts=state.clients.map(c=>`<option value="${c.id}">${c.name}</option>`).join("");
+  const copts=state.clients.slice().sort((a,b)=>(a.name||"").localeCompare(b.name||"",undefined,{sensitivity:"base"})).map(c=>`<option value="${c.id}">${c.name}</option>`).join("");
   recurDays=[]; recurAutoRenew=false;
   openSheet(`<div class="sheet-title">New session</div>
     <label class="fld"><span>Client</span><select id="f-client">${copts}</select></label>
