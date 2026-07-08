@@ -911,7 +911,8 @@ function clientSessionsRemaining(cid){
   const burns=state.profile.noShowBurns;
   const used=state.sessions.filter(s=>s.clientId===cid &&
     (s.status==="completed" || (burns && s.status==="no-show"))).length;
-  return purchased-prior-used;
+  const adj=((state.clients.find(x=>x.id===cid)||{}).balanceAdjust)||0;  // manual correction
+  return purchased-prior-used+adj;
 }
 function clientLifetime(cid){ return state.sales.filter(s=>s.clientId===cid).reduce((a,s)=>a+s.pricePaid,0); }
 function clientTotalPurchased(cid){
@@ -2047,7 +2048,7 @@ function openClient(cid){
     <div class="stat-grid" style="margin-top:14px">
       ${c.payg
         ? `<div class="stat"><div class="k">Billing</div><div class="v" style="font-size:17px">Pay-as-you-go</div><div class="kpi-sub">${money(c.paygRate||0)}/session</div></div>`
-        : `<div class="stat"><div class="k">Sessions left</div><div class="v ${r<=2?'warn':'green'}">${r}</div></div>`}
+        : `<div class="stat" onclick="openFixBalance('${cid}')" style="cursor:pointer"><div class="k">Sessions left</div><div class="v ${r<=2?'warn':'green'}">${r}</div><div class="kpi-sub">tap to correct</div></div>`}
       <div class="stat"><div class="k">Lifetime spend</div><div class="v">${money(clientLifetime(cid))}</div></div>
     </div>
     <button class="btn" style="margin-top:14px" onclick="openSellPackage('${cid}')">Sell package</button>
@@ -2581,6 +2582,23 @@ function saveSale(cid){
 function markSalePaid(id){ const s=state.sales.find(x=>x.id===id); if(s){ s.paid=true; save(); render(); openClient(s.clientId); } }
 let es2Paid=true;
 function es2SetPaid(v){ es2Paid=v; const a=el("es2-paid"),b=el("es2-owed"); if(a)a.classList.toggle("on",v); if(b)b.classList.toggle("on",!v); }
+function openFixBalance(cid){
+  const c=state.clients.find(x=>x.id===cid); if(!c || c.payg) return;
+  const cur=clientSessionsRemaining(cid);
+  openSheet(`<div class="sheet-title">Correct sessions left</div>
+    <p class="muted" style="margin-top:2px">Set what ${c.name} should actually have left. Use this to fix an off count (e.g. sessions carried over from a previous pack).</p>
+    <label class="fld"><span>Sessions left</span><input id="fb-left" type="number" inputmode="numeric" value="${cur}"/></label>
+    <div style="height:8px"></div>
+    <button class="btn" onclick="saveFixBalance('${cid}')">Save</button>
+    <button class="btn sec" style="margin-top:8px" onclick="openClient('${cid}')">Cancel</button>`);
+}
+function saveFixBalance(cid){
+  const c=state.clients.find(x=>x.id===cid); if(!c) return;
+  const desired=parseInt(el("fb-left").value); if(isNaN(desired)){ openClient(cid); return; }
+  const base=clientSessionsRemaining(cid)-(c.balanceAdjust||0);  // computed count without the correction
+  c.balanceAdjust=desired-base;
+  save(); render(); closeSheet(); openClient(cid);
+}
 function openEditSale(id){
   const sale=state.sales.find(x=>x.id===id); if(!sale) return;
   const pt=state.packageTypes.find(p=>p.id===sale.packageTypeId);
