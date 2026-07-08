@@ -2070,6 +2070,7 @@ function openClient(cid){
         </div>
         ${s.paid?'':`<div class="row between" style="margin-top:10px"><span class="pill out">Unpaid</span>
           <button class="btn sec btn-sm" onclick="markSalePaid('${s.id}')">Mark paid</button></div>`}
+        <button class="btn sec btn-sm" style="margin-top:8px;width:100%" onclick="openEditSale('${s.id}')">Edit package</button>
       </div>`;}).join("")
       :`<div class="card empty">No packages yet.</div>`}
     ${(function(){
@@ -2578,6 +2579,39 @@ function saveSale(cid){
   save(); render(); closeSheet(); openClient(cid);
 }
 function markSalePaid(id){ const s=state.sales.find(x=>x.id===id); if(s){ s.paid=true; save(); render(); openClient(s.clientId); } }
+let es2Paid=true;
+function es2SetPaid(v){ es2Paid=v; const a=el("es2-paid"),b=el("es2-owed"); if(a)a.classList.toggle("on",v); if(b)b.classList.toggle("on",!v); }
+function openEditSale(id){
+  const sale=state.sales.find(x=>x.id===id); if(!sale) return;
+  const pt=state.packageTypes.find(p=>p.id===sale.packageTypeId);
+  const nm=pt?pt.name:(sale.payg?"Pay-as-you-go session":"Package");
+  const left=Math.max(0, sale.sessionsPurchased-(sale.priorUsed||0));
+  es2Paid=!!sale.paid;
+  openSheet(`<div class="sheet-title">Edit package</div>
+    <p class="muted" style="margin-top:2px">${nm} · sold ${fmtDate(sale.soldAt)}</p>
+    <label class="fld"><span>Total sessions in pack</span><input id="es2-total" type="number" inputmode="numeric" value="${sale.sessionsPurchased}"/></label>
+    <label class="fld"><span>Sessions left on this pack</span><input id="es2-left" type="number" inputmode="numeric" value="${left}"/></label>
+    <label class="fld"><span>Price paid ($)</span><input id="es2-price" type="number" inputmode="decimal" value="${sale.pricePaid}"/></label>
+    <label class="fld"><span>Payment status</span>
+      <div class="seg"><button type="button" id="es2-paid" class="${sale.paid?'on':''}" onclick="es2SetPaid(true)">Paid</button>
+        <button type="button" id="es2-owed" class="${sale.paid?'':'on'}" onclick="es2SetPaid(false)">Owed</button></div></label>
+    <div style="height:8px"></div>
+    <button class="btn" onclick="saveEditSale('${id}')">Save changes</button>
+    <button class="btn sec" style="margin-top:8px;background:transparent;color:var(--danger);border:1px solid var(--line)" onclick="deleteSale('${id}')">Delete package</button>
+    <button class="btn sec" style="margin-top:8px" onclick="openClient('${sale.clientId}')">Cancel</button>`);
+}
+function saveEditSale(id){
+  const sale=state.sales.find(x=>x.id===id); if(!sale) return;
+  const total=Math.max(1, parseInt(el("es2-total").value)||sale.sessionsPurchased);
+  let left=parseInt(el("es2-left").value); if(isNaN(left)) left=total; left=Math.max(0,Math.min(total,left));
+  sale.sessionsPurchased=total;
+  sale.priorUsed=total-left;
+  sale.pricePaid=+el("es2-price").value||0;
+  sale.paid=es2Paid;
+  sale.taxSetAside=+(sale.pricePaid*effectiveRate(state.profile.annualIncome).rate).toFixed(2);
+  save(); render(); closeSheet(); openClient(sale.clientId);
+}
+function deleteSale(id){ const sale=state.sales.find(x=>x.id===id); const cid=sale?sale.clientId:null; state.sales=state.sales.filter(x=>x.id!==id); save(); render(); closeSheet(); if(cid) openClient(cid); }
 async function chargeCard(cid){
   const pt=state.packageTypes.find(p=>p.id===el("f-pt").value); if(!pt) return;
   const client=state.clients.find(c=>c.id===cid);
