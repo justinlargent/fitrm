@@ -2303,7 +2303,8 @@ function importCSV(text){
     // Used-session dates: accept one "used_dates" cell (semicolon list) AND/OR per-date columns used_1, used_2, …
     let usedRaw=[r.used_dates||""];
     Object.keys(r).forEach(k=>{ if(/^used[_ ]?\d+$/i.test(k)) usedRaw.push(r[k]); });
-    const usedDates=parseUsedDates(usedRaw.join(";"));
+    let usedDates=parseUsedDates(usedRaw.join(";"));
+    if(psess>0 && usedDates.length>psess) usedDates=usedDates.slice(0,psess);   // never mark more used than the pack holds
     let effRem=rem;
     if(usedDates.length){
       effRem=Math.max(0, psess - usedDates.length);
