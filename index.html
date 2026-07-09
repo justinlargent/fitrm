@@ -104,6 +104,9 @@
     transition:transform .3s cubic-bezier(.32,.72,0,1); z-index:50; max-height:90vh; overflow-y:auto;}
   #sheet.show{transform:translateY(0);}
   .grab{width:38px;height:5px;background:var(--line);border-radius:3px;margin:6px auto 14px;}
+  #sheet-x{position:sticky; top:8px; z-index:4; display:block; width:32px; height:32px; margin:0 0 -32px auto;
+    border:none; border-radius:50%; background:var(--surface2); color:var(--text); font-size:15px; line-height:1; cursor:pointer;}
+  #sheet-x:active{transform:scale(.92);}
   .sheet-title{font-family:"Fraunces",serif;font-size:23px;font-weight:500;margin:0 0 4px;}
   .list-item{padding:14px 0; border-bottom:1px solid var(--line);}
   .list-item:last-child{border-bottom:none;}
@@ -641,7 +644,7 @@
 </div>
 
 <div id="scrim"></div>
-<div id="sheet"><div class="grab"></div><div id="sheet-body"></div></div>
+<div id="sheet"><button id="sheet-x" onclick="closeSheet()" aria-label="Close">✕</button><div class="grab"></div><div id="sheet-body"></div></div>
 <input type="file" id="csv-input" accept=".csv,text/csv" style="display:none" onchange="handleCSVFile(event)">
 <div id="cloud-status"></div>
 
