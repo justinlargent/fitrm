@@ -2047,7 +2047,7 @@ function openClient(cid){
     <div class="row"><div class="avatar" style="width:54px;height:54px;font-size:20px">${initials(c.name)}</div>
       <div class="grow"><div class="sheet-title" style="margin:0">${c.name}</div>
         <div class="meta">${c.phone||""}${c.email?" · "+c.email:""}</div></div>
-      <button class="btn sec btn-sm" onclick="openEditClient('${cid}')">Edit</button></div>
+      <button class="btn sec btn-sm" style="margin-right:36px" onclick="openEditClient('${cid}')">Edit</button></div>
     <div class="stat-grid" style="margin-top:14px">
       ${c.payg
         ? `<div class="stat"><div class="k">Billing</div><div class="v" style="font-size:17px">Pay-as-you-go</div><div class="kpi-sub">${money(c.paygRate||0)}/session</div></div>`
