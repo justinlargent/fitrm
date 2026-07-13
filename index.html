@@ -926,6 +926,10 @@ function clientTotalPurchased(cid){
 function remTag(cid){ const c=state.clients.find(x=>x.id===cid); if(c&&c.payg) return "pay-as-you-go";
   const total=clientTotalPurchased(cid), rem=clientSessionsRemaining(cid);
   return total>0 ? rem+"/"+total : "no pack"; }
+// Clean "sessions left" label that matches the profile's number exactly (no denominator).
+function remLeft(cid){ const c=state.clients.find(x=>x.id===cid); if(c&&c.payg) return "pay-as-you-go";
+  if(clientTotalPurchased(cid)<=0) return "no pack";
+  const r=clientSessionsRemaining(cid); return r+" session"+(r===1?"":"s")+" left"; }
 function initials(name){ return name.split(" ").map(w=>w[0]).join("").slice(0,2).toUpperCase(); }
 function incomeThisMonth(){
   const m=todayISO().slice(0,7);
@@ -1424,7 +1428,7 @@ function renderHome(){
       return `<div class="row list-item">
         <div class="timeline-time">${fmtTime(s.datetime)}</div>
         <div class="grow"><div class="name">${c?c.name:"(deleted client)"}</div>
-          <div class="meta">${remTag(s.clientId)} left · ${s.type}</div></div>
+          <div class="meta">${remLeft(s.clientId)} · ${s.type}</div></div>
         ${done?`<span class="pill ok">Done</span>`
           :`<button class="btn sec btn-sm" onclick="completeSession('${s.id}')">Complete</button>`}
       </div>`;
@@ -1459,7 +1463,7 @@ function sessionRow(s){
   return `<div class="row list-item">
     <div class="timeline-time">${fmtTime(s.datetime)}</div>
     <div class="grow"><div class="name">${name}</div>
-      <div class="meta">${remTag(s.clientId)} left · ${s.type}</div></div>
+      <div class="meta">${remLeft(s.clientId)} · ${s.type}</div></div>
     ${right}</div>`;
 }
 function calLabel(){
@@ -1587,23 +1591,33 @@ function renderTimeGrid(days){
   let cols=`<div class="tg-cols" data-start="${startH}" style="height:${H}px">`;
   days.forEach(d=>{
     cols+=`<div class="tg-col" data-day="${d}" style="height:${H}px">`;
+    const items=[];
     sessionsOn(d).forEach(s=>{
       const dt=new Date(s.datetime);
-      const top=((dt.getHours()-startH)*60+dt.getMinutes())/60*48;
-      const ht=Math.max(s.duration/60*48-2, 16);
+      const startMin=(dt.getHours()-startH)*60+dt.getMinutes(), dur=s.duration||60;
       const c=state.clients.find(x=>x.id===s.clientId);
       const cls=s.status==="completed"?"done":s.status==="scheduled"?"":"cancel";
-      cols+=`<div class="tg-event ${cls}" data-sid="${s.id}" style="top:${top}px;height:${ht}px;touch-action:none">
-        <div class="tg-ev-t">${fmtTimeShort(dt)}</div>
-        <div class="tg-ev-n">${c?c.name.split(" ")[0]:"—"} · ${remTag(s.clientId)}</div></div>`;
+      items.push({startMin, endMin:startMin+dur, dur,
+        attrs:`class="tg-event ${cls}" data-sid="${s.id}"`, extra:"touch-action:none",
+        inner:`<div class="tg-ev-t">${fmtTimeShort(dt)}</div><div class="tg-ev-n">${c?c.name.split(" ")[0]:"—"} · ${remTag(s.clientId)}</div>`});
     });
     (state.events||[]).filter(e=>e.date===d).forEach(e=>{
       const p=(e.time||"12:00").split(":").map(Number);
-      const top=(((p[0]||0)-startH)*60+(p[1]||0))/60*48;
-      const ht=Math.max((e.duration||60)/60*48-2,16);
-      cols+=`<div class="tg-event evt" style="top:${top}px;height:${ht}px;touch-action:none;background:var(--surface2);border-left:3px solid var(--rust)" onclick="openEventSheet('${e.id}')">
-        <div class="tg-ev-t">${e.time||""}</div>
-        <div class="tg-ev-n">${e.title}</div></div>`;
+      const startMin=((p[0]||0)-startH)*60+(p[1]||0), dur=e.duration||60;
+      items.push({startMin, endMin:startMin+dur, dur,
+        attrs:`class="tg-event evt" onclick="openEventSheet('${e.id}')"`, extra:"touch-action:none;background:var(--surface2);border-left:3px solid var(--rust)",
+        inner:`<div class="tg-ev-t">${e.time||""}</div><div class="tg-ev-n">${e.title}</div>`});
+    });
+    // Apple-Calendar-style overlap layout: cluster overlapping items, split the column between them.
+    items.sort((a,b)=> a.startMin-b.startMin || a.endMin-b.endMin);
+    const finalize=cl=>{ const ends=[]; cl.forEach(it=>{ let pl=false; for(let ci=0;ci<ends.length;ci++){ if(it.startMin>=ends[ci]){ it.col=ci; ends[ci]=it.endMin; pl=true; break; } } if(!pl){ it.col=ends.length; ends.push(it.endMin); } }); cl.forEach(it=>it.ncols=ends.length); };
+    let cl=[], clEnd=-1;
+    items.forEach(it=>{ if(cl.length && it.startMin>=clEnd){ finalize(cl); cl=[]; clEnd=-1; } cl.push(it); clEnd=Math.max(clEnd,it.endMin); });
+    if(cl.length) finalize(cl);
+    items.forEach(it=>{
+      const top=it.startMin/60*48, ht=Math.max(it.dur/60*48-2,16);
+      const nc=it.ncols||1, ci=it.col||0, wPct=100/nc;
+      cols+=`<div ${it.attrs} style="top:${top}px;height:${ht}px;left:calc(${ci*wPct}% + 2px);width:calc(${wPct}% - 4px);right:auto;${it.extra}">${it.inner}</div>`;
     });
     cols+=`</div>`;
   });
@@ -2376,6 +2390,7 @@ async function checkStripeReturn(){
 }
 
 /* Settings */
+const BUILD="2026.07.13";
 function openSettings(){
   const burns=state.profile.noShowBurns;
   openSheet(`<div class="sheet-title">Settings</div>
@@ -2393,7 +2408,8 @@ function openSettings(){
     <button class="btn sec" style="margin-top:8px" onclick="openDataMenu()">Demo / reset data</button>
     ${window.currentUser?`<div class="meta" style="margin:14px 2px 6px">Signed in as ${window.currentUser.email}</div>
       <button class="btn sec" style="color:var(--danger)" onclick="doLogout()">Log out</button>`:''}
-    <button class="btn sec" style="margin-top:8px" onclick="closeSheet()">Close</button>`);
+    <button class="btn sec" style="margin-top:8px" onclick="closeSheet()">Close</button>
+    <div class="meta" style="text-align:center;margin-top:14px;opacity:.6">Build ${BUILD}</div>`);
 }
 function toggleNoShow(){ state.profile.noShowBurns=!state.profile.noShowBurns; save(); render(); openSettings(); }
 
