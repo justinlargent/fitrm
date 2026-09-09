@@ -1298,7 +1298,7 @@ function nextQuarterly(){
 
 /* ============================ RENDER ============================ */
 let activeTab="home";
-let calView="3day";
+let calView="week";
 let calAnchor=todayISO();
 let sellPaid=true;
 let expRecurring=false;
@@ -1766,13 +1766,10 @@ function noShowFromSheet(id){ const t=el("ss-notes"); const s=state.sessions.fin
 function markSession(id,status){ const s=state.sessions.find(x=>x.id===id); if(s){ s.status=status; if(status!=="completed") state.sales=state.sales.filter(x=>x.sessionId!==id); save(); render(); } closeSheet(); }
 
 function renderClients(){
-  const list=state.clients.slice().sort((a,b)=>(a.name||"").localeCompare(b.name||"", undefined, {sensitivity:"base"}));
-  let h=`<div class="row between"><div class="lg-title">Clients</div>
-    <button class="btn ghost" onclick="openAddMenu()">＋ Add</button></div>
-    <div class="sub">${list.length} active</div>
-    <div style="height:14px"></div>
-    <div class="card">`;
-  h+=list.map(c=>{
+  const all=state.clients.slice().sort((a,b)=>(a.name||"").localeCompare(b.name||"", undefined, {sensitivity:"base"}));
+  const active=all.filter(c=>c.status!=="inactive");
+  const past=all.filter(c=>c.status==="inactive");
+  const rowFor=c=>{
     const r=clientSessionsRemaining(c.id);
     const cls=c.payg?"grey":(r<=0?"out":r<=2?"low":"ok");
     return `<div class="row between list-item" onclick="openClient('${c.id}')" style="cursor:pointer">
@@ -1780,7 +1777,16 @@ function renderClients(){
         <div><div class="name">${c.name}</div><div class="meta">${money(clientLifetime(c.id))} lifetime</div></div></div>
       <span class="pill ${cls}">${c.payg?"PAYG":r+" left"}</span>
     </div>`;
-  }).join("")+`</div>`;
+  };
+  let h=`<div class="row between"><div class="lg-title">Clients</div>
+    <button class="btn ghost" onclick="openAddMenu()">＋ Add</button></div>
+    <div class="sub">${active.length} active${past.length?` · ${past.length} past`:""}</div>
+    <div style="height:14px"></div>
+    <div class="card">`+(active.length?active.map(rowFor).join(""):`<div class="empty" style="padding:12px">No active clients yet</div>`)+`</div>`;
+  if(past.length){
+    h+=`<div class="sec-title">Past clients <span class="meta" style="font-weight:600;text-transform:none;letter-spacing:0">· archived — still counted in your yearly totals</span></div>
+      <div class="card" style="opacity:.72">`+past.map(rowFor).join("")+`</div>`;
+  }
   el("screen-clients").innerHTML=h;
 }
 
@@ -2044,12 +2050,18 @@ function openEditClient(cid){
     <label class="fld"><span>Per-session rate ($)</span><input id="ec-rate" type="number" inputmode="decimal" value="${c.paygRate||''}" placeholder="85"/></label>
     <div style="height:14px"></div>
     <button class="btn" onclick="saveClientEdit('${cid}')">Save changes</button>
+    <button class="btn sec" style="margin-top:8px" onclick="toggleClientStatus('${cid}')">${c.status==="inactive"?"↩ Reactivate client":"Archive — mark as past client"}</button>
     <button class="btn sec" style="margin-top:8px" onclick="openClient('${cid}')">Cancel</button>`);
 }
 function saveClientEdit(cid){
   const c=state.clients.find(x=>x.id===cid); if(!c) return;
   const name=el("ec-name").value.trim(); if(!name){ el("ec-name").focus(); return; }
   c.name=name; c.phone=el("ec-phone").value.trim(); c.email=el("ec-email").value.trim(); c.source=el("ec-source").value; c.payg=paygOn; c.paygRate=+el("ec-rate").value||0;
+  save(); render(); openClient(cid);
+}
+function toggleClientStatus(cid){
+  const c=state.clients.find(x=>x.id===cid); if(!c) return;
+  c.status = c.status==="inactive" ? "active" : "inactive";
   save(); render(); openClient(cid);
 }
 function openClient(cid){
@@ -2059,7 +2071,7 @@ function openClient(cid){
   const hist=state.sessions.filter(s=>s.clientId===cid).sort((a,b)=>a.datetime<b.datetime?1:-1).slice(0,6);
   openSheet(`
     <div class="row"><div class="avatar" style="width:54px;height:54px;font-size:20px">${initials(c.name)}</div>
-      <div class="grow"><div class="sheet-title" style="margin:0">${c.name}</div>
+      <div class="grow"><div class="sheet-title" style="margin:0">${c.name}${c.status==="inactive"?` <span class="pill grey" style="font-size:11px;vertical-align:middle">Past client</span>`:''}</div>
         <div class="meta">${c.phone||""}${c.email?" · "+c.email:""}</div></div>
       <button class="btn sec btn-sm" style="margin-right:36px" onclick="openEditClient('${cid}')">Edit</button></div>
     <div class="stat-grid" style="margin-top:14px">
@@ -2287,29 +2299,35 @@ function importCSV(text){
     let existing=null;
     if(email) existing=state.clients.find(c=>(c.email||"").trim().toLowerCase()===email);
     if(!existing) existing=state.clients.find(c=>(c.name||"").trim().toLowerCase()===name.toLowerCase());
+    const inactive=/^(inactive|former|past|archived|churned|cancelled|canceled|no|n)$/i.test((r.status||"").trim());
     let cid;
     if(existing){
       cid=existing.id; clientsMatched++;
       if(!existing.phone && (r.phone||"").trim()) existing.phone=(r.phone||"").trim();
       if(!existing.email && (r.email||"").trim()) existing.email=(r.email||"").trim();
+      if(inactive) existing.status="inactive";
     } else {
       cid="ic"+Date.now()+"_"+idx;
-      state.clients.push({id:cid, name, phone:(r.phone||"").trim(), email:(r.email||"").trim(), status:"active"});
+      state.clients.push({id:cid, name, phone:(r.phone||"").trim(), email:(r.email||"").trim(), status:inactive?"inactive":"active"});
       clientsAdded++;
     }
-    const startStr=(r.start_date||"").trim()||todayISO();
+    // sold_date drives which month the income/tax lands in; falls back to start_date, then today.
+    const startStr=(r.sold_date||r.start_date||"").trim()||todayISO();
     const remCol=(r.sessions_remaining!==undefined && String(r.sessions_remaining).trim()!=="") ? Math.max(0,parseInt(r.sessions_remaining)||0) : null;
     let psess=parseInt(r.package_sessions)||0;
     if(!psess) psess = remCol!=null ? remCol : 0;
     const rem = remCol!=null ? remCol : psess;
     const pprice=+String(r.package_price||"").replace(/[^0-9.]/g,"")||0;
+    let saleObj=null;
     if(psess>0){
       const pname=(r.package_name||"Package").trim();
       let pt=state.packageTypes.find(p=>p.name.toLowerCase()===pname.toLowerCase());
       if(!pt){ pt={id:"ipt"+Date.now()+"_"+idx, name:pname, sessions:psess, price:pprice}; state.packageTypes.push(pt); }
-      const paid=/^(y|yes|true|paid|1|x)$/i.test((r.paid||"").trim());
-      state.sales.push({id:"is"+Date.now()+"_"+idx, clientId:cid, packageTypeId:pt.id, sessionsPurchased:psess,
-        pricePaid:pprice, paymentMethod:"Imported", paid, soldAt:startStr, taxSetAside:+(pprice*rate).toFixed(2)});
+      // Historical sales default to paid (money already collected) unless explicitly marked unpaid.
+      const paid=!/^(n|no|false|unpaid|0|owed|owing|due)$/i.test((r.paid||"").trim());
+      saleObj={id:"is"+Date.now()+"_"+idx, clientId:cid, packageTypeId:pt.id, sessionsPurchased:psess,
+        pricePaid:pprice, paymentMethod:"Imported", paid, soldAt:startStr, taxSetAside:+(pprice*rate).toFixed(2)};
+      state.sales.push(saleObj);
       salesAdded++;
     }
     const days=parseDays(r.recur_days||"");
@@ -2360,6 +2378,13 @@ function importCSV(text){
         }
         state.recurringSessions.push({id:"rt"+Date.now()+"_"+idx, clientId:cid, days:sorted, time, type:"In-person", autoRenew:false, active:true});
       }
+    }
+    // Any "used" sessions not captured as dated records become priorUsed, so sessions-left stays exact.
+    if(saleObj){
+      const backfilled=(days.length && !usedDates.length && !autoRenew) ? Math.max(0, psess-rem) : 0;
+      const recorded=usedDates.length + backfilled;
+      const pu=Math.max(0, (psess-rem) - recorded);
+      if(pu>0) saleObj.priorUsed=pu;
     }
   });
   syncRecurringSessions(state);
