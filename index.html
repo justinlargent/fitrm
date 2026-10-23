@@ -665,7 +665,7 @@
 <script>
 /* ============================ STATE ============================ */
 let LS_KEY = "fitrm_poc_v1";
-const todayISO = () => new Date().toISOString().slice(0,10);
+const todayISO = () => ymd(new Date());
 
 const defaultState = () => ({
   profile:{ state:"CA", filingStatus:"single", businessType:"sole_prop", annualIncome:78000, noShowBurns:false },
@@ -719,7 +719,7 @@ function seedDynamic(s){
   s.recurringExpenses.push({id:"r2", dayOfMonth:15, category:"Phone / Internet", amount:75, note:"Cell phone", startMonth:dateOffset(-70).slice(0,7), active:true});
 }
 
-function dateOffset(days){ const d=new Date(); d.setDate(d.getDate()+days); return d.toISOString().slice(0,10); }
+function dateOffset(days){ const d=new Date(); d.setDate(d.getDate()+days); return ymd(d); }
 
 let state;
 function load(){
@@ -901,27 +901,33 @@ function effectiveRate(netProfit){
 const money=n=>"$"+Math.round(n).toLocaleString();
 const money2=n=>"$"+n.toFixed(2);
 function sharedPacksFor(cid){ return state.sales.filter(s=>Array.isArray(s.members)&&s.members.length>1&&s.members.includes(cid)); }
-function poolUsed(members){ const burns=state.profile.noShowBurns;
-  return state.sessions.filter(s=>members.includes(s.clientId) && (s.status==="completed"||(burns&&s.status==="no-show"))).length; }
+function isSharedSale(s){ return Array.isArray(s.members)&&s.members.length>1; }
+// Every package a client draws from: ones they bought plus shared packs they are a member of.
+function clientSales(cid){ return state.sales.filter(s=>s.clientId===cid || (isSharedSale(s)&&s.members.includes(cid))); }
+function countsAsUsed(s){ return s.status==="completed"||(state.profile.noShowBurns&&s.status==="no-show"); }
+// Sessions carry no link to a specific pack (saleId is null), so shared-pool usage is
+// every member's used session dated on or after the earliest shared pack sale date.
+function poolUsed(members,since){
+  return state.sessions.filter(s=>members.includes(s.clientId) && countsAsUsed(s) && (!since || String(s.datetime||"").slice(0,10)>=since)).length; }
 function clientSessionsRemaining(cid){
   const shared=sharedPacksFor(cid);
-  if(shared.length){   // family/shared pack: sessions drawn from a pool across all members
-    return shared.reduce((t,s)=> t + (s.sessionsPurchased - (s.priorUsed||0) - poolUsed(s.members)), 0);
-  }
-  const sales=state.sales.filter(s=>s.clientId===cid);
-  const purchased=sales.reduce((a,s)=>a+s.sessionsPurchased,0);
-  const prior=sales.reduce((a,s)=>a+(s.priorUsed||0),0);   // sessions already used before logging an in-progress pack
-  const burns=state.profile.noShowBurns;
-  const used=state.sessions.filter(s=>s.clientId===cid &&
-    (s.status==="completed" || (burns && s.status==="no-show"))).length;
+  const own=state.sales.filter(s=>s.clientId===cid && !isSharedSale(s));   // this client's unshared packs
+  const purchased=own.reduce((a,s)=>a+s.sessionsPurchased,0);
+  const prior=own.reduce((a,s)=>a+(s.priorUsed||0),0);   // sessions already used before logging an in-progress pack
   const adj=((state.clients.find(x=>x.id===cid)||{}).balanceAdjust)||0;  // manual correction
-  return purchased-prior-used+adj;
+  let since=null, pool=0;
+  if(shared.length){   // family/shared pack: sessions drawn from a pool across all members
+    since=shared.map(s=>String(s.soldAt||"").slice(0,10)).sort()[0]||null;
+    const members=[...new Set(shared.flatMap(s=>s.members))];
+    pool=shared.reduce((a,s)=>a+s.sessionsPurchased-(s.priorUsed||0),0) - poolUsed(members,since);
+  }
+  // Own packs cover this client's sessions before the shared pack was sold (all of them if no shared pack).
+  const used=state.sessions.filter(s=>s.clientId===cid && countsAsUsed(s) && (!since || String(s.datetime||"").slice(0,10)<since)).length;
+  return purchased-prior-used+pool+adj;
 }
 function clientLifetime(cid){ return state.sales.filter(s=>s.clientId===cid).reduce((a,s)=>a+s.pricePaid,0); }
 function clientTotalPurchased(cid){
-  const shared=sharedPacksFor(cid);
-  if(shared.length) return shared.reduce((a,s)=>a+s.sessionsPurchased,0);
-  return state.sales.filter(s=>s.clientId===cid).reduce((a,s)=>a+s.sessionsPurchased,0);
+  return clientSales(cid).reduce((a,s)=>a+s.sessionsPurchased,0);
 }
 function remTag(cid){ const c=state.clients.find(x=>x.id===cid); if(c&&c.payg) return "pay-as-you-go";
   const total=clientTotalPurchased(cid), rem=clientSessionsRemaining(cid);
@@ -1317,7 +1323,7 @@ function render(){
 function growItems(){
   const items=[], m=bizMetrics();
   const low=state.clients.filter(c=>c.status==="active").map(c=>({c,r:clientSessionsRemaining(c.id)}))
-    .filter(x=>x.r<=2 && state.sales.some(s=>s.clientId===x.c.id));
+    .filter(x=>x.r<=2 && clientSales(x.c.id).length>0);
   if(low.length){ const val=low.reduce((a,x)=>a+typicalPackagePrice(x.c.id),0);
     items.push({label:`${low.length} client${low.length===1?'':'s'} running low — sell renewals`, val, act:"switchTab('clients')"}); }
   const unpaid=state.sales.filter(s=>!s.paid);
@@ -1331,7 +1337,7 @@ function growItems(){
 }
 function growSummary(){
   const m=bizMetrics();
-  const lowClients=state.clients.filter(c=>c.status==="active").map(c=>({c,r:clientSessionsRemaining(c.id)})).filter(x=>x.r<=2 && state.sales.some(s=>s.clientId===x.c.id));
+  const lowClients=state.clients.filter(c=>c.status==="active").map(c=>({c,r:clientSessionsRemaining(c.id)})).filter(x=>x.r<=2 && clientSales(x.c.id).length>0);
   const renewVal=lowClients.reduce((a,x)=>a+typicalPackagePrice(x.c.id),0);
   const unpaid=state.sales.filter(s=>!s.paid); const collectVal=unpaid.reduce((a,s)=>a+s.pricePaid,0);
   const openSlots=Math.max(0,m.cap-m.wkSessions); const slotsVal=Math.round(openSlots*globalAvgSessionPrice());
@@ -1469,9 +1475,9 @@ function sessionRow(s){
 function calLabel(){
   const a=parseYMD(calAnchor);
   if(calView==="day") return a.toLocaleDateString(undefined,{weekday:"long",month:"long",day:"numeric"});
-  if(calView==="3day"){ const e=new Date(a.getTime()+2*DAY_MS);
+  if(calView==="3day"){ const e=new Date(a.getFullYear(),a.getMonth(),a.getDate()+2);
     return a.toLocaleDateString(undefined,{month:"short",day:"numeric"})+" – "+e.toLocaleDateString(undefined,{month:"short",day:"numeric"}); }
-  if(calView==="week"){ const s=weekStart(a), e=new Date(s.getTime()+6*DAY_MS);
+  if(calView==="week"){ const s=weekStart(a), e=new Date(s.getFullYear(),s.getMonth(),s.getDate()+6);
     return s.toLocaleDateString(undefined,{month:"short",day:"numeric"})+" – "+e.toLocaleDateString(undefined,{month:"short",day:"numeric"}); }
   return a.toLocaleDateString(undefined,{month:"long",year:"numeric"});
 }
@@ -1513,8 +1519,8 @@ function renderCalendar(){
   } else {
     const a=parseYMD(calAnchor);
     let days;
-    if(calView==="3day") days=[0,1,2].map(i=>ymd(new Date(a.getTime()+i*DAY_MS)));
-    else { const s=weekStart(a); days=[0,1,2,3,4,5,6].map(i=>ymd(new Date(s.getTime()+i*DAY_MS))); }
+    if(calView==="3day") days=[0,1,2].map(i=>ymd(new Date(a.getFullYear(),a.getMonth(),a.getDate()+i)));
+    else { const s=weekStart(a); days=[0,1,2,3,4,5,6].map(i=>ymd(new Date(s.getFullYear(),s.getMonth(),s.getDate()+i))); }
     cal+=renderTimeGrid(days);
   }
   el("screen-calendar").innerHTML=`<div class="cal-layout"><div class="cal-main">${cal}</div>${calAside()}</div>`;
@@ -2067,7 +2073,7 @@ function toggleClientStatus(cid){
 function openClient(cid){
   const c=state.clients.find(x=>x.id===cid);
   const r=clientSessionsRemaining(cid);
-  const sales=state.sales.filter(s=>s.clientId===cid);
+  const sales=clientSales(cid);
   const hist=state.sessions.filter(s=>s.clientId===cid).sort((a,b)=>a.datetime<b.datetime?1:-1).slice(0,6);
   openSheet(`
     <div class="row"><div class="avatar" style="width:54px;height:54px;font-size:20px">${initials(c.name)}</div>
