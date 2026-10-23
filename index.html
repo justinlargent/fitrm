@@ -133,6 +133,8 @@
   #auth-card .btn{margin-top:6px;}
   #auth-switch{text-align:center; color:var(--muted); font-size:14px; margin-top:18px;}
   #auth-switch a{color:var(--accent); font-weight:700; cursor:pointer;}
+  #auth-forgot{text-align:center; margin-top:12px;}
+  #auth-forgot a{color:var(--accent); font-weight:700; cursor:pointer; font-size:14px;}
   #auth-error{background:rgba(255,107,107,.14); color:var(--danger); border-radius:10px; padding:10px 12px;
     font-size:13px; margin-bottom:12px; display:none;}
   #auth-msg{background:rgba(39,192,138,.14); color:var(--accent); border-radius:10px; padding:10px 12px;
@@ -143,6 +145,12 @@
     padding:5px 12px; border-radius:999px; z-index:200; opacity:0; transition:opacity .25s, transform .25s; pointer-events:none;}
   #cloud-status.show{opacity:1; transform:translateX(-50%) translateY(0);}
   #cloud-status.warn{color:var(--warn); border-color:var(--warn);}
+  #cloud-status.tap{pointer-events:auto; cursor:pointer;}
+  #undo-bar{position:fixed; left:50%; bottom:calc(var(--safe-bottom) + 84px); transform:translateX(-50%);
+    background:var(--surface2); border:1px solid var(--line); color:var(--text); font-size:14px; font-weight:700;
+    padding:10px 12px 10px 16px; border-radius:999px; z-index:210; display:flex; align-items:center; gap:12px;
+    box-shadow:0 8px 30px rgba(0,0,0,.35); max-width:calc(100% - 24px);}
+  #undo-bar button{background:var(--accent); color:#14160d; border:0; border-radius:999px; font-weight:800; padding:8px 12px; cursor:pointer;}
   /* Calendar */
   .cal-nav{display:flex; align-items:center; justify-content:space-between; margin-bottom:10px;}
   .cal-arrow{background:var(--surface2); border:1px solid var(--line); color:var(--text);
@@ -610,12 +618,14 @@
   <div id="auth-card">
     <div id="auth-back" onclick="showHome()">← Back</div>
     <div id="auth-logo" style="font-family:'Fraunces',serif">Fitrm<span>.</span></div>
-    <div id="auth-tagline">Run your training business — clients, schedule & taxes in one place.</div>
+    <div id="auth-tagline">Run your training business. Clients, schedule, and taxes in one place.</div>
     <div id="auth-error"></div>
     <label class="auth-fld" id="name-fld" style="display:none"><span>Your name</span><input id="au-name" autocomplete="name" placeholder="Jordan Lee"/></label>
-    <label class="auth-fld"><span>Email</span><input id="au-email" type="email" autocomplete="email" inputmode="email" placeholder="you@example.com"/></label>
-    <label class="auth-fld"><span>Password</span><input id="au-pass" type="password" autocomplete="current-password" placeholder="••••••••"/></label>
+    <label class="auth-fld" id="email-fld"><span>Email</span><input id="au-email" type="email" autocomplete="email" inputmode="email" placeholder="you@example.com"/></label>
+    <label class="auth-fld" id="pass-fld"><span id="pass-label">Password</span><input id="au-pass" type="password" autocomplete="current-password" placeholder="••••••••"/></label>
+    <label class="auth-fld" id="pass2-fld" style="display:none"><span>Confirm new password</span><input id="au-pass2" type="password" autocomplete="new-password" placeholder="••••••••"/></label>
     <button class="btn" id="au-submit" onclick="authSubmit()">Log in</button>
+    <div id="auth-forgot"><a onclick="showForgot()">Forgot password?</a></div>
     <div id="auth-switch">New here? <a onclick="authToggle()">Create an account</a></div>
     <div id="auth-msg"></div>
   </div>
@@ -846,7 +856,13 @@ function syncRecurring(s){
     }
   });
 }
-function save(s){ try{ localStorage.setItem(LS_KEY, JSON.stringify(s||state)); }catch(e){} if(window.__cloudSave) window.__cloudSave(); }
+function saveLocalOnly(s){ try{ localStorage.setItem(LS_KEY, JSON.stringify(s||state)); }catch(e){} }
+function save(s){
+  saveLocalOnly(s);
+  window.__pushOpts = { allowEmptyPush:false, fullReplace:false };
+  if(window.currentUser){ try{ localStorage.setItem("fitrm_pending_"+window.currentUser.id, "1"); }catch(e){} }
+  if(window.__cloudSave) window.__cloudSave();
+}
 function emptyState(){ return { profile:{ state:"CA", filingStatus:"single", businessType:"sole_prop", annualIncome:0, noShowBurns:false },
   packageTypes:[], clients:[], sales:[], sessions:[], expenses:[], taxPayments:[], recurringExpenses:[], recurringSessions:[] }; }
 
@@ -2145,18 +2161,124 @@ function deleteClient(cid){
 }
 
 function openDataMenu(){
+  const uid=window.currentUser&&window.currentUser.id;
+  let hasBackup=false, hasStash=false;
+  try{
+    if(uid){
+      hasBackup=!!localStorage.getItem("fitrm_backup_"+uid);
+      hasStash=!!localStorage.getItem("fitrm_stash_"+uid);
+    }
+  }catch(e){}
   openSheet(`<div class="sheet-title">Demo data</div>
     <p class="muted" style="margin-top:2px">Populate the app so you can see a realistic, busy schedule.</p>
     <button class="btn" onclick="addDemoSchedule()">Add 7 clients + a busy 2 weeks</button>
-    <div class="fab-note" style="margin:8px 0 16px">Adds demo clients and ~5–7 sessions per day, on top of what's already here.</div>
-    <button class="btn sec" onclick="clearAll()">Start empty (clear all data)</button>
-    <button class="btn sec" style="margin-top:8px;background:transparent;color:var(--danger);border:1px solid var(--line)" onclick="resetAll()">Reset to demo sample</button>
+    <div class="fab-note" style="margin:8px 0 16px">Adds demo clients and about 5 to 7 sessions per day, on top of what's already here.</div>
+    <button class="btn sec" onclick="openClearConfirm()">Start empty (clear all data)</button>
+    <button class="btn sec" style="margin-top:8px;background:transparent;color:var(--danger);border:1px solid var(--line)" onclick="openResetConfirm()">Reset to demo sample</button>
+    ${hasBackup?`<button class="btn sec" style="margin-top:8px" onclick="openRestoreConfirm()">Restore the backup on this device</button>`:""}
+    ${hasStash?`<button class="btn sec" style="margin-top:8px" onclick="addStashedItems()">Add items found only on this device</button>`:""}
     <button class="btn sec" style="margin-top:8px" onclick="closeSheet()">Cancel</button>`);
 }
-function clearAll(){
-  const p=state.profile;
-  state={profile:p, packageTypes:[], clients:[], sales:[], sessions:[], expenses:[], taxPayments:[], recurringExpenses:[], recurringSessions:[]};
-  save(); render(); closeSheet(); switchTab("clients");
+function openTypedConfirm(opts){
+  openSheet(`<div class="sheet-title">${opts.title}</div>
+    <p class="muted" style="margin-top:2px">${opts.body}</p>
+    <label class="fld"><span>Type ${opts.word} to continue</span><input id="confirm-text" autocomplete="off" autocapitalize="characters" placeholder="${opts.word}"/></label>
+    <button class="btn" id="confirm-go" disabled style="opacity:.45">${opts.go}</button>
+    <button class="btn sec" style="margin-top:8px" onclick="closeSheet()">Cancel</button>`);
+  const input=el("confirm-text"), btn=el("confirm-go");
+  const syncBtn=()=>{ const ok=input.value.trim()===opts.word; btn.disabled=!ok; btn.style.opacity=ok?"1":".45"; };
+  input.addEventListener("input", syncBtn);
+  btn.addEventListener("click", ()=>{ if(input.value.trim()!==opts.word) return; opts.run(); });
+  syncBtn();
+  setTimeout(()=>{ try{ input.focus(); }catch(e){} }, 40);
+}
+function backupCurrent(){
+  const uid=window.currentUser&&window.currentUser.id; if(!uid) return;
+  try{ localStorage.setItem("fitrm_backup_"+uid, JSON.stringify({ at:new Date().toISOString(), data:state })); }catch(e){}
+}
+function showUndoBar(label, onUndo){
+  let bar=el("undo-bar");
+  if(!bar){ bar=document.createElement("div"); bar.id="undo-bar"; document.body.appendChild(bar); }
+  bar.innerHTML="";
+  const span=document.createElement("span"); span.textContent=label; bar.appendChild(span);
+  if(onUndo){
+    const b=document.createElement("button"); b.type="button"; b.textContent="Undo";
+    b.addEventListener("click", ()=>{ clearTimeout(bar._t); bar.remove(); onUndo(); });
+    bar.appendChild(b);
+  }
+  clearTimeout(bar._t);
+  bar._t=setTimeout(()=>{ if(bar.parentNode) bar.remove(); }, 15000);
+}
+async function applyWipe(next, opts, undoLabel){
+  backupCurrent();
+  window.__pushOpts={ allowEmptyPush:!!opts.allowEmptyPush, fullReplace:!!opts.fullReplace };
+  state=next;
+  saveLocalOnly(state);
+  if(window.currentUser){ try{ localStorage.setItem("fitrm_pending_"+window.currentUser.id,"1"); }catch(e){} }
+  closeSheet(); render(); switchTab("clients");
+  let result=null;
+  if(window.__cloudFlush) result=await window.__cloudFlush();
+  if(result && result.refused) return;
+  showUndoBar(undoLabel, restoreBackupNow);
+}
+function openClearConfirm(){
+  openTypedConfirm({
+    title:"Clear all data?",
+    body:"This erases every client, session, package, and expense on this device and in the copy saved to your account. A backup stays in this browser. Type DELETE to continue.",
+    word:"DELETE",
+    go:"Erase data",
+    run:function(){
+      const p=state.profile||{};
+      applyWipe({profile:p, packageTypes:[], clients:[], sales:[], sessions:[], expenses:[], taxPayments:[], recurringExpenses:[], recurringSessions:[], events:[]},
+        { allowEmptyPush:true, fullReplace:true }, "Data erased. A backup is on this device.");
+    }
+  });
+}
+function openResetConfirm(){
+  openTypedConfirm({
+    title:"Reset to the demo sample?",
+    body:"This replaces your clients, sessions, and sales with sample people, including the copy saved to your account. A backup stays in this browser. Type RESET to continue.",
+    word:"RESET",
+    go:"Reset to demo",
+    run:function(){
+      const stripeId=state.profile&&state.profile.stripeAccountId;
+      const stripeOn=state.profile&&state.profile.stripeConnected;
+      const next=defaultState(); seedDynamic(next);
+      if(stripeId){ next.profile.stripeAccountId=stripeId; next.profile.stripeConnected=!!stripeOn; }
+      applyWipe(next, { allowEmptyPush:false, fullReplace:true }, "Replaced with the sample. A backup is on this device.");
+    }
+  });
+}
+function openRestoreConfirm(){
+  openTypedConfirm({
+    title:"Restore the backup?",
+    body:"This puts the last backup on this device back into your account, unless a newer copy was saved somewhere else. Type RESTORE to continue.",
+    word:"RESTORE",
+    go:"Restore backup",
+    run:function(){ closeSheet(); restoreBackupNow(); }
+  });
+}
+function restoreBackupNow(){
+  const uid=window.currentUser&&window.currentUser.id; if(!uid) return;
+  let raw=null; try{ raw=localStorage.getItem("fitrm_backup_"+uid); }catch(e){}
+  if(!raw) return;
+  let backup=null; try{ backup=JSON.parse(raw).data; }catch(e){ return; }
+  if(!backup) return;
+  // Put records back without deleting anything saved after the backup.
+  if(window.FitrmSync) state=migrate(window.FitrmSync.unionAdd(state, backup));
+  else state=migrate(backup);
+  if(backup.profile) state.profile=JSON.parse(JSON.stringify(backup.profile));
+  save(); render();
+  if(window.__cloudFlush) window.__cloudFlush();
+}
+function addStashedItems(){
+  const uid=window.currentUser&&window.currentUser.id;
+  if(!uid || !window.FitrmSync) return;
+  let raw=null; try{ raw=localStorage.getItem("fitrm_stash_"+uid); }catch(e){}
+  if(!raw) return;
+  try{ state=migrate(window.FitrmSync.unionAdd(state, JSON.parse(raw))); }catch(e){ return; }
+  try{ localStorage.removeItem("fitrm_stash_"+uid); }catch(e){}
+  save(); render(); closeSheet();
 }
 function addDemoSchedule(){
   const names=["Alex Rivera","Sam Okafor","Jordan Kim","Taylor Nguyen","Casey Morgan","Riley Patel","Morgan Diaz"];
@@ -2192,10 +2314,8 @@ function addDemoSchedule(){
   }
   save(); render(); closeSheet(); switchTab("calendar");
 }
-function resetAll(){
-  try{ localStorage.removeItem(LS_KEY); }catch(e){}
-  state=defaultState(); seedDynamic(state); save(); render(); closeSheet(); switchTab("calendar");
-}
+function resetAll(){ openResetConfirm(); }
+function clearAll(){ openClearConfirm(); }
 
 /* ---- CSV import ---- */
 const CSV_TEMPLATE_HEADERS=["name","email","package_name","package_sessions","package_price","paid",
@@ -2861,6 +2981,7 @@ el("scrim").addEventListener("click", closeSheet);
 function startApp(uid){ if(uid) LS_KEY = "fitrm_poc_" + uid; state = load(); render(); }
 </script>
 
+<script src="lib/sync-safety.js"></script>
 <script>
 /* ===================== SUPABASE AUTH ===================== */
 const SB_URL  = "https://ykjcflkffletanpbwidj.supabase.co";
@@ -2868,24 +2989,63 @@ const SB_ANON = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsIn
 const sb = window.supabase.createClient(SB_URL, SB_ANON);
 let authMode = "login";
 const aEl = id => document.getElementById(id);
+const recoveryRequested = (function(){
+  try{
+    return new URLSearchParams(location.search).get("reset")==="1" || (location.hash||"").indexOf("type=recovery")!==-1;
+  }catch(e){ return false; }
+})();
+let recoveryActive = recoveryRequested;
 
+function escAuth(s){
+  return String(s==null?"":s).replace(/[&<>"']/g, function(c){
+    return ({"&":"&amp;","<":"&lt;",">":"&gt;","\"":"&quot;","'":"&#39;"})[c];
+  });
+}
 function setAuthMode(m){
   authMode = m;
-  aEl("name-fld").style.display = m==="signup" ? "block" : "none";
-  aEl("au-submit").textContent  = m==="signup" ? "Create account" : "Log in";
-  aEl("auth-switch").innerHTML  = m==="signup"
+  const signup = m==="signup", forgot = m==="forgot", recover = m==="recover";
+  aEl("name-fld").style.display = signup ? "block" : "none";
+  aEl("email-fld").style.display = recover ? "none" : "block";
+  aEl("pass-fld").style.display = forgot ? "none" : "block";
+  aEl("pass2-fld").style.display = recover ? "block" : "none";
+  aEl("pass-label").textContent = recover ? "New password" : "Password";
+  aEl("au-pass").setAttribute("autocomplete", (recover || signup) ? "new-password" : "current-password");
+  aEl("au-submit").textContent = signup ? "Create account" : forgot ? "Send reset link" : recover ? "Save new password" : "Log in";
+  aEl("auth-switch").style.display = recover ? "none" : "block";
+  aEl("auth-switch").innerHTML = signup
     ? 'Already have an account? <a onclick="authToggle()">Log in</a>'
-    : 'New here? <a onclick="authToggle()">Create an account</a>';
+    : forgot
+      ? '<a onclick="showLogin()">Back to log in</a>'
+      : 'New here? <a onclick="authToggle()">Create an account</a>';
+  aEl("auth-forgot").style.display = m==="login" ? "block" : "none";
   authErr(""); authMsg("");
 }
 function authToggle(){ setAuthMode(authMode==="login" ? "signup" : "login"); }
-function showAuth(m){ aEl("home-screen").style.display="none"; aEl("auth-screen").style.display="flex"; setAuthMode(m||"signup"); aEl("au-email").focus(); }
+function showLogin(){ setAuthMode("login"); }
+function showForgot(){ setAuthMode("forgot"); const em=aEl("au-email"); if(em) em.focus(); }
+function showAuth(m){
+  aEl("home-screen").style.display="none";
+  aEl("auth-screen").style.display="flex";
+  aEl("frame").style.display="none";
+  setAuthMode(m||"signup");
+  if((m||"signup")!=="recover" && aEl("au-email")) aEl("au-email").focus();
+}
 function showHome(){ aEl("auth-screen").style.display="none"; aEl("home-screen").style.display="block"; }
+function showRecover(){
+  recoveryActive = true;
+  aEl("home-screen").style.display="none";
+  aEl("frame").style.display="none";
+  aEl("auth-screen").style.display="flex";
+  setAuthMode("recover");
+  authMsg("Choose a new password for your account.");
+}
 function hmScroll(id){ const e=aEl(id); if(e) e.scrollIntoView({ behavior:"smooth" }); }
-function authErr(m){ const e=aEl("auth-error"); e.textContent=m; e.style.display=m?"block":"none"; }
-function authMsg(m){ const e=aEl("auth-msg"); e.innerHTML=m; e.style.display=m?"block":"none"; }
+function authErr(m){ const e=aEl("auth-error"); if(!e) return; e.textContent=m||""; e.style.display=m?"block":"none"; }
+function authMsg(m){ const e=aEl("auth-msg"); if(!e) return; e.innerHTML=m||""; e.style.display=m?"block":"none"; }
 
 async function authSubmit(){
+  if(authMode==="forgot") return sendReset();
+  if(authMode==="recover") return saveNewPassword();
   const email=aEl("au-email").value.trim(), pass=aEl("au-pass").value;
   if(!email || !pass){ authErr("Enter your email and password."); return; }
   aEl("au-submit").disabled=true; authErr(""); authMsg("");
@@ -2894,24 +3054,70 @@ async function authSubmit(){
       const name=aEl("au-name").value.trim();
       const { data, error } = await sb.auth.signUp({ email, password:pass, options:{ data:{ name } } });
       if(error) authErr(error.message);
-      else if(data.session) enterApp(data.user);                 // email confirmation off
-      else { authMsg("Check your email to confirm your account, then log in."); authMode="signup"; authToggle(); }
+      else if(data && data.session) enterApp(data.user);
+      else {
+        window.__signupEmail = email;
+        setAuthMode("login");
+        authMsg("Check "+escAuth(email)+" to confirm your account, then log in."
+          + "<div style=\"margin-top:8px\"><button type=\"button\" class=\"btn sec btn-sm\" onclick=\"resendSignup()\">Resend email</button></div>");
+      }
     } else {
       const { data, error } = await sb.auth.signInWithPassword({ email, password:pass });
       if(error) authErr(error.message); else enterApp(data.user);
     }
-  }catch(e){ authErr("Couldn't reach the server. Double-check the connection keys."); }
+  }catch(e){ authErr("Couldn't reach the server. Check your internet and try again."); }
   aEl("au-submit").disabled=false;
 }
+async function resendSignup(){
+  const email = window.__signupEmail || (aEl("au-email") && aEl("au-email").value.trim());
+  if(!email){ authErr("Enter your email first."); return; }
+  authErr("");
+  try{
+    const { error } = await sb.auth.resend({ type:"signup", email: email });
+    if(error) authErr(error.message);
+    else authMsg("Sent another confirmation email to "+escAuth(email)+".");
+  }catch(e){ authErr("Couldn't reach the server. Check your internet and try again."); }
+}
+async function sendReset(){
+  const email=aEl("au-email").value.trim();
+  if(!email){ authErr("Enter the email on your account."); return; }
+  aEl("au-submit").disabled=true; authErr(""); authMsg("");
+  try{
+    const redirectTo = location.origin + "/?reset=1";
+    const { error } = await sb.auth.resetPasswordForEmail(email, { redirectTo: redirectTo });
+    if(error) authErr(error.message);
+    else authMsg("If an account exists for "+escAuth(email)+", a reset link is on its way. Open that link on this device to set a new password.");
+  }catch(e){ authErr("Couldn't reach the server. Check your internet and try again."); }
+  aEl("au-submit").disabled=false;
+}
+async function saveNewPassword(){
+  const p1=aEl("au-pass").value, p2=aEl("au-pass2").value;
+  if(!p1 || p1.length<6){ authErr("Use at least 6 characters."); return; }
+  if(p1!==p2){ authErr("Those passwords don't match."); return; }
+  aEl("au-submit").disabled=true; authErr("");
+  try{
+    const got = await sb.auth.getSession();
+    const session = got && got.data && got.data.session;
+    if(!session){ authErr("That reset link is missing or has expired. Request a new one."); aEl("au-submit").disabled=false; return; }
+    const { error } = await sb.auth.updateUser({ password: p1 });
+    if(error){ authErr(error.message); aEl("au-submit").disabled=false; return; }
+    recoveryActive = false;
+    try{ history.replaceState({}, "", location.pathname); }catch(e){}
+    enterApp(session.user);
+  }catch(e){ authErr("Couldn't reach the server. Check your internet and try again."); aEl("au-submit").disabled=false; }
+}
+
 async function doLogout(){ try{ await sb.auth.signOut(); }catch(e){} location.reload(); }
 
 async function enterApp(user){
+  if(recoveryActive) return;
   window.currentUser = user;
   aEl("home-screen").style.display = "none";
   aEl("auth-screen").style.display = "none";
   aEl("frame").style.display = "flex";
-  LS_KEY = "fitrm_poc_" + user.id;            // per-account local cache
+  LS_KEY = "fitrm_poc_" + user.id;
   state = await loadStateForUser(user.id);
+  if(recoveryActive) return;
   render();
   maybeWelcome();
   checkStripeReturn();
@@ -2925,7 +3131,6 @@ async function enterApp(user){
 async function reconcilePayments(){
   if(!window.currentUser) return;
   try{
-    // First, have the server confirm pending payments straight from Stripe (no webhook needed).
     if(state.profile && state.profile.stripeAccountId){
       try{
         await fetch("/api/refresh-payments",{method:"POST",headers:{"Content-Type":"application/json"},
@@ -2941,71 +3146,272 @@ async function reconcilePayments(){
   }catch(e){}
 }
 
-// Load this trainer's data: cloud first, then local cache, else empty. Migrate local->cloud on first run.
-async function loadStateForUser(uid){
-  let cloud = null;
-  try{
-    const { data } = await sb.from("app_state").select("data").eq("trainer_id", uid).maybeSingle();
-    if(data && data.data) cloud = data.data;
-  }catch(e){ /* offline — fall back to local cache */ }
+let cloudTimer = null;
+let pushChain = Promise.resolve();
+let pushEpoch = 0;
+let syncHold = false;
+let baseVersion = 0;
+let baseUpdatedAt = null;
+let baseSnapshot = null;
 
-  if(cloud){
-    const s = migrate(cloud);
-    try{ localStorage.setItem(LS_KEY, JSON.stringify(s)); }catch(e){}
-    syncRecurring(s); syncRecurringSessions(s);
-    return s;
+function accountId(){ return window.currentUser && window.currentUser.id; }
+function readStore(key){ try{ const r=localStorage.getItem(key); return r?JSON.parse(r):null; }catch(e){ return null; } }
+function writeStore(key, val){ try{ localStorage.setItem(key, JSON.stringify(val)); }catch(e){} }
+function rememberBase(doc, updatedAt){
+  baseSnapshot = JSON.parse(JSON.stringify(doc));
+  baseVersion = Number(doc && doc.syncVersion) || 0;
+  baseUpdatedAt = updatedAt || null;
+  const id=accountId(); if(!id) return;
+  writeStore("fitrm_base_snap_"+id, baseSnapshot);
+  writeStore("fitrm_base_meta_"+id, { syncVersion: baseVersion, updatedAt: baseUpdatedAt });
+}
+function markPending(){ const id=accountId(); if(id) try{ localStorage.setItem("fitrm_pending_"+id,"1"); }catch(e){} }
+function clearPending(){ const id=accountId(); if(id) try{ localStorage.removeItem("fitrm_pending_"+id); }catch(e){} }
+function rowData(row){
+  if(!row || row.data==null) return null;
+  if(typeof row.data==="string"){ try{ return JSON.parse(row.data); }catch(e){ return null; } }
+  return row.data;
+}
+function resultRows(result){
+  if(!result || result.error) return [];
+  if(Array.isArray(result.data)) return result.data;
+  return result.data ? [result.data] : [];
+}
+
+async function loadStateForUser(userId){
+  syncHold = false;
+  const localRaw = readStore(LS_KEY);
+  const local = localRaw ? migrate(JSON.parse(JSON.stringify(localRaw))) : null;
+  let pending = false;
+  try{ pending = localStorage.getItem("fitrm_pending_"+userId)==="1"; }catch(e){}
+  baseSnapshot = readStore("fitrm_base_snap_"+userId);
+  const meta = readStore("fitrm_base_meta_"+userId);
+  if(baseSnapshot && meta && baseSnapshot.syncVersion==null) baseSnapshot.syncVersion = Number(meta.syncVersion)||0;
+  baseVersion = meta ? (Number(meta.syncVersion)||0) : (Number(baseSnapshot && baseSnapshot.syncVersion)||0);
+  baseUpdatedAt = meta ? meta.updatedAt : null;
+
+  let remote = null, remoteUpdatedAt = null, loadError = !window.FitrmSync;
+  if(!loadError){
+    try{
+      const res = await sb.from("app_state").select("data, updated_at").eq("trainer_id", userId).maybeSingle();
+      if(res.error) loadError = true;
+      else if(res.data){
+        remote = rowData(res.data);
+        if(remote) remote = migrate(JSON.parse(JSON.stringify(remote)));
+        remoteUpdatedAt = res.data.updated_at || null;
+      }
+    }catch(e){ loadError = true; }
   }
+  const plan = window.FitrmSync
+    ? window.FitrmSync.planLoad({ local: local, remote: remote, base: baseSnapshot, loadError: loadError, pending: pending })
+    : { action:"hold", state: local, push:false, reason:"load-failed" };
 
-  // No cloud record yet: use local cache if present (e.g. data from before sync), else start empty.
-  let local = null;
-  try{ const r = localStorage.getItem(LS_KEY); if(r) local = migrate(JSON.parse(r)); }catch(e){}
-  const s = local || emptyState();
+  if(plan.action==="hold"){
+    syncHold = true;
+    const held = plan.state ? migrate(JSON.parse(JSON.stringify(plan.state))) : emptyState();
+    syncRecurring(held); syncRecurringSessions(held);
+    setSyncStatus("loadfail");
+    return held;
+  }
+  if(plan.stashLocal && local) writeStore("fitrm_stash_"+userId, local);
+  let s = plan.state ? migrate(JSON.parse(JSON.stringify(plan.state))) : emptyState();
   syncRecurring(s); syncRecurringSessions(s);
-  try{ await sb.from("app_state").upsert({ trainer_id: uid, data: s, updated_at: new Date().toISOString() }); }catch(e){}
+  if(plan.push){
+    state = s;
+    window.__pushOpts = { allowEmptyPush:false, fullReplace:false };
+    await cloudPush();
+    if(plan.reason==="empty-local") setSyncStatus("kept");
+    return state;
+  }
+  if(remote) rememberBase(remote, remoteUpdatedAt);
+  clearPending();
+  try{ localStorage.setItem(LS_KEY, JSON.stringify(s)); }catch(e){}
+  if(plan.reason==="empty-local") setSyncStatus("kept");
+  else if(plan.stashLocal) setSyncStatus("stashed");
   return s;
 }
 
-// Debounced cloud save (hooked into the app's save())
-let cloudTimer = null;
 function cloudSaveDebounced(){
-  if(!window.currentUser) return;
+  if(!window.currentUser || syncHold){ if(syncHold) setSyncStatus("loadfail"); return; }
   clearTimeout(cloudTimer);
   setSyncStatus("saving");
-  cloudTimer = setTimeout(cloudPush, 700);
+  cloudTimer = setTimeout(function(){ cloudPush(); }, 700);
 }
-async function cloudPush(){
-  if(!window.currentUser) return;
-  try{
-    const { error } = await sb.from("app_state").upsert({
-      trainer_id: window.currentUser.id, data: state, updated_at: new Date().toISOString()
-    });
-    setSyncStatus(error ? "offline" : "saved");
-  }catch(e){ setSyncStatus("offline"); }
+function cloudPush(){
+  const opts = Object.assign({ allowEmptyPush:false, fullReplace:false }, window.__pushOpts||{});
+  window.__pushOpts = { allowEmptyPush:false, fullReplace:false };
+  const epoch = ++pushEpoch;
+  const run = pushChain.then(function(){ return doCloudPush(opts, epoch); });
+  pushChain = run.then(function(){}, function(){});
+  return run;
 }
 window.__cloudSave = cloudSaveDebounced;
-// Live sync across tabs in the same browser: when another tab saves, mirror it here instantly.
+window.__cloudFlush = function(){ clearTimeout(cloudTimer); return cloudPush(); };
+
+function adoptRemote(remote, updatedAt, status, renderNow, stash){
+  if(stash && state) writeStore("fitrm_stash_"+accountId(), JSON.parse(JSON.stringify(state)));
+  if(remote){
+    const doc = JSON.parse(JSON.stringify(remote));
+    state = migrate(JSON.parse(JSON.stringify(remote)));
+    syncRecurring(state); syncRecurringSessions(state);
+    rememberBase(doc, updatedAt);
+  }
+  clearPending();
+  saveLocalOnly(state);
+  if(renderNow && typeof render==="function") render();
+  setSyncStatus(status || "kept");
+  return { ok:false, refused:true, reason: status };
+}
+
+async function doCloudPush(opts, epoch){
+  const newer = function(){ return epoch !== pushEpoch; };
+  if(newer()) return { ok:false, reason:"superseded" };
+  if(!accountId()) return { ok:false, reason:"signed-out" };
+  if(syncHold){ setSyncStatus("loadfail"); return { ok:false, reason:"hold" }; }
+  if(!window.FitrmSync){ markPending(); setSyncStatus("offline"); return { ok:false, reason:"offline" }; }
+  let res;
+  try{ res = await sb.from("app_state").select("data, updated_at").eq("trainer_id", accountId()).maybeSingle(); }
+  catch(e){ if(newer()) return { ok:false, reason:"superseded" }; markPending(); setSyncStatus("offline"); return { ok:false, reason:"offline" }; }
+  if(newer()) return { ok:false, reason:"superseded" };
+  if(res.error){ markPending(); setSyncStatus("offline"); return { ok:false, reason:"offline" }; }
+  const row = res.data || null;
+  const remote = rowData(row);
+  let plan = window.FitrmSync.planPush({
+    local: state,
+    remote: remote,
+    baseUpdatedAt: baseUpdatedAt,
+    remoteUpdatedAt: row && row.updated_at,
+    baseVersion: baseVersion,
+    allowEmptyPush: !!opts.allowEmptyPush,
+    fullReplace: !!opts.fullReplace
+  });
+  if(plan.action==="refuse"){
+    const status = plan.reason==="stale-replace" ? "conflict" : "kept";
+    return adoptRemote(plan.state || remote, row && row.updated_at, status, true, false);
+  }
+  if(plan.action==="skip"){ clearPending(); setSyncStatus("saved"); return { ok:true, reason:"skip" }; }
+  if(plan.action==="conflict"){
+    if(!baseSnapshot) return adoptRemote(remote, row && row.updated_at, "stashed", true, true);
+    state = migrate(window.FitrmSync.mergeAppState(baseSnapshot, state, remote));
+    syncRecurring(state); syncRecurringSessions(state);
+  }
+  if(newer()) return { ok:false, reason:"superseded" };
+  const nextVersion = ((remote && Number(remote.syncVersion)) || 0) + 1;
+  const payload = JSON.parse(JSON.stringify(state));
+  payload.syncVersion = nextVersion;
+  state.syncVersion = nextVersion;
+  const newAt = new Date().toISOString();
+  try{
+    let result;
+    if(!row){
+      result = await sb.from("app_state").insert({ trainer_id: accountId(), data: payload, updated_at: newAt }).select("updated_at");
+    } else {
+      let q = sb.from("app_state").update({ data: payload, updated_at: newAt }).eq("trainer_id", accountId());
+      if(row.updated_at) q = q.eq("updated_at", row.updated_at);
+      result = await q.select("updated_at");
+    }
+    let wrote = resultRows(result);
+    if((!result || !result.error) && !wrote.length && row){
+      // A timestamp compare can miss if the server formats updated_at differently.
+      // Retry only when the version we just read is still the one we started from.
+      try{
+        const again = await sb.from("app_state").select("data, updated_at").eq("trainer_id", accountId()).maybeSingle();
+        const againRemote = again && rowData(again.data);
+        const againVersion = againRemote && Number(againRemote.syncVersion) || 0;
+        const started = remote && Number(remote.syncVersion) || 0;
+        if(again && !again.error && againVersion===started && !newer()){
+          const retry = await sb.from("app_state").update({ data: payload, updated_at: newAt }).eq("trainer_id", accountId()).select("updated_at");
+          if(retry && !retry.error) wrote = resultRows(retry);
+        }
+      }catch(e){}
+    }
+    if((result && result.error) || !wrote.length){
+      if(newer()) return { ok:false, reason:"superseded" };
+      markPending();
+      state.syncVersion = baseVersion || 0;
+      setSyncStatus("conflict");
+      return { ok:false, refused: !!opts.fullReplace, reason:"race" };
+    }
+    rememberBase(payload, wrote[0].updated_at || newAt);
+    if(newer()) return { ok:false, reason:"superseded" };
+    clearPending();
+    saveLocalOnly(state);
+    setSyncStatus(plan.action==="conflict" ? "merged" : "saved");
+    return { ok:true, reason: plan.action==="conflict" ? "merged" : "saved" };
+  }catch(e){
+    if(newer()) return { ok:false, reason:"superseded" };
+    markPending();
+    setSyncStatus("offline");
+    return { ok:false, reason:"offline" };
+  }
+}
+
 window.addEventListener("storage", function(e){
-  if(!window.currentUser || e.key!==LS_KEY || !e.newValue) return;
-  try{ state=migrate(JSON.parse(e.newValue)); syncRecurring(state); syncRecurringSessions(state); render(); }catch(_){}
+  if(!window.currentUser || !e.newValue) return;
+  const id=window.currentUser.id;
+  if(e.key===LS_KEY && e.newValue){
+    try{ state=migrate(JSON.parse(e.newValue)); syncRecurring(state); syncRecurringSessions(state); render(); }catch(_){}
+  } else if(e.key==="fitrm_base_meta_"+id && e.newValue){
+    try{ const meta=JSON.parse(e.newValue); baseVersion=Number(meta.syncVersion)||0; baseUpdatedAt=meta.updatedAt||null; }catch(_){}
+  } else if(e.key==="fitrm_base_snap_"+id && e.newValue){
+    try{ baseSnapshot=JSON.parse(e.newValue); }catch(_){}
+  }
 });
 
 function setSyncStatus(s){
   const e = aEl("cloud-status"); if(!e) return;
   clearTimeout(e._t);
+  e.onclick = null;
   if(s==="saving"){ e.textContent="Syncing…"; e.className="show"; }
   else if(s==="saved"){ e.textContent="Saved ✓"; e.className="show"; e._t=setTimeout(()=>e.className="",1100); }
-  else { e.textContent="Offline · saved on this device"; e.className="show warn"; e._t=setTimeout(()=>e.className="",2600); }
+  else if(s==="offline"){ e.textContent="Offline, saved on this device"; e.className="show warn"; e._t=setTimeout(()=>e.className="",2600); }
+  else if(s==="loadfail"){
+    e.textContent="Couldn't load your data. Tap to retry.";
+    e.className="show warn tap";
+    e.onclick=function(){ location.reload(); };
+  }
+  else if(s==="kept"){ e.textContent="Kept your saved copy"; e.className="show"; e._t=setTimeout(()=>e.className="",2400); }
+  else if(s==="merged"){ e.textContent="Combined changes from another device"; e.className="show"; e._t=setTimeout(()=>e.className="",2400); }
+  else if(s==="conflict"){ e.textContent="This account changed on another device, so nothing was replaced."; e.className="show warn"; e._t=setTimeout(()=>e.className="",4000); }
+  else if(s==="stashed"){ e.textContent="Kept your account copy. Extras from this device were held back."; e.className="show warn"; e._t=setTimeout(()=>e.className="",4000); }
 }
+
+function flushCloudIfPending(){
+  if(!window.currentUser || syncHold) return;
+  let pending=false;
+  try{ pending=localStorage.getItem("fitrm_pending_"+window.currentUser.id)==="1"; }catch(e){}
+  if(pending && window.__cloudFlush) window.__cloudFlush();
+}
+document.addEventListener("visibilitychange", function(){
+  if(document.visibilityState==="hidden") flushCloudIfPending();
+});
+window.addEventListener("pagehide", flushCloudIfPending);
+window.addEventListener("online", flushCloudIfPending);
+
+sb.auth.onAuthStateChange(function(event){
+  if(event==="PASSWORD_RECOVERY"){
+    recoveryActive = true;
+    showRecover();
+  }
+});
 
 (async function(){
   try{
-    const { data:{ session } } = await sb.auth.getSession();
+    const got = await sb.auth.getSession();
+    const session = got && got.data && got.data.session;
+    if(recoveryActive){ showRecover(); return; }
     if(session) enterApp(session.user);
-  }catch(e){ authErr("Couldn't reach the server. Check the connection keys."); }
+  }catch(e){ authErr("Couldn't reach the server. Check your internet and try again."); }
 })();
 
 document.addEventListener("keydown", e=>{
-  if(e.key==="Enter" && aEl("auth-screen") && aEl("auth-screen").style.display!=="none") authSubmit();
+  if(e.key!=="Enter") return;
+  const screen=aEl("auth-screen");
+  if(!screen || screen.style.display==="none") return;
+  if(e.target && (e.target.tagName==="TEXTAREA" || e.target.id==="confirm-text")) return;
+  const msg=aEl("auth-msg");
+  if(msg && msg.style.display==="block" && window.__signupEmail && authMode==="login") return;
+  authSubmit();
 });
 </script>
 

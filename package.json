@@ -2,6 +2,9 @@
   "name": "fitrm",
   "version": "1.0.0",
   "private": true,
+  "scripts": {
+    "test": "node --test test/sync-safety.test.js"
+  },
   "dependencies": {
     "stripe": "^16.12.0"
   }
