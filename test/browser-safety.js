@@ -51,6 +51,8 @@ window.supabase = { createClient: function(){
       insert: function(p){ b.op="insert"; b.payload=p; return api; },
       update: function(p){ b.op="update"; b.payload=p; return api; },
       eq: function(){ return api; },
+      order: function(){ return api; },
+      limit: function(){ return api; },
       maybeSingle: function(){ return Promise.resolve(resultFor(b)); },
       then: function(ok, bad){ return Promise.resolve(resultFor(b)).then(ok, bad); }
     };
