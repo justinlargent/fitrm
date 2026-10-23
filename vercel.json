@@ -1,4 +1,7 @@
 {
+  "redirects": [
+    { "source": "/index_appskin.html", "destination": "/", "permanent": true }
+  ],
   "headers": [
     {
       "source": "/",
@@ -10,6 +13,12 @@
       "source": "/(.*)\\.html",
       "headers": [
         { "key": "Cache-Control", "value": "no-cache, no-store, must-revalidate" }
+      ]
+    },
+    {
+      "source": "/lib/(.*)",
+      "headers": [
+        { "key": "Cache-Control", "value": "no-cache" }
       ]
     }
   ]
