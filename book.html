@@ -1,0 +1,161 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Request a session | Fitrm</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,500;9..144,600&display=swap" rel="stylesheet">
+<style>
+  :root{ --bg:#1b1d19; --surface:#24261f; --surface2:#2c2f26; --line:#34372c; --accent:#8f9d68; --text:#f4f2ea; --muted:#a7ab98; --danger:#cf8b7a; }
+  *{box-sizing:border-box;}
+  body{margin:0; min-height:100vh; background:var(--bg); color:var(--text);
+    font-family:-apple-system,BlinkMacSystemFont,"SF Pro Text","Segoe UI",Roboto,sans-serif;}
+  main{max-width:440px; margin:0 auto; padding:28px 18px 48px;}
+  .logo{font-family:"Fraunces",serif; font-size:28px; font-weight:500;}
+  .logo span{color:var(--accent);}
+  h1{font-family:"Fraunces",serif; font-weight:500; font-size:32px; margin:18px 0 8px;}
+  p.lead{color:var(--muted); line-height:1.5; margin:0 0 18px;}
+  .day{margin:18px 0 8px; font-size:13px; font-weight:700; color:var(--muted); text-transform:uppercase; letter-spacing:.04em;}
+  .slots{display:flex; flex-wrap:wrap; gap:8px;}
+  .slot{background:var(--surface); border:1px solid var(--line); color:var(--text); border-radius:999px; padding:10px 14px; font-weight:700; cursor:pointer;}
+  .slot.on{background:var(--accent); color:#14160d; border-color:var(--accent);}
+  label{display:block; margin-top:12px; font-size:13px; color:var(--muted); font-weight:600;}
+  input,textarea{width:100%; margin-top:6px; background:var(--surface2); border:1px solid var(--line); color:var(--text);
+    border-radius:12px; padding:12px 14px; font-size:16px; font-family:inherit;}
+  button.send{width:100%; margin-top:16px; background:var(--accent); color:#14160d; border:0; border-radius:14px;
+    padding:14px 16px; font-weight:800; font-size:16px; cursor:pointer;}
+  button.send:disabled{opacity:.45;}
+  .err{background:rgba(207,139,122,.15); color:var(--danger); border-radius:12px; padding:10px 12px; margin-top:12px; display:none;}
+  .ok{background:rgba(143,157,104,.16); color:var(--accent); border-radius:12px; padding:14px; margin-top:12px; display:none; line-height:1.45;}
+  .hp{position:absolute; left:-9999px; height:0; width:0; overflow:hidden;}
+  .card{background:var(--surface); border:1px solid var(--line); border-radius:18px; padding:16px; color:var(--muted); line-height:1.5;}
+</style>
+</head>
+<body>
+<main>
+  <div class="logo">Fitrm<span>.</span></div>
+  <h1 id="title">Request a session</h1>
+  <p class="lead" id="lead">Pick an open time. Your trainer confirms it before it is on the calendar. Nothing is sent automatically.</p>
+  <div id="body"></div>
+</main>
+<script>
+(function(){
+  var params = new URLSearchParams(location.search);
+  var slug = (params.get("slug") || "").trim().toLowerCase();
+  if (!slug) {
+    var parts = location.pathname.split("/").filter(Boolean);
+    if (parts[0] === "book" && parts[1]) slug = decodeURIComponent(parts[1]).trim().toLowerCase();
+  }
+  var picked = "";
+  function el(id){ return document.getElementById(id); }
+  function esc(s){ return String(s==null?"":s).replace(/[&<>"']/g, function(c){ return ({"&":"&amp;","<":"&lt;",">":"&gt;","\"":"&quot;","'":"&#39;"})[c]; }); }
+  function showError(msg){ var e=el("err"); if(!e) return; e.style.display="block"; e.textContent=msg; }
+  function dayTitle(stamp){
+    var p=stamp.split("T")[0].split("-");
+    var dt=new Date(Date.UTC(+p[0], +p[1]-1, +p[2]));
+    return dt.toLocaleDateString(undefined, { weekday:"long", month:"long", day:"numeric", timeZone:"UTC" });
+  }
+  function timeTitle(stamp){
+    var hm=stamp.split("T")[1].split(":");
+    var h=+hm[0], m=+hm[1];
+    var ap=h>=12?"pm":"am"; h=h%12||12;
+    return m ? h+":"+(m<10?"0":"")+m+ap : h+ap;
+  }
+  function render(data){
+    el("title").textContent = data.trainerName || "Request a session";
+    if(data.closed){
+      el("body").innerHTML = '<div class="card">This trainer is not taking requests right now.</div>';
+      return;
+    }
+    if(!data.slots || !data.slots.length){
+      el("body").innerHTML = '<div class="card">No open times in the next two weeks.</div>';
+      return;
+    }
+    var groups=[];
+    data.slots.forEach(function(s){
+      var day=s.slice(0,10);
+      if(!groups.length || groups[groups.length-1].day!==day) groups.push({ day:day, slots:[] });
+      groups[groups.length-1].slots.push(s);
+    });
+    var html=groups.map(function(g){
+      return '<div class="day">'+esc(dayTitle(g.slots[0]))+'</div><div class="slots">'
+        + g.slots.map(function(s){ return '<button type="button" class="slot" data-slot="'+esc(s)+'">'+esc(timeTitle(s))+'</button>'; }).join("")
+        + '</div>';
+    }).join("");
+    html+= '<form id="form">'
+      + '<div class="hp"><label>Company<input name="company" tabindex="-1" autocomplete="off"></label></div>'
+      + '<label>Your name<input name="name" required maxlength="80" autocomplete="name"></label>'
+      + '<label>Phone<input name="phone" maxlength="40" autocomplete="tel" inputmode="tel"></label>'
+      + '<label>Email<input name="email" maxlength="120" autocomplete="email" inputmode="email"></label>'
+      + '<label>Note, optional<textarea name="note" rows="3" maxlength="280"></textarea></label>'
+      + '<div class="err" id="err"></div><div class="ok" id="ok"></div>'
+      + '<button class="send" id="send" type="submit" disabled>Request this time</button>'
+      + '</form>';
+    el("body").innerHTML = html;
+    el("body").querySelectorAll(".slot").forEach(function(btn){
+      btn.addEventListener("click", function(){
+        picked = btn.getAttribute("data-slot");
+        el("body").querySelectorAll(".slot").forEach(function(b){ b.classList.toggle("on", b===btn); });
+        el("send").disabled = false;
+      });
+    });
+    el("form").addEventListener("submit", function(ev){
+      ev.preventDefault();
+      send(new FormData(el("form")));
+    });
+  }
+  function send(fd){
+    var err=el("err"); err.style.display="none";
+    if(!picked){ showError("Pick an open time."); return; }
+    var btn=el("send"); btn.disabled=true;
+    fetch("/api/book", {
+      method:"POST",
+      headers:{ "Content-Type":"application/json" },
+      body: JSON.stringify({
+        slug: slug,
+        start: picked,
+        name: fd.get("name") || "",
+        phone: fd.get("phone") || "",
+        email: fd.get("email") || "",
+        note: fd.get("note") || "",
+        company: fd.get("company") || ""
+      })
+    }).then(function(r){ return r.json().then(function(j){ return { ok:r.ok, status:r.status, body:j }; }); })
+      .then(function(res){
+        if(res.ok && res.body && res.body.ok){
+          el("form").querySelectorAll("input,textarea,button.slot").forEach(function(n){ n.disabled=true; });
+          el("ok").style.display="block";
+          el("ok").textContent="Request sent. Your trainer will confirm it. Nothing else was sent.";
+          btn.style.display="none";
+          return;
+        }
+        var msg = (res.body && res.body.error==="booking_unavailable")
+          ? "Online booking is not open yet."
+          : ((res.body && res.body.error) || "Could not send that request.");
+        showError(msg);
+        btn.disabled=false;
+      }).catch(function(){ showError("Could not send that request. Check your connection and try again."); btn.disabled=false; });
+  }
+  if(!slug){
+    el("body").innerHTML = '<div class="card">This booking link was not found.</div>';
+    return;
+  }
+  fetch("/api/book?slug="+encodeURIComponent(slug))
+    .then(function(r){ return r.json().then(function(j){ return { ok:r.ok, status:r.status, body:j }; }); })
+    .then(function(res){
+      if(res.status===404){ el("body").innerHTML='<div class="card">This booking link was not found.</div>'; return; }
+      if(res.status===409){ el("body").innerHTML='<div class="card">This booking link is not available. Ask your trainer for a new link.</div>'; return; }
+      if(!res.ok || (res.body && res.body.error==="booking_unavailable")){
+        el("body").innerHTML='<div class="card">Online booking is not open yet.</div>';
+        return;
+      }
+      render(res.body || {});
+    }).catch(function(){
+      el("body").innerHTML='<div class="card">Online booking is not open yet.</div>';
+    });
+})();
+</script>
+</body>
+</html>

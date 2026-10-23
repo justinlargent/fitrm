@@ -2,6 +2,9 @@
   "redirects": [
     { "source": "/index_appskin.html", "destination": "/", "permanent": true }
   ],
+  "rewrites": [
+    { "source": "/book/:slug", "destination": "/book.html?slug=:slug" }
+  ],
   "headers": [
     {
       "source": "/",

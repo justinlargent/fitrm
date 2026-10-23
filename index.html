@@ -71,6 +71,7 @@
   .btn.sec{background:var(--surface2); color:var(--text); border:1px solid var(--line);}
   .btn.ghost{background:transparent; color:var(--accent); width:auto; padding:8px 4px;}
   .btn-sm{padding:10px 14px; font-size:14px; width:auto;}
+  a.btn{text-decoration:none;}
   /* Inputs */
   label.fld{display:block; margin:12px 0 0;}
   label.fld span{font-size:13px; color:var(--muted); font-weight:600; margin-bottom:6px; display:block;}
@@ -748,6 +749,11 @@ function migrate(s){
   s.recurringSessions=s.recurringSessions||[];
   s.events=s.events||[];
   if(s.profile && s.profile.noShowBurns===undefined) s.profile.noShowBurns=false;
+  s.profile=s.profile||{};
+  if(!s.profile.booking || typeof s.profile.booking!=="object"){
+    s.profile.booking={enabled:false, slug:"", publicName:"", useWorkingHours:true, timezone:""};
+  }
+  s.checkins=(s.checkins && typeof s.checkins==="object" && !Array.isArray(s.checkins)) ? s.checkins : {};
   s.sales=(s.sales||[]).map(x=> x.paid===undefined ? {...x, paid:true} : x);
   return s;
 }
@@ -1329,6 +1335,8 @@ let recurAutoRenew=false;
 let finOpen={trend:true};
 let growOpen=false;
 let hoursDraft=null, hoursLenDraft=60;
+let bookingRequests=[];
+let bookingEnabledDraft=false, bookingUseWorking=true, bookingHoursDraft=null, bookingNameDraft="", bookingSlugDraft="";
 const DAY_MS=86400000;
 function el(id){ return document.getElementById(id); }
 
@@ -1385,8 +1393,321 @@ function openUnpaid(){
   const unpaid=state.sales.filter(s=>!s.paid);
   openSheet(`<div class="sheet-title">Outstanding payments</div>
     ${unpaid.length?unpaid.map(s=>{const c=state.clients.find(x=>x.id===s.clientId); const pt=state.packageTypes.find(p=>p.id===s.packageTypeId);
-      return `<div class="card row between" style="margin-bottom:8px"><div><div class="name">${c?c.name:"(deleted)"}</div><div class="meta">${pt?pt.name:"Package"} · ${money(s.pricePaid)}</div></div><button class="btn sec btn-sm" onclick="markSalePaid('${s.id}');openUnpaid()">Mark paid</button></div>`;}).join(""):`<div class="card empty">No outstanding payments — nice.</div>`}
+      return `<div class="card" style="margin-bottom:8px"><div class="row between"><div><div class="name">${c?escHtml(c.name):"(deleted)"}</div><div class="meta">${pt?escHtml(pt.name):"Package"} · ${money(s.pricePaid)}</div></div></div>
+        <div class="row" style="gap:8px;margin-top:10px;flex-wrap:wrap">
+          <button class="btn sec btn-sm" onclick="openPayLink('${attrId(s.id)}','unpaid')">Send pay link</button>
+          <button class="btn sec btn-sm" onclick="markSalePaid('${attrId(s.id)}');openUnpaid()">Mark paid</button>
+        </div></div>`;}).join(""):`<div class="card empty">No outstanding payments.</div>`}
     <button class="btn sec" style="margin-top:8px" onclick="closeSheet()">Close</button>`);
+}
+function escHtml(s){
+  return String(s==null?"":s).replace(/[&<>"']/g, function(c){
+    return ({"&":"&amp;","<":"&lt;",">":"&gt;","\"":"&quot;","'":"&#39;"})[c];
+  });
+}
+function jsArg(s){ return String(s==null?"":s).replace(/\\/g,"\\\\").replace(/'/g,"\\'").replace(/\n/g," "); }
+function attrId(s){ return escHtml(jsArg(s)); }
+function phoneKey(p){ const d=String(p||"").replace(/\D/g,""); return d.length>=10 ? d.slice(-10) : d; }
+function copyPlain(text, btn){
+  const finish=function(){ if(!btn) return; const old=btn.textContent; btn.textContent="Copied"; setTimeout(function(){ if(btn.textContent==="Copied") btn.textContent=old; }, 1200); };
+  const fallback=function(){
+    const ta=document.createElement("textarea");
+    ta.value=text; ta.setAttribute("readonly",""); document.body.appendChild(ta); ta.select();
+    try{ document.execCommand("copy"); }catch(e){}
+    ta.remove(); finish();
+  };
+  if(navigator.clipboard && navigator.clipboard.writeText){
+    navigator.clipboard.writeText(text).then(finish, fallback);
+  } else fallback();
+}
+function renderHomeIfIdle(){
+  const a=document.activeElement;
+  if(a && a.tagName==="TEXTAREA" && a.id && a.id.indexOf("ci-")===0){
+    a.addEventListener("blur", function once(){ renderHome(); }, {once:true});
+    return;
+  }
+  renderHome();
+}
+function checkinCardHTML(){
+  if(!window.FitrmCheckin) return "";
+  const plan=window.FitrmCheckin.plan(state, new Date());
+  if(!plan.show && plan.reason!=="waiting") return "";
+  if(plan.reason==="waiting"){
+    const t=plan.opensAt ? fmtTime(plan.opensAt) : "";
+    return `<div class="sec-title" id="checkins">Check-ins</div><div class="card empty">Check-ins open after your last session${t?" ("+escHtml(t)+")":""}.</div>`;
+  }
+  const rows=plan.clients.map(function(c){
+    const href=window.FitrmCheckin.smsHref(c.phone, c.message);
+    const id=attrId(c.clientId);
+    return `<div class="card" style="margin-bottom:8px">
+      <div class="row between"><div class="name">${escHtml(c.name)}</div>
+        <label class="meta" style="display:flex;align-items:center;gap:8px;margin:0">Done
+          <input type="checkbox" style="width:auto;padding:0;margin:0" ${c.done?"checked":""} onchange="setCheckinDone('${id}', this.checked)"/></label></div>
+      <label class="fld"><span>Draft message</span>
+        <textarea id="ci-${id}" rows="3" oninput="setCheckinMessage('${id}', this.value)">${escHtml(c.message)}</textarea></label>
+      <div class="row" style="gap:8px;margin-top:8px;flex-wrap:wrap">
+        <button class="btn sec btn-sm" type="button" onclick="copyCheckin('${id}', this)">Copy</button>
+        ${href?`<a class="btn sec btn-sm" id="ci-sms-${id}" href="${escHtml(href)}">Open in Messages</a>`:`<span class="meta">No phone on file</span>`}
+      </div>
+    </div>`;
+  }).join("");
+  return `<div class="sec-title" id="checkins">Check-ins</div>
+    <p class="muted" style="margin:-4px 4px 10px">Drafts only. Nothing is sent until you tap Copy or Open in Messages.</p>${rows}`;
+}
+function ensureCheckin(clientId){
+  const today=todayISO();
+  state.checkins=state.checkins||{};
+  state.checkins[today]=state.checkins[today]||{};
+  if(!state.checkins[today][clientId]){
+    const plan=window.FitrmCheckin.plan(state, new Date());
+    const row=(plan.clients||[]).find(function(c){ return c.clientId===clientId; });
+    state.checkins[today][clientId]={ message: row?row.message:"", done:false };
+  }
+  return state.checkins[today][clientId];
+}
+function setCheckinMessage(clientId, value){
+  const row=ensureCheckin(clientId);
+  row.message=value;
+  save();
+  const client=(state.clients||[]).find(function(c){ return c.id===clientId; });
+  const a=el("ci-sms-"+clientId);
+  if(a && client && window.FitrmCheckin){
+    const href=window.FitrmCheckin.smsHref(client.phone, value);
+    if(href) a.setAttribute("href", href);
+  }
+}
+function setCheckinDone(clientId, done){
+  const row=ensureCheckin(clientId);
+  row.done=!!done;
+  save();
+  renderHome();
+}
+function copyCheckin(clientId, btn){
+  const ta=el("ci-"+clientId);
+  copyPlain(ta?ta.value:"", btn||null);
+}
+function salePayContext(saleId){
+  const s=(state.sales||[]).find(function(x){ return x.id===saleId; });
+  if(!s || !window.FitrmPay) return null;
+  const c=(state.clients||[]).find(function(x){ return x.id===s.clientId; });
+  const pt=(state.packageTypes||[]).find(function(p){ return p.id===s.packageTypeId; });
+  const packName=pt?pt.name:"Training package";
+  const clientName=c?c.name:"";
+  const note=window.FitrmPay.payNote(packName, clientName);
+  return {
+    sale:s, client:c, packName:packName, clientName:clientName,
+    venmo:window.FitrmPay.venmoPayUrl({ handle:state.profile.venmoHandle, amount:s.pricePaid, note:note }),
+    stripe:window.FitrmPay.stripePayUrl(state.profile.stripePaymentLink)
+  };
+}
+function openPayLink(saleId, back){
+  window.__payBack=back||"";
+  const ctx=salePayContext(saleId);
+  if(!ctx) return;
+  const handle=window.FitrmPay.venmoHandle(state.profile.venmoHandle||"");
+  const stripeSaved=window.FitrmPay.stripePayUrl(state.profile.stripePaymentLink||"");
+  if(!handle && !stripeSaved){
+    openSheet(`<div class="sheet-title">Send pay link</div>
+      <p class="muted">Add a Venmo handle or a Stripe Payment Link in Settings first. Marking a pack paid stays manual.</p>
+      <button class="btn" onclick="openPaySettings()">Set up pay links</button>
+      <button class="btn sec" style="margin-top:8px" onclick="payLinkBack()">Back</button>`);
+    return;
+  }
+  window.__payCopy={};
+  let blocks="";
+  function block(kind, label, url){
+    if(!url) return "";
+    const body=window.FitrmPay.textBody(ctx.clientName, ctx.packName, url);
+    window.__payCopy[kind]=url;
+    window.__payCopy[kind+"Text"]=body;
+    const sms=ctx.client && window.FitrmCheckin ? window.FitrmCheckin.smsHref(ctx.client.phone, body) : "";
+    return `<div class="card" style="margin-bottom:8px">
+      <div class="name">${label}</div>
+      <div class="meta" style="word-break:break-all;margin:6px 0">${escHtml(url)}</div>
+      <div class="row" style="gap:8px;flex-wrap:wrap">
+        <button class="btn sec btn-sm" type="button" id="pay-copy-${kind}" onclick="copyPay('${kind}')">Copy link</button>
+        ${sms?`<a class="btn sec btn-sm" href="${escHtml(sms)}">Open in Messages</a>`:`<span class="meta">No phone on file</span>`}
+      </div></div>`;
+  }
+  blocks+=block("venmo","Venmo",ctx.venmo);
+  blocks+=block("stripe","Stripe",ctx.stripe);
+  if(!blocks){
+    blocks=`<div class="card empty">This pack has no amount, so a pay link was not built.</div>`;
+  }
+  openSheet(`<div class="sheet-title">Send pay link</div>
+    <p class="muted" style="margin-top:2px">${escHtml(ctx.clientName||"Client")} · ${escHtml(ctx.packName)} · ${money(ctx.sale.pricePaid)}. Nothing is sent until you copy or text it. Marking the pack paid stays manual.</p>
+    ${blocks}
+    <button class="btn sec" style="margin-top:8px" onclick="payLinkBack()">Back</button>`);
+}
+function copyPay(kind){
+  const text=window.__payCopy && window.__payCopy[kind];
+  if(!text) return;
+  copyPlain(text, el("pay-copy-"+kind));
+}
+function payLinkBack(){
+  if(window.__payBack==="unpaid") openUnpaid();
+  else if(window.__payBack && (state.clients||[]).some(function(c){ return c.id===window.__payBack; })) openClient(window.__payBack);
+  else closeSheet();
+}
+function openPaySettings(){
+  const v=escHtml(state.profile.venmoHandle||"");
+  const s=escHtml(state.profile.stripePaymentLink||"");
+  openSheet(`<div class="sheet-title">Pay links</div>
+    <p class="muted" style="margin-top:2px">Fitrm builds a link for you to copy or text. It does not collect the money and it does not mark a pack paid.</p>
+    <label class="fld"><span>Venmo handle</span><input id="pay-venmo" value="${v}" placeholder="yourhandle" autocomplete="off"/></label>
+    <label class="fld"><span>Stripe Payment Link</span><input id="pay-stripe" value="${s}" placeholder="https://buy.stripe.com/..." autocomplete="off"/></label>
+    <div id="pay-warn" class="meta" style="color:var(--danger);margin-top:8px"></div>
+    <button class="btn" style="margin-top:14px" onclick="savePaySettings()">Save</button>
+    <button class="btn sec" style="margin-top:8px" onclick="openSettings()">Back</button>`);
+}
+function savePaySettings(){
+  const rawV=el("pay-venmo").value;
+  const rawS=el("pay-stripe").value.trim();
+  const handle=window.FitrmPay.venmoHandle(rawV);
+  const stripe=rawS ? window.FitrmPay.stripePayUrl(rawS) : "";
+  const warn=el("pay-warn");
+  if(String(rawV).trim() && !handle){ warn.textContent="Use a Venmo username: letters, numbers, underscores, and hyphens only."; return; }
+  if(rawS && !stripe){ warn.textContent="Paste a link that starts with https://buy.stripe.com/ or https://pay.stripe.com/."; return; }
+  state.profile.venmoHandle=handle;
+  state.profile.stripePaymentLink=stripe;
+  save();
+  openSettings();
+}
+function bookingStatusNote(){
+  if(window.__bookingReady===false) return "Booking requests could not be loaded. If this is a new setup, a one-time database update is needed. Your link and hours still save with your account.";
+  if(window.__bookingReady===true) return "Requests show on Home for you to approve. Nothing is texted for you.";
+  return "Your link and hours save with the rest of your account.";
+}
+function bookingPublicUrl(slug){
+  const s=window.FitrmBooking ? window.FitrmBooking.normalizeSlug(slug) : "";
+  if(!s) return "";
+  return location.origin+"/book/"+s;
+}
+function oneBlockHours(src){
+  const out={};
+  src=src||{};
+  for(let d=0;d<7;d++){
+    const dd=src[d]||src[String(d)]||{on:false, blocks:[]};
+    const block=(dd.blocks&&dd.blocks[0])||{start:"06:00", end:"14:00"};
+    out[d]={ on:!!dd.on, blocks:[{ start:block.start||"06:00", end:block.end||"14:00" }] };
+  }
+  return out;
+}
+function readBookingForm(){
+  const name=el("bk-name"), slug=el("bk-slug"), on=el("bk-enabled");
+  if(name) bookingNameDraft=name.value;
+  if(slug) bookingSlugDraft=slug.value;
+  if(on) bookingEnabledDraft=on.classList.contains("on");
+}
+function openBookingSettings(){
+  const b=state.profile.booking||{};
+  bookingEnabledDraft=!!b.enabled;
+  bookingUseWorking=b.useWorkingHours!==false;
+  bookingNameDraft=b.publicName||"";
+  bookingSlugDraft=b.slug||"";
+  bookingHoursDraft=oneBlockHours((b.useWorkingHours===false && b.hours) ? b.hours : (state.profile.workingHours||defaultHours()));
+  renderBookingSettings();
+}
+function renderBookingSettings(){
+  const names=["Sunday","Monday","Tuesday","Wednesday","Thursday","Friday","Saturday"];
+  let tz="";
+  try{ tz=Intl.DateTimeFormat().resolvedOptions().timeZone||""; }catch(e){}
+  let days="";
+  if(!bookingUseWorking){
+    bookingHoursDraft=bookingHoursDraft||oneBlockHours(defaultHours());
+    for(let d=0;d<7;d++){
+      const dd=bookingHoursDraft[d];
+      days+=`<div class="hr-day"><div class="row between"><b>${names[d]}</b><button type="button" class="toggle ${dd.on?'on':''}" onclick="bkToggleDay(${d})"><span></span></button></div>
+        ${dd.on?`<div class="row" style="gap:8px;margin-top:8px;align-items:center">
+          <input type="time" value="${escHtml(dd.blocks[0].start)}" onchange="bkSetTime(${d},'start',this.value)" style="flex:1"/>
+          <span class="meta">to</span>
+          <input type="time" value="${escHtml(dd.blocks[0].end)}" onchange="bkSetTime(${d},'end',this.value)" style="flex:1"/>
+        </div>`:""}</div>`;
+    }
+  }
+  const preview=bookingPublicUrl(bookingSlugDraft);
+  openSheet(`<div class="sheet-title">Client booking link</div>
+    <p class="muted" style="margin-top:2px">${escHtml(bookingStatusNote())}</p>
+    <div class="card" style="background:var(--surface2);margin-top:12px"><div class="row between"><div class="grow"><div class="name" style="font-size:15px">Accept requests</div>
+      <div class="meta">Off until you turn this on. Clients only see open times.</div></div>
+      <button type="button" id="bk-enabled" class="toggle ${bookingEnabledDraft?'on':''}" onclick="bkToggleEnabled()"><span></span></button></div></div>
+    <label class="fld"><span>Name clients see</span><input id="bk-name" value="${escHtml(bookingNameDraft)}" placeholder="Justin" maxlength="80"/></label>
+    <label class="fld"><span>Link name</span><input id="bk-slug" value="${escHtml(bookingSlugDraft)}" placeholder="justin" maxlength="40" autocapitalize="off" autocomplete="off" oninput="bkPreviewLink()"/></label>
+    <div class="meta" id="bk-link" style="margin-top:8px;word-break:break-all">${preview?escHtml(preview):"Use 3 to 40 letters, numbers, or hyphens."}</div>
+    <div class="meta" style="margin-top:6px">If another trainer already uses this name, clients will see that the link is not available.</div>
+    <button class="btn sec btn-sm" style="margin-top:8px" type="button" onclick="copyBookingLink()">Copy link</button>
+    <div class="card" style="background:var(--surface2);margin-top:12px"><div class="row between"><div class="grow"><div class="name" style="font-size:15px">Use working hours</div>
+      <div class="meta">On uses the hours from Working hours, including split shifts. Times use ${escHtml(tz||"this device")}.</div></div>
+      <button type="button" id="bk-hours" class="toggle ${bookingUseWorking?'on':''}" onclick="bkToggleUseWorking()"><span></span></button></div></div>
+    ${bookingUseWorking && !state.profile.workingHours ? `<p class="muted">No working hours yet. Set them in Settings, or turn this off and pick custom hours. Until then the link has no open times.</p>` : ""}
+    ${bookingUseWorking?"":`<p class="muted">Custom hours use one block per day.</p><div style="margin-top:8px">${days}</div>`}
+    <div id="bk-warn" class="meta" style="color:var(--danger);margin-top:8px"></div>
+    <button class="btn" style="margin-top:14px" onclick="saveBookingSettings()">Save booking link</button>
+    <button class="btn sec" style="margin-top:8px" onclick="openSettings()">Back</button>`);
+}
+function bkPreviewLink(){
+  const box=el("bk-link"); if(!box) return;
+  const url=bookingPublicUrl(el("bk-slug").value);
+  box.textContent=url||"Use 3 to 40 letters, numbers, or hyphens.";
+}
+function bkToggleEnabled(){ readBookingForm(); bookingEnabledDraft=!bookingEnabledDraft; renderBookingSettings(); }
+function bkToggleUseWorking(){
+  readBookingForm();
+  bookingUseWorking=!bookingUseWorking;
+  if(!bookingUseWorking) bookingHoursDraft=oneBlockHours(bookingHoursDraft||state.profile.workingHours||defaultHours());
+  renderBookingSettings();
+}
+function bkToggleDay(d){
+  readBookingForm();
+  if(!bookingHoursDraft[d]) bookingHoursDraft[d]={on:false, blocks:[{start:"06:00",end:"14:00"}]};
+  bookingHoursDraft[d].on=!bookingHoursDraft[d].on;
+  renderBookingSettings();
+}
+function bkSetTime(d, field, value){
+  readBookingForm();
+  bookingHoursDraft[d].blocks[0][field]=value;
+  renderBookingSettings();
+}
+function copyBookingLink(){
+  const slug=el("bk-slug")?el("bk-slug").value:bookingSlugDraft;
+  const url=bookingPublicUrl(slug);
+  if(!url){ const w=el("bk-warn"); if(w) w.textContent="Add a link name first."; return; }
+  copyPlain(url, el("sheet-body") && el("sheet-body").querySelector("button.btn-sm"));
+}
+function saveBookingSettings(){
+  readBookingForm();
+  const slugRaw=bookingSlugDraft;
+  const slug=window.FitrmBooking ? window.FitrmBooking.normalizeSlug(slugRaw) : "";
+  const warn=el("bk-warn");
+  if(String(slugRaw).trim() && !slug){ if(warn) warn.textContent="Use 3 to 40 letters, numbers, or hyphens."; return; }
+  if(bookingEnabledDraft && !slug){ if(warn) warn.textContent="Add a link name before turning booking on."; return; }
+  state.profile.booking=state.profile.booking||{};
+  const b=state.profile.booking;
+  b.enabled=!!bookingEnabledDraft;
+  b.slug=slug;
+  b.publicName=String(bookingNameDraft||"").trim().slice(0,80);
+  b.useWorkingHours=!!bookingUseWorking;
+  b.hours=bookingUseWorking ? null : oneBlockHours(bookingHoursDraft||defaultHours());
+  try{ b.timezone=Intl.DateTimeFormat().resolvedOptions().timeZone||b.timezone||""; }catch(e){}
+  save();
+  openSettings();
+}
+function bookingRequestsHTML(){
+  if(!bookingRequests || !bookingRequests.length) return "";
+  const rows=bookingRequests.map(function(r){
+    const when=r.slot_start ? (fmtDate(String(r.slot_start).slice(0,10))+" · "+fmtTime(String(r.slot_start).slice(0,16))) : "";
+    const id=attrId(r.id);
+    return `<div class="card" style="margin-bottom:8px">
+      <div class="name">${escHtml(r.client_name||"Request")}</div>
+      <div class="meta">${escHtml(when)}${r.client_phone?" · "+escHtml(r.client_phone):""}${r.client_email?" · "+escHtml(r.client_email):""}</div>
+      ${r.note?`<div class="meta" style="margin-top:4px">${escHtml(r.note)}</div>`:""}
+      <div class="row" style="gap:8px;margin-top:10px;flex-wrap:wrap">
+        <button class="btn btn-sm" type="button" onclick="approveBooking('${id}')">Approve</button>
+        <button class="btn sec btn-sm" type="button" onclick="declineBooking('${id}')">Decline</button>
+      </div></div>`;
+  }).join("");
+  return `<div class="sec-title" id="session-requests">Session requests</div>
+    <p class="muted" style="margin:-4px 4px 10px">Pending until you approve. Nothing is sent automatically.</p>${rows}`;
 }
 function openMonthGoal(){
   const g=state.profile.monthlyGoal||"";
@@ -1442,6 +1763,7 @@ function renderHome(){
     </div>
     ${growCardHTML()}
     ${lowSessionsNudge()}
+    ${bookingRequestsHTML()}
     <div class="sec-title">Today's sessions</div>`;
   if(todays.length){
     h+=`<div class="card">`+todays.map((s,i)=>{
@@ -1456,6 +1778,7 @@ function renderHome(){
       </div>`;
     }).join("")+`</div>`;
   } else { h+=`<div class="card empty">No sessions scheduled today 🎉</div>`; }
+  h+=checkinCardHTML();
 
   const trend=trendData(); window.__trend=trend;
   h+=`<div class="sec-title">Income vs. expenses</div>
@@ -2120,8 +2443,11 @@ function openClient(cid){
           <div style="text-align:right"><div class="big-num">${money(s.pricePaid)}</div>
             <div class="meta">tax: ${money(s.taxSetAside)}</div></div>
         </div>
-        ${s.paid?'':`<div class="row between" style="margin-top:10px"><span class="pill out">Unpaid</span>
-          <button class="btn sec btn-sm" onclick="markSalePaid('${s.id}')">Mark paid</button></div>`}
+        ${s.paid?'':`<div class="row between" style="margin-top:10px;gap:8px;flex-wrap:wrap"><span class="pill out">Unpaid</span>
+          <span class="row" style="gap:8px">
+            <button class="btn sec btn-sm" onclick="openPayLink('${attrId(s.id)}','${attrId(cid)}')">Send pay link</button>
+            <button class="btn sec btn-sm" onclick="markSalePaid('${attrId(s.id)}')">Mark paid</button>
+          </span></div>`}
         <button class="btn sec btn-sm" style="margin-top:8px;width:100%" onclick="openEditSale('${s.id}')">Edit package</button>
       </div>`;}).join("")
       :`<div class="card empty">No packages yet.</div>`}
@@ -2229,7 +2555,7 @@ function openClearConfirm(){
     go:"Erase data",
     run:function(){
       const p=state.profile||{};
-      applyWipe({profile:p, packageTypes:[], clients:[], sales:[], sessions:[], expenses:[], taxPayments:[], recurringExpenses:[], recurringSessions:[], events:[]},
+      applyWipe({profile:p, packageTypes:[], clients:[], sales:[], sessions:[], expenses:[], taxPayments:[], recurringExpenses:[], recurringSessions:[], events:[], checkins:{}},
         { allowEmptyPush:true, fullReplace:true }, "Data erased. A backup is on this device.");
     }
   });
@@ -2243,8 +2569,14 @@ function openResetConfirm(){
     run:function(){
       const stripeId=state.profile&&state.profile.stripeAccountId;
       const stripeOn=state.profile&&state.profile.stripeConnected;
+      const venmo=state.profile&&state.profile.venmoHandle;
+      const stripeLink=state.profile&&state.profile.stripePaymentLink;
+      const booking=state.profile&&state.profile.booking;
       const next=defaultState(); seedDynamic(next);
       if(stripeId){ next.profile.stripeAccountId=stripeId; next.profile.stripeConnected=!!stripeOn; }
+      if(venmo) next.profile.venmoHandle=venmo;
+      if(stripeLink) next.profile.stripePaymentLink=stripeLink;
+      if(booking) next.profile.booking=JSON.parse(JSON.stringify(booking));
       applyWipe(next, { allowEmptyPush:false, fullReplace:true }, "Replaced with the sample. A backup is on this device.");
     }
   });
@@ -2555,6 +2887,8 @@ function openSettings(){
       : `<button class="btn sec" onclick="connectStripe()">Connect Stripe — take payments</button>`}
     <button class="btn sec" style="margin-top:8px" onclick="closeSheet();startTour()">Take the tour</button>
     <button class="btn sec" style="margin-top:8px" onclick="openHours()">Working hours</button>
+    <button class="btn sec" style="margin-top:8px" onclick="openPaySettings()">Pay links</button>
+    <button class="btn sec" style="margin-top:8px" onclick="openBookingSettings()">Client booking link</button>
     <button class="btn sec" style="margin-top:8px" onclick="openTaxProfile()">Tax profile</button>
     <button class="btn sec" style="margin-top:8px" onclick="openDataMenu()">Demo / reset data</button>
     ${window.currentUser?`<div class="meta" style="margin:14px 2px 6px">Signed in as ${window.currentUser.email}</div>
@@ -2982,6 +3316,9 @@ function startApp(uid){ if(uid) LS_KEY = "fitrm_poc_" + uid; state = load(); ren
 </script>
 
 <script src="lib/sync-safety.js"></script>
+<script src="lib/checkin.js"></script>
+<script src="lib/pay-link.js"></script>
+<script src="lib/booking.js"></script>
 <script>
 /* ===================== SUPABASE AUTH ===================== */
 const SB_URL  = "https://ykjcflkffletanpbwidj.supabase.co";
@@ -3109,6 +3446,74 @@ async function saveNewPassword(){
 
 async function doLogout(){ try{ await sb.auth.signOut(); }catch(e){} location.reload(); }
 
+async function loadBookingRequests(){
+  if(!window.currentUser) return;
+  try{
+    const res = await sb.from("booking_requests")
+      .select("id,client_name,client_phone,client_email,slot_start,duration_min,note,status,created_at")
+      .eq("trainer_id", window.currentUser.id)
+      .eq("status", "pending")
+      .order("created_at", { ascending:true });
+    if(res.error){
+      window.__bookingReady = false;
+      bookingRequests = [];
+    } else {
+      window.__bookingReady = true;
+      bookingRequests = res.data || [];
+    }
+  }catch(e){
+    window.__bookingReady = false;
+    bookingRequests = [];
+  }
+  if(typeof renderHomeIfIdle==="function") renderHomeIfIdle();
+}
+async function approveBooking(id){
+  const req = (bookingRequests||[]).find(function(r){ return r.id===id; });
+  if(!req || !window.currentUser) return;
+  let res;
+  try{
+    res = await sb.from("booking_requests").update({ status:"approved" }).eq("id", id).eq("trainer_id", window.currentUser.id);
+  }catch(e){ res={ error:e }; }
+  if(res.error){ alert("Couldn't approve that request. If booking was just turned on, a one-time database update may still be needed."); return; }
+  const email = String(req.client_email||"").trim().toLowerCase();
+  const phone = phoneKey(req.client_phone);
+  let client = (state.clients||[]).find(function(c){
+    const ce = String(c.email||"").trim().toLowerCase();
+    if(email && ce && ce===email) return true;
+    const cp = phoneKey(c.phone);
+    if(phone && cp && cp===phone) return true;
+    return false;
+  });
+  if(!client){
+    client = { id:"c"+Date.now(), name:String(req.client_name||"New client").slice(0,80), phone:req.client_phone||"", email:req.client_email||"", status:"active", source:"Website" };
+    state.clients.push(client);
+  }
+  const stamp = String(req.slot_start||"").slice(0,16);
+  const dup = (state.sessions||[]).some(function(s){ return s.clientId===client.id && String(s.datetime||"").slice(0,16)===stamp && s.status!=="cancelled"; });
+  if(!dup && /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}$/.test(stamp)){
+    const used = state.sessions.filter(function(s){ return s.clientId===client.id; }).length;
+    const note = req.note ? ("Booked online. "+String(req.note).slice(0,280)) : "Booked online.";
+    state.sessions.push({
+      id:"se"+Date.now(), clientId:client.id, saleId:null, datetime:stamp,
+      duration: req.duration_min || (state.profile&&state.profile.sessionLength) || 60,
+      type:"In-person", status:"scheduled", sessionNumber:used+1, notes:note
+    });
+  }
+  save();
+  bookingRequests = bookingRequests.filter(function(r){ return r.id!==id; });
+  render();
+}
+async function declineBooking(id){
+  if(!window.currentUser) return;
+  let res;
+  try{
+    res = await sb.from("booking_requests").update({ status:"declined" }).eq("id", id).eq("trainer_id", window.currentUser.id);
+  }catch(e){ res={ error:e }; }
+  if(res.error){ alert("Couldn't decline that request. Try again."); return; }
+  bookingRequests = bookingRequests.filter(function(r){ return r.id!==id; });
+  renderHome();
+}
+
 async function enterApp(user){
   if(recoveryActive) return;
   window.currentUser = user;
@@ -3122,6 +3527,7 @@ async function enterApp(user){
   maybeWelcome();
   checkStripeReturn();
   reconcilePayments();
+  loadBookingRequests();
   const pp=new URLSearchParams(location.search);
   if(pp.get("paid")==="success"){ setTimeout(reconcilePayments,2500); setTimeout(reconcilePayments,6000); }
   if(pp.get("paid")) history.replaceState({},"",location.pathname);
